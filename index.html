@@ -115,7 +115,19 @@
             outline: none;
             transition: border-color 0.2s;
         }
+        /* 드롭다운 펼침 목록(option) 스타일 수정 */
+select option {
+  background-color: #1a162b; /* 어두운 보라색 배경 (var(--bg-secondary)와 동일) */
+  color: #f3f0ff;            /* 선명한 연보라/하얀색 글자 */
+  padding: 8px;              /* 옵션 항목 여백 */
+}
 
+/* (선택) 옵션에 마우스 올렸을 때 / 선택할 때 배경색 */
+select option:hover,
+select option:checked {
+  background-color: #8b5cf6 !important; /* 메인 보라색 하이라이트 */
+  color: #ffffff !important;
+}
         select:focus, input:focus {
             border-color: var(--accent-purple);
         }
