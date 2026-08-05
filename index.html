@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>로스트아크 세팅 입력값 검증 시뮬레이터</title>
+    <title>로스트아크 기상술사 비연참 시뮬레이터</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #121212; color: #e0e0e0; }
         h1, h2, h3 { color: #ffffff; border-bottom: 2px solid #333; padding-bottom: 5px; }
@@ -119,13 +119,16 @@
         }
 
         /* 플로팅 버튼 컨테이너 */
+        /* 📌 플로팅 버튼 전체 컨테이너 (우측 하단 고정) */
         .floating-container {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        display: flex;
-        gap: 10px;
-        z-index: 1000;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: row; /* 가로 배치: [비교군 저장] [비교표 보기] [세팅 저장] [세팅 불러오기] */
+            gap: 10px;
+            align-items: center;
+            z-index: 1000;
         }
 
         /* 버튼 공통 스타일 */
@@ -144,6 +147,14 @@
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
         }
+        /* 📌 비교 관련 버튼 시각적 구분 (보라색 계열 포인트) */
+        .floating-btn.compare-btn {
+            background-color: #6c5ce7;
+        }
+
+        .floating-btn.compare-btn:hover {
+            background-color: #5b4bc4;
+        }
 
         /* 저장 버튼 스타일 (초록) */
         .save-btn {
@@ -161,6 +172,134 @@
         }
         .load-btn:hover {
         background-color: #1976d2;
+        }
+        /* 비교 버튼 스타일 */
+        .compare-btn-group {
+        margin: 15px 0;
+        display: flex;
+        gap: 10px;
+        }
+        .compare-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        color: white;
+        }
+        .compare-btn.baseline { background-color: #f39c12; }
+        .compare-btn.view { background-color: #27ae60; }
+
+        /* 비교 모달 폭 확장 */
+        .compare-modal-content {
+        max-width: 850px !important;
+        width: 90% !important;
+        }
+
+        /* 표 스타일 */
+        .table-wrapper {
+        overflow-x: auto;
+        margin-top: 15px;
+        }
+        .compare-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: center;
+        font-size: 14px;
+        }
+        .compare-table th, .compare-table td {
+        border: 1px solid #444;
+        padding: 8px 10px;
+        }
+        .compare-table th {
+        background-color: #2b2b36;
+        color: #fff;
+        }
+        .compare-table td {
+        background-color: #1e1e24;
+        color: #ddd;
+        }
+
+        /* 수치 증감 색상 강조 */
+        .plus { color: #4caf50; font-weight: bold; }  /* 증가 (초록/파랑) */
+        .minus { color: #f44336; font-weight: bold; } /* 감소 (빨강) */
+        .zero { color: #aaa; }
+
+        /* 모달 배경 (어둡게 처리 + 배경 블러) */
+        .alert-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000; /* 최상단 배치 */
+            opacity: 1;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        /* 숨김 처리 */
+        .alert-overlay.hidden {
+            display: none;
+            opacity: 0;
+        }
+
+        /* 알림창 대화상자 */
+        .alert-box {
+            background-color: #2b2d42;
+            color: #ffffff;
+            width: 320px;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .alert-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .alert-message {
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            word-break: keep-all;
+        }
+
+        .alert-btn {
+            width: 100%;
+            padding: 10px 0;
+            background-color: #6c5ce7;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .alert-btn:hover {
+            background-color: #5b4bc4;
+        }
+
+        /* 팝업 등장 애니메이션 */
+        @keyframes popIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -764,8 +903,44 @@
             계산 중입니다...
         </div>
     </div>
+
+    <!-- 비교표 모달 팝업 -->
+    <div id="compareModal" class="modal">
+    <div class="modal-content compare-modal-content">
+        <span class="close-btn close-compare-btn">&times;</span>
+        <h2>세팅 비교 결과</h2>
+        
+        <div class="table-wrapper">
+        <table class="compare-table">
+            <thead>
+            <tr>
+                <th rowspan="2">스킬명</th>
+                <th colspan="2">비교군</th>
+                <th colspan="2">지금 세팅</th>
+                <th colspan="3">변화율</th>
+            </tr>
+            <tr>
+                <th>기대값</th>
+                <th>쿨타임</th>
+                <th>기대값</th>
+                <th>쿨타임</th>
+                <th>데미지증감</th>
+                <th>쿨타임증감</th>
+                <th>DPS증감</th>
+            </tr>
+            </thead>
+            <tbody id="compareTableBody">
+            <!-- JS로 동적 생성됩니다 -->
+            </tbody>
+        </table>
+        </div>
+    </div>
+    </div>
     <!-- 하단 고정 플로팅 버튼 영역 -->
     <div class="floating-container">
+        <!-- 비교 관련 플로팅 버튼 (왼쪽 배치) -->
+        <button id="addCompareBtn" class="floating-btn compare-btn" title="현재 세팅 저장">📌 비교군 저장</button>
+        <button id="openCompareModalBtn" class="floating-btn compare-btn" title="비교표 보기">📊 비교표 보기</button>
         <button id="saveBtn" class="float-btn save-btn">💾 세팅 저장</button>
         <button id="loadBtn" class="float-btn load-btn">📂 불러오기</button>
     </div>
@@ -918,7 +1093,7 @@
             });
 
             if (totalCount > 11) {
-                alert("보석은 최대 11개까지만 착용할 수 있습니다!");
+                showAlert("보석은 최대 11개까지만 착용할 수 있습니다");
                 if (changedSelect) changedSelect.value = "없음";
                 checkGemCount();
                 return;
@@ -1630,14 +1805,14 @@
         });
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        alert('현재 세팅이 기기에 저장되었습니다');
+        showAlert('현재 세팅이 기기에 저장되었습니다');
         }
 
         // 2. 세팅 불러오기 함수
         function loadSettings() {
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (!savedData) {
-            alert('저장된 세팅이 없습니다.');
+            showAlert('저장된 세팅이 없습니다.');
             return;
         }
 
@@ -1678,12 +1853,139 @@
             }
         }
 
-        alert('세팅을 성공적으로 불러왔습니다!');
+        showAlert('세팅을 성공적으로 불러왔습니다');
         }
 
         // 버튼 이벤트 리스너 연결
         document.getElementById('saveBtn').addEventListener('click', saveSettings);
         document.getElementById('loadBtn').addEventListener('click', loadSettings);
+    </script>
+    <script>
+        // 비교군 데이터 저장 변수
+        let baselineData = null;
+
+        // 💡 1. 현재 화면의 모든 스킬 계산 수치를 수집하는 함수
+        // (※ 프로젝트의 기존 스킬 데이터 변수 구조에 맞게 연동해주시면 됩니다)
+        function getSkillResults() {
+            const results = {};
+            
+            if (lastCalculatedResults && Array.isArray(lastCalculatedResults)) {
+                lastCalculatedResults.forEach(res => {
+                    results[res.skillName] = {
+                        damage: res.expDmg,      // 정밀 대미지 기대값
+                        cd: res.finalCooldown     // 정밀 쿨타임(초)
+                    };
+                });
+            }
+
+            return results;
+        }
+
+        // 억 단위 변환 포맷 함수 (예: 725200000 -> 7.252억)
+        function formatToEok(num) {
+            if (!num || num === 0) return '0억';
+            return (num / 100000000).toFixed(3) + '억';
+            }
+
+            // 2. 비교군 저장 버튼 이벤트
+            document.getElementById('addCompareBtn').addEventListener('click', () => {
+            baselineData = getSkillResults();
+            showAlert('현재 세팅이 [비교군]으로 저장되었습니다\n이제 세팅을 변경하신 후 [비교표 보기]를 누르세요.');
+            });
+
+            // 3. 비교표 생성 및 출력
+            function renderComparisonTable() {
+            if (!baselineData) {
+                showAlert('저장된 비교군 세팅이 없습니다.\n먼저 [현재 세팅을 비교군으로 저장] 버튼을 눌러주세요.');
+                return false;
+            }
+
+            const currentData = getSkillResults();
+            const tbody = document.getElementById('compareTableBody');
+            tbody.innerHTML = '';
+
+            Object.keys(currentData).forEach(skillName => {
+                const base = baselineData[skillName] || { damage: 0, cd: 1 };
+                const curr = currentData[skillName] || { damage: 0, cd: 1 };
+
+                // 데미지 증감율 (%)
+                const dmgDiff = base.damage ? ((curr.damage - base.damage) / base.damage) * 100 : 0;
+                
+                // 쿨타임 증감율 (%)
+                const cdDiff = base.cd ? ((curr.cd - base.cd) / base.cd) * 100 : 0;
+
+                // DPS 계산 (데미지 / 쿨타임) 및 DPS 증감율 (%)
+                const baseDps = base.damage / (base.cd || 1);
+                const currDps = curr.damage / (curr.cd || 1);
+                const dpsDiff = baseDps ? ((currDps - baseDps) / baseDps) * 100 : 0;
+
+                // 증감 색상 클래스 판별
+                const getClass = (val, isCooldown = false) => {
+                if (Math.abs(val) < 0.001) return 'zero';
+                // 쿨타임은 감소(-)할수록 좋은 것이므로 반대 처리
+                if (isCooldown) return val < 0 ? 'plus' : 'minus';
+                return val > 0 ? 'plus' : 'minus';
+                };
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td><strong>${skillName}</strong></td>
+                <td>${formatToEok(base.damage)}</td>
+                <td>${base.cd.toFixed(2)}</td>
+                <td>${formatToEok(curr.damage)}</td>
+                <td>${curr.cd.toFixed(2)}</td>
+                <td class="${getClass(dmgDiff)}">${dmgDiff > 0 ? '+' : ''}${dmgDiff.toFixed(2)}%</td>
+                <td class="${getClass(cdDiff, true)}">${cdDiff > 0 ? '+' : ''}${cdDiff.toFixed(2)}%</td>
+                <td class="${getClass(dpsDiff)}">${dpsDiff > 0 ? '+' : ''}${dpsDiff.toFixed(3)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            return true;
+        }
+
+        // 4. 모달 열기/닫기 이벤트
+        const compareModal = document.getElementById('compareModal');
+        const openCompareBtn = document.getElementById('openCompareModalBtn');
+        const closeCompareBtn = document.querySelector('.close-compare-btn');
+
+        openCompareBtn.addEventListener('click', () => {
+        if (renderComparisonTable()) {
+            compareModal.style.display = 'block';
+        }
+        });
+
+        closeCompareBtn.addEventListener('click', () => {
+        compareModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+        if (e.target === compareModal) compareModal.style.display = 'none';
+        });
+    </script>
+
+    <!-- 📌 커스텀 Alert 모달 -->
+    <div id="customAlertOverlay" class="alert-overlay hidden">
+        <div class="alert-box">
+            <div class="alert-icon">🔔</div>
+            <p id="alertMessage" class="alert-message">메시지가 들어갈 자리입니다.</p>
+            <button id="alertConfirmBtn" class="alert-btn">확인</button>
+        </div>
+    </div>
+    <script>
+        // 커스텀 Alert 출력 함수
+        function showAlert(message) {
+            const overlay = document.getElementById('customAlertOverlay');
+            const messageEl = document.getElementById('alertMessage');
+            
+            messageEl.textContent = message;
+            overlay.classList.remove('hidden');
+        }
+
+        // 확인 버튼 클릭 시 닫기
+        document.getElementById('alertConfirmBtn')?.addEventListener('click', () => {
+            document.getElementById('customAlertOverlay').classList.add('hidden');
+        });
     </script>
 </body>
 </html>
