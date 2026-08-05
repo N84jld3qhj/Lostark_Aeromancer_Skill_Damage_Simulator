@@ -986,6 +986,21 @@ select option:checked {
                                 </select>
                             </td>
                         </tr>
+                        <tr>
+                            <td style="font-weight: bold;">싹쓸바람</td>
+                            <td>
+                                <select class="gem-select" data-skill="싹쓸바람" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="싹쓸바람" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음" selected>없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+                                </select>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -1176,10 +1191,11 @@ select option:checked {
             { name: "회오리걸음", constant: 5594.00000, coefficient: 29.59000 },
             { name: "공간가르기", constant: 31143.00000, coefficient: 165.52000 },
             { name: "우레바람", constant: 85689.00000, coefficient: 455.58000 },
-            { name: "마주바람", constant: 10701.00000, coefficient: 56.85000 },
-            { name: "소용돌이", constant: 3515.00000, coefficient: 18.68000 },
             { name: "바람송곳", constant: 8918.00000, coefficient: 47.42000 },
-            { name: "칼바람", constant: 8395.00000, coefficient: 44.59000 }
+            { name: "칼바람", constant: 8395.00000, coefficient: 44.59000 },
+            { name: "마주바람", constant: 10701.00000, coefficient: 56.85000 },
+            { name: "싹쓸바람", constant: 3844.00000, coefficient: 20.32202 },
+            { name: "소용돌이", constant: 3515.00000, coefficient: 18.68000 }
         ];
 
         function calculateDamageBase(atk, coefficient, constant) {
@@ -1213,17 +1229,18 @@ select option:checked {
         };
 
         const coreLevels = [10, 14, 17, 18, 19, 20];
-        const skillNames = ["몰아치기", "회오리걸음", "공간가르기", "우레바람", "마주바람", "소용돌이", "바람송곳", "칼바람"];
+        const skillNames = ["몰아치기", "회오리걸음", "공간가르기", "우레바람",  "바람송곳", "칼바람","마주바람", "싹쓸바람","소용돌이"];
 
         const tripodDataSets = {
             "몰아치기":   { damageMult: 210.400, critDamage: 1.80000, cooldown:18 },
             "회오리걸음": { damageMult: 299.750, critDamage: 0.00000, cooldown:20},
             "공간가르기": { damageMult: 200.000, critDamage: 0.00000, cooldown:22},
             "우레바람":   { damageMult: 70.000, critDamage: 0.00000, cooldown:50},
-            "마주바람":   { damageMult: 45.000, critDamage: 0.00000, cooldown:14},
-            "소용돌이":   { damageMult: 185.480, critDamage: 0.00000, cooldown:16},
             "바람송곳":   { damageMult: 399.200, critDamage: 0.00000, cooldown:27},
-            "칼바람":     { damageMult: 182.750, critDamage: 2.11000, cooldown:27}
+            "칼바람":     { damageMult: 182.750, critDamage: 2.11000, cooldown:27},
+            "마주바람":   { damageMult: 45.000, critDamage: 0.00000, cooldown:14},
+            "싹쓸바람":   { damageMult: 220.480, critDamage: 0.00000, cooldown:19},
+            "소용돌이":   { damageMult: 185.480, critDamage: 0.00000, cooldown:16}
         };
 
         const orderDataSets = {
