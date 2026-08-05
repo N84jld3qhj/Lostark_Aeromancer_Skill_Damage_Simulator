@@ -2,953 +2,1161 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로스트아크 기상술사 비연참 시뮬레이터</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #121212; color: #e0e0e0; }
-        h1, h2, h3 { color: #ffffff; border-bottom: 2px solid #333; padding-bottom: 5px; }
-        .section-title { margin-top: 30px; color: #4CAF50; }
-        .box { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        select, input[type="number"] { padding: 8px; font-size: 14px; margin-top: 5px; background: #2d2d2d; color: #fff; border: 1px solid #444; border-radius: 4px; box-sizing: border-box; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        :root {
+            /* 배경 색상 (Backgrounds) */
+            --bg-primary: #0f0d1a;          /* 메인 어두운 보라 배경 */
+            --bg-secondary: #1a162b;        /* 카드 및 모듈 블록 배경 */
+            --bg-tertiary: #27203d;         /* 호버/선택 영역 배경 */
+
+            /* 포인트 색상 (Accents) */
+            --accent-purple: #8b5cf6;       /* 메인 보라색 (버튼, 링크, 활성화 상태) */
+            --accent-purple-hover: #7c3aed; /* 버튼 호버 시 */
+            --accent-light-purple: #c084fc; /* 연한 보라색 (아이콘, 강조 텍스트) */
+
+            /* 텍스트 & 테두리 (Text & Borders) */
+            --text-main: #f3f0ff;           /* 본문 텍스트 (완전 하얀색보다 눈이 편한 연보라/하얀색) */
+            --text-sub: #a799c7;            /* 보조/설명 텍스트 */
+            --border-color: #332a4a;        /* 모듈/구분선 테두리 */
+        }
+
+        * { box-sizing: border-box; }
+
+        /* 실제 요소 적용 예시 */
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+        }
+        .card-module {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        }
+
+        .button-primary {
+        background-color: var(--accent-purple);
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        }
+
+        .button-primary:hover {
+        background-color: var(--accent-purple-hover);
+        }
+        .container {
+            width: 100%;
+           /* 기존보다 슬림하게 960px ~ 1100px 사이로 제약 */
+            max-width: 1000px; 
+            margin: 0 auto;
+            padding: 0 24px; /* 화면이 줄어들 때 화면 끝에 붙지 않도록 여백 부여 */
+        }
+
+        h1 {
+            color: var(--text-title);
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section-title {
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: var(--accent-purple);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .box h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: var(--text-title);
+            font-size: 1.05rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        label {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 0.88rem;
+            color: var(--text-sub);
+        }
+
+        .sub-label {
+            color: var(--accent-light-purple);
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        select, input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 9px 12px;
+            font-size: 0.92rem;
+            margin-top: 4px;
+            background: var(--bg-input);
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent-purple);
+        }
+
+        /* Responsive Grid System */
+        .grid-responsive {
+            display: grid;
+            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
         .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; }
-        .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; }
-        label { display: inline-block; margin-top: 5px; font-size: 0.9em; color: #bbb; }
-        .sub-label { color: #4CAF50; font-weight: bold; margin-top: 8px; font-size: 0.85em; }
+        .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 
-        /* 공통 요약 카드 스타일 */
-        .stat-card { background: #252525; border: 1px solid #3d3d3d; border-radius: 6px; padding: 12px; text-align: center; }
-        .stat-card .label { font-size: 0.85em; color: #aaa; margin-bottom: 4px; }
-        .stat-card .value { font-size: 1.15em; font-weight: bold; color: #61afef; }
+        /* Stat Card */
+        .stat-card {
+            background: #181920;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 8px;
+            text-align: center;
+        }
 
-        /* 테이블 스타일 */
-        .summary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; }
-        .summary-table th, .summary-table td { border: 1px solid #444; padding: 10px 8px; text-align: center; }
-        .summary-table th { background-color: #2a2a2a; color: #4CAF50; font-weight: bold; }
-        .summary-table tbody tr { cursor: pointer; transition: background-color 0.15s; }
-        .summary-table tbody tr:hover { background-color: #2c2c2c !important; }
-        .summary-table tbody tr.selected-row { background-color: #1e3a29 !important; border: 1px solid #4CAF50; }
-        .highlight-val { color: #61afef; font-weight: bold; }
+        .stat-card .label { font-size: 0.8rem; color: var(--text-sub); margin-bottom: 4px; }
+        .stat-card .value { font-size: 1.1rem; font-weight: bold; color: var(--accent-highlight); }
+
+        /* Tables & Responsive Wrapper */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-table, .gem-table, .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            text-align: center;
+        }
+
+        .summary-table th, .summary-table td,
+        .gem-table th, .gem-table td,
+        .compare-table th, .compare-table td {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+        }
+
+        .summary-table th, .gem-table th, .compare-table th {
+            background-color: #232530;
+            color: var(--accent-light-purple);
+            font-weight: 600;
+        }
+
+        .gem-table th { color: #fff; }
+
+        .summary-table tbody tr {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .summary-table tbody tr:hover { background-color: var(--bg-card-hover) !important; }
+        .summary-table tbody tr.selected-row { background-color: #cb91ff !important; border: 1px solid var(--accent-purple); }
+
+
+
+/* 3. 본문 셀 기본 정의 */
+.summary-table td {
+  padding: 12px 18px;
+  color: #e2e8f0;
+  border-bottom: 1px solid #231b42; /* 은은한 가로 구분선만 사용 */
+  font-variant-numeric: tabular-nums; /* 숫자 폭을 일정하게 맞춰줌 */
+}
+
+/* 4. [중요] 열별 정렬 및 텍스트 스타일 */
+.summary-table td:nth-child(1) { 
+  text-align: left;           /* 스킬명: 좌측 정렬 */
+  font-weight: bold; 
+}
+.summary-table td:nth-child(2) { 
+  text-align: right;          /* 대미지 기대값: 우측 정렬 */
+  color: #facc15;             /* (선택) 대미지 수치에 약간의 골드/옐로우 포인트 */
+}
+.summary-table td:nth-child(3) { 
+  text-align: right;          /* 쿨타임: 우측 정렬 */
+}
+
+/* 5. [중요] 선택된 행 (가독성 보장 + 왼쪽 포인트 라인) */
+.summary-table tr.selected-row {
+  background-color: #2d1d4c !important; /* 눈이 편한 딥 퍼플 배경 */
+  box-shadow: inset 4px 0 0 #a855f7;     /* 왼쪽에 선명한 보라색 포인트 바 */
+}
+
+.summary-table tr.selected-row td {
+  color: #ffffff !important;             /* 선택된 행 글자색은 또렷한 흰색 */
+}
+
+/* 6. 마우스 호버 효과 */
+.summary-table tbody tr:hover:not(.selected-row) {
+  background-color: #1a1338;
+}
+
+
+
+
+
+
+        .highlight-val { color: var(--accent-highlight); font-weight: bold; }
         .dmg-val { color: #e5c07b; font-weight: bold; }
 
-        /* 세부 내역 스타일 */
-        .details-container { margin-top: 20px; font-family: 'Segoe UI', sans-serif; line-height: 1.6; }
-        .skill-detail-card { background: #181818; border: 1px solid #333; border-radius: 6px; padding: 15px; margin-bottom: 20px; }
-        .skill-detail-title { color: #61afef; font-size: 1.1em; font-weight: bold; border-bottom: 1px dashed #444; padding-bottom: 5px; margin-bottom: 10px; }
-        .category-title { color: #98c379; font-weight: bold; margin-top: 10px; margin-bottom: 3px; font-size: 0.95em; }
-        .stat-item { margin-left: 15px; color: #abb2bf; font-size: 0.88em; }
-
-        /* 보석 세팅 전용 테이블 스타일 */
-        .gem-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .gem-table th, .gem-table td { border: 1px solid #444; padding: 8px; text-align: center; }
-        .gem-table th { background-color: #2a2a2a; color: #fff; }
-        .gem-select { background-color: #2a2a2a; color: #fff !important; font-weight: bold; width: 100%;  }
-
-        /* 아크 패시브 전용 스타일 */
-        .ark-passive-container { max-width: 520px; background: #181818; border: 1px solid #333; border-radius: 8px; padding: 20px; }
-        .ark-title { font-size: 1.25rem; font-weight: 600; color: #fff; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 8px; }
-        .ark-grid-wrapper { display: flex; flex-direction: column; gap: 12px; }
-        .ark-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; align-items: center; }
-        .ark-node { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 2px; border-radius: 6px; cursor: pointer; transition: background 0.2s; user-select: none; }
-        .ark-node:hover { background: #2a2a2a; }
-        .ark-icon { width: 36px; height: 36px; border-radius: 50%; margin-bottom: 4px; object-fit: cover; }
-        .ark-icon.grayscale { filter: grayscale(100%); opacity: 0.6; }
-        .ark-node span { font-size: 0.75rem; color: #61afef; font-family: 'Courier New', Courier, monospace; }
-
-        /* 버튼 스타일 */
-        .guide-btn {
-        padding: 8px 16px;
-        background-color: #4A90E2;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
+        .gem-select {
+            background-color: var(--bg-input);
+            color: #fff !important;
+            font-weight: bold;
         }
 
-        /* 모달 배경 (어둡게 처리) */
-        .modal {
-        display: none; /* 기본적으로 숨김 */
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.6); /* 배경 어둡게 */
+        /* Details Container */
+        .details-container { margin-top: 15px; }
+        .skill-detail-card {
+            background: #16171e;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 15px;
+        }
+        .skill-detail-title {
+            color: var(--accent-highlight);
+            font-size: 1.05rem;
+            font-weight: bold;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+        }
+        .category-title { color: var(--accent-light-purple); font-weight: bold; margin-top: 10px; font-size: 0.92rem; }
+        .stat-item { margin-left: 12px; color: #abb2bf; font-size: 0.85rem; word-break: break-all; }
+
+        /* Ark Passive UI */
+        .ark-passive-container {
+            width: 100%;
+            background: #16171e;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
         }
 
-        /* 모달 창 상자 */
-        .modal-content {
-        /* 💡 본문(body)에 사용하신 배경색 코드를 여기에 넣어주세요 */
-        background-color: #1e1e24; /* 예시: 어두운 테마 본문 색상 */
-        color: #e0e0e0;            /* 배경에 맞춰 글자색도 조정 */
-        
-        margin: 10% auto;
-        padding: 24px;
-        border-radius: 8px;
-        width: 80%;
-        max-width: 500px;
-        position: relative;
-        
-        /* 본문 색과 완전히 같을 때 팝업 구분을 위해 얇은 테두리와 그림자 추가 */
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        .ark-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
         }
 
-        /* 닫기 (X) 버튼 색상 조정 */
-        .close-btn {
-        position: absolute;
-        right: 16px;
-        top: 12px;
-        font-size: 24px;
-        font-weight: bold;
-        color: #888; /* 어두운 배경에 잘 보이도록 밝게 조정 */
-        cursor: pointer;
+        .ark-grid-wrapper { display: flex; flex-direction: column; gap: 10px; }
+        .ark-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; align-items: center; }
+        .ark-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+            touch-action: manipulation;
         }
-        .close-btn:hover { 
-        color: #fff; 
-        }
+        .ark-node:hover { background: var(--bg-input); }
+        .ark-icon { width: 34px; height: 34px; border-radius: 50%; margin-bottom: 4px; object-fit: cover; }
+        .ark-icon.grayscale { filter: grayscale(100%); opacity: 0.5; }
+        .ark-node span { font-size: 0.72rem; color: var(--accent-highlight); font-family: monospace; }
 
-        /* 이미지 반응형 처리 */
-        .guide-img {
-        width: 100%;
-        height: auto;
-        margin: 15px 0;
-        border-radius: 6px;
-        border-color: white;
-        }
-
-        /* 플로팅 버튼 컨테이너 */
-        /* 📌 플로팅 버튼 전체 컨테이너 (우측 하단 고정) */
+        /* Floating Action Bar */
         .floating-container {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
+            bottom: 20px;
+            right: 20px;
             display: flex;
-            flex-direction: row; /* 가로 배치: [비교군 저장] [비교표 보기] [세팅 저장] [세팅 불러오기] */
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
             align-items: center;
             z-index: 1000;
         }
 
-        /* 버튼 공통 스타일 */
-        .float-btn {
-        padding: 12px 18px;
-        border: none;
-        border-radius: 5px;
+        .float-btn, .floating-btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            transition: transform 0.15s, background-color 0.2s;
+        }
+
+        .float-btn:hover, .floating-btn:hover { transform: translateY(-2px); }
+        /* 1. 비교 관련 버튼 (메인 보라색) */
+        .compare-btn { 
+        background-color: var(--accent-purple); 
+        }
+        .compare-btn:hover { 
+        background-color: var(--accent-purple-hover); 
+        }
+
+        /* 2. 세팅 저장 버튼 (또렷하고 짙은 바이올렛) */
+        .save-btn { 
+        background-color: #4c1d95; 
+        border: 1px solid #6b21a8; /* 버튼 구분을 위한 옅은 보라 테두리 */
+        }
+        .save-btn:hover { 
+        background-color: #581c87; 
+        }
+
+        /* 3. 불러오기 버튼 (은은한 딥 인디고 퍼플) */
+        .load-btn { 
+        background-color: #4c1d95; 
+        border: 1px solid #6b21a8; /* 버튼 구분을 위한 옅은 보라 테두리 */
+        }
+        .load-btn:hover { 
+        background-color: #581c87; 
+        }
+
+        /* Modals & Popups */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 92%;
+            max-width: 850px;
+            position: relative;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            position: absolute;
+            right: 16px;
+            top: 12px;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-sub);
+            cursor: pointer;
+        }
+        .close-btn:hover { color: #fff; }
+
+        /* 1. 이득 (데미지/DPS 증가, 쿨타임 감소) -> 시원한 스카이 블루 */
+        .plus {
+        color: #38bdf8 !important; /* 밝은 네온 블루 */
         font-weight: bold;
-        font-size: 14px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        transition: all 0.2s ease;
         }
 
-        .float-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-        }
-        /* 📌 비교 관련 버튼 시각적 구분 (보라색 계열 포인트) */
-        .floating-btn.compare-btn {
-            background-color: #6c5ce7;
-        }
-
-        .floating-btn.compare-btn:hover {
-            background-color: #5b4bc4;
-        }
-
-        /* 저장 버튼 스타일 (초록) */
-        .save-btn {
-        background-color: #2e7d32;
-        color: #ffffff;
-        }
-        .save-btn:hover {
-        background-color: #388e3c;
-        }
-
-        /* 불러오기 버튼 스타일 (파랑) */
-        .load-btn {
-        background-color: #1565c0;
-        color: #ffffff;
-        }
-        .load-btn:hover {
-        background-color: #1976d2;
-        }
-        /* 비교 버튼 스타일 */
-        .compare-btn-group {
-        margin: 15px 0;
-        display: flex;
-        gap: 10px;
-        }
-        .compare-btn {
-        padding: 10px 16px;
-        border: none;
-        border-radius: 6px;
+        /* 2. 손해 (데미지/DPS 감소, 쿨타임 증가) -> 코랄 레드 */
+        .minus {
+        color: #f87171 !important; /* 눈에 잘 띄는 연한 빨강 */
         font-weight: bold;
-        cursor: pointer;
-        color: white;
-        }
-        .compare-btn.baseline { background-color: #f39c12; }
-        .compare-btn.view { background-color: #27ae60; }
-
-        /* 비교 모달 폭 확장 */
-        .compare-modal-content {
-        max-width: 850px !important;
-        width: 90% !important;
         }
 
-        /* 표 스타일 */
-        .table-wrapper {
-        overflow-x: auto;
-        margin-top: 15px;
-        }
-        .compare-table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: center;
-        font-size: 14px;
-        }
-        .compare-table th, .compare-table td {
-        border: 1px solid #444;
-        padding: 8px 10px;
-        }
-        .compare-table th {
-        background-color: #2b2b36;
-        color: #fff;
-        }
-        .compare-table td {
-        background-color: #1e1e24;
-        color: #ddd;
+        /* 3. 변동 없음 (0%) -> 은은한 회색 */
+        .zero {
+        color: #94a3b8 !important;
         }
 
-        /* 수치 증감 색상 강조 */
-        .plus { color: #4caf50; font-weight: bold; }  /* 증가 (초록/파랑) */
-        .minus { color: #f44336; font-weight: bold; } /* 감소 (빨강) */
-        .zero { color: #aaa; }
-
-        /* 모달 배경 (어둡게 처리 + 배경 블러) */
+        /* Alert Modal Overlay */
         .alert-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: rgba(0, 0, 0, 0.65);
+            background-color: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(4px);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10000; /* 최상단 배치 */
-            opacity: 1;
-            transition: opacity 0.2s ease-in-out;
+            z-index: 10000;
         }
 
-        /* 숨김 처리 */
-        .alert-overlay.hidden {
-            display: none;
-            opacity: 0;
-        }
+        .alert-overlay.hidden { display: none; }
 
-        /* 알림창 대화상자 */
         .alert-box {
-            background-color: #2b2d42;
+            background-color: var(--bg-card);
             color: #ffffff;
-            width: 320px;
-            padding: 24px;
-            border-radius: 16px;
+            width: 300px;
+            padding: 20px;
+            border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid var(--border-color);
         }
 
-        .alert-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
-        }
-
-        .alert-message {
-            font-size: 15px;
-            line-height: 1.5;
-            margin-bottom: 20px;
-            word-break: keep-all;
-        }
-
+        .alert-icon { font-size: 28px; margin-bottom: 8px; }
+        .alert-message { font-size: 14px; margin-bottom: 16px; word-break: keep-all; }
         .alert-btn {
             width: 100%;
-            padding: 10px 0;
-            background-color: #6c5ce7;
+            padding: 8px 0;
+            background-color: var(--accent-purple);
             color: #ffffff;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s;
         }
 
-        .alert-btn:hover {
-            background-color: #5b4bc4;
+        /* Mobile Optimization Media Queries */
+        @media (max-width: 1024px) {
+            .container {
+            max-width: 920px; /* 원하는 가로 비율에 맞춰 조절 가능 */
+        }
+            .grid-5 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+            .grid-6 { grid-template-columns: repeat(3, 1fr); }
         }
 
-        /* 팝업 등장 애니메이션 */
-        @keyframes popIn {
-            from {
-                transform: scale(0.8);
-                opacity: 0;
+        @media (max-width: 768px) {
+            body { padding: 12px 10px 120px; }
+            h1 { font-size: 1.4rem; }
+            .section-title { font-size: 1.15rem; }
+            .grid-3, .grid-5, .grid-6 { grid-template-columns: repeat(auto-fit, minmax(100%, 1fr)); }
+            .stat-input-group { flex-direction: column; gap: 10px !important; }
+            .floating-container {
+                left: 10px;
+                right: 10px;
+                bottom: 12px;
+                justify-content: center;
             }
-            to {
-                transform: scale(1);
-                opacity: 1;
+            .float-btn, .floating-btn {
+                flex: 1 1 calc(50% - 10px);
+                font-size: 12px;
+                padding: 10px 6px;
+                text-align: center;
             }
+            .ark-row { gap: 3px; }
+            .ark-icon { width: 28px; height: 28px; }
+            .ark-node span { font-size: 0.65rem; }
         }
+
+
+
+/* 변화율 텍스트 기본 스타일 (숫자 폭 일정하게) */
+.diff-val {
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 증가 (+) : 시원하고 선명한 스카이 블루 계열 */
+.diff-plus {
+  color: #38bdf8 !important; /* 또는 #60a5fa */
+}
+
+/* 감소 (-) : 눈에 잘 띄는 코랄 레드 계열 */
+.diff-minus {
+  color: #f87171 !important; /* 또는 #ff6b6b */
+}
+
+/* 변동 없음 (0%) : 톤다운된 무채색/연보라 */
+.diff-zero {
+  color: #94a3b8 !important;
+}
+
+/* 노드 조작 버튼 스타일 */
+.node-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-node {
+  background-color: var(--bg-tertiary, #27203d);
+  color: var(--accent-light-purple, #c084fc);
+  border: 1px solid var(--border-color, #332a4a);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.btn-node:hover {
+  background-color: var(--accent-purple, #8b5cf6);
+  color: #fff;
+}
+
     </style>
 </head>
 <body>
-    <!-- 사용 방법 열기 버튼
-    <button id="openModalBtn" class="guide-btn">사용 방법</button>
 
-    
-    <div id="guideModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>사용 방법 안내</h2>
+    <div class="container">
+        <h1>비연참 시뮬레이터</h1>
         
-        <img src="guide.png" alt="사용 방법 설명 이미지" class="guide-img">
-        
-        <div class="guide-text">
-        <p>기본 치명/신속 : 아크 패시브, 팔찌 뺀 상태에서 캐릭터 스탯 + 펫 효과</p>
-        <p>기본 공격력 : 전투정보실 - 공격력 - 기본 공격력</p>
-        </div>
-    </div>
-    </div> -->
-    <h1>비연참 시뮬레이터</h1>
-    
-    <!-- 최상단 기본 스탯 입력 섹션 -->
-    <h2 class="section-title">기본 스탯</h2>
-    <div class="box">
-        <div class="section-box" id="base-stats-section">
-            <div class="grid-3" style="display: flex; gap: 15px;">
-                <div style="flex: 1;">
-                    <label for="base-crit" style="font-weight: bold; display: block; margin-bottom: 5px;">기본 치명</label>
-                    <input type="number" id="base-crit" class="form-control" min="0" value="79" placeholder="기본 치명 입력">
+        <!-- 최상단 기본 스탯 입력 섹션 -->
+        <h2 class="section-title">기본 스탯</h2>
+        <div class="box">
+            <div class="grid-responsive">
+                <div>
+                    <label for="base-crit" style="font-weight: bold;">기본 치명</label>
+                    <input type="number" id="base-crit" min="0" value="79" placeholder="기본 치명 입력">
                 </div>
-                <div style="flex: 1;">
-                    <label for="base-swift" style="font-weight: bold; display: block; margin-bottom: 5px;">기본 신속</label>
-                    <input type="number" id="base-swift" class="form-control" min="0" value="237" placeholder="기본 신속 입력">
+                <div>
+                    <label for="base-swift" style="font-weight: bold;">기본 신속</label>
+                    <input type="number" id="base-swift" min="0" value="237" placeholder="기본 신속 입력">
                 </div>
-                <div style="flex: 1;">
-                    <label for="base-atk" style="font-weight: bold; display: block; margin-bottom: 5px;">기본 공격력</label>
-                    <input type="number" id="base-atk" class="form-control" min="0" value="210000" placeholder="기본 공격력 입력">
+                <div>
+                    <label for="base-atk" style="font-weight: bold;">기본 공격력</label>
+                    <input type="number" id="base-atk" min="0" value="210000" placeholder="기본 공격력 입력">
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- 1. 각인 세팅 섹션 -->
-    <h2 class="section-title">각인 세팅 (최대 5개)</h2>
-    <div class="grid-5">
-        <div class="box">
-            <h3>각인 1</h3>
-            <label for="engSelect1">각인 종류:</label><br>
-            <select id="engSelect1" style="width:100%">
-                <option value="none">선택 안함</option>
-                <option value="원한" selected>원한</option>
-                <option value="아드레날린">아드레날린</option>
-                <option value="돌격대장">돌격대장</option>
-                <option value="질량증가">질량증가</option>
-                <option value="타격의 대가">타격의 대가</option>
-                <option value="저주받은 인형">저주받은 인형</option>
-            </select><br>
-            <label for="engLevel1">각인 레벨:</label><br>
-            <select id="engLevel1" style="width:100%">
-                <option value="미사용">미사용</option>
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV" selected>4LV</option>
-            </select><br>
-            <label for="engStone1">세공 단계:</label><br>
-            <select id="engStone1" style="width:100%">
-                <option value="0LV" selected>0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV">4LV</option>
-            </select>
-        </div>
+        <!-- 1. 각인 세팅 섹션 -->
+        <h2 class="section-title">각인 세팅 (최대 5개)</h2>
+        <div class="grid-5">
+            <div class="box">
+                <h3>각인 1</h3>
+                <label for="engSelect1">각인 종류:</label>
+                <select id="engSelect1">
+                    <option value="none">선택 안함</option>
+                    <option value="원한" selected>원한</option>
+                    <option value="아드레날린">아드레날린</option>
+                    <option value="돌격대장">돌격대장</option>
+                    <option value="질량증가">질량증가</option>
+                    <option value="타격의 대가">타격의 대가</option>
+                    <option value="저주받은 인형">저주받은 인형</option>
+                </select>
+                <label for="engLevel1">각인 레벨:</label>
+                <select id="engLevel1">
+                    <option value="미사용">미사용</option>
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV" selected>4LV</option>
+                </select>
+                <label for="engStone1">세공 단계:</label>
+                <select id="engStone1">
+                    <option value="0LV" selected>0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV">4LV</option>
+                </select>
+            </div>
 
-        <div class="box">
-            <h3>각인 2</h3>
-            <label for="engSelect2">각인 종류:</label><br>
-            <select id="engSelect2" style="width:100%">
-                <option value="none">선택 안함</option>
-                <option value="원한">원한</option>
-                <option value="아드레날린" selected>아드레날린</option>
-                <option value="돌격대장">돌격대장</option>
-                <option value="질량증가">질량증가</option>
-                <option value="타격의 대가">타격의 대가</option>
-                <option value="저주받은 인형">저주받은 인형</option>
-            </select><br>
-            <label for="engLevel2">각인 레벨:</label><br>
-            <select id="engLevel2" style="width:100%">
-                <option value="미사용">미사용</option>
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV" selected>4LV</option>
-            </select><br>
-            <label for="engStone2">세공 단계:</label><br>
-            <select id="engStone2" style="width:100%">
-                <option value="0LV" selected>0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV">4LV</option>
-            </select>
-        </div>
+            <div class="box">
+                <h3>각인 2</h3>
+                <label for="engSelect2">각인 종류:</label>
+                <select id="engSelect2">
+                    <option value="none">선택 안함</option>
+                    <option value="원한">원한</option>
+                    <option value="아드레날린" selected>아드레날린</option>
+                    <option value="돌격대장">돌격대장</option>
+                    <option value="질량증가">질량증가</option>
+                    <option value="타격의 대가">타격의 대가</option>
+                    <option value="저주받은 인형">저주받은 인형</option>
+                </select>
+                <label for="engLevel2">각인 레벨:</label>
+                <select id="engLevel2">
+                    <option value="미사용">미사용</option>
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV" selected>4LV</option>
+                </select>
+                <label for="engStone2">세공 단계:</label>
+                <select id="engStone2">
+                    <option value="0LV" selected>0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV">4LV</option>
+                </select>
+            </div>
 
-        <div class="box">
-            <h3>각인 3</h3>
-            <label for="engSelect3">각인 종류:</label><br>
-            <select id="engSelect3" style="width:100%">
-                <option value="none">선택 안함</option>
-                <option value="원한">원한</option>
-                <option value="아드레날린">아드레날린</option>
-                <option value="돌격대장" selected>돌격대장</option>
-                <option value="질량증가">질량증가</option>
-                <option value="타격의 대가">타격의 대가</option>
-                <option value="저주받은 인형">저주받은 인형</option>
-            </select><br>
-            <label for="engLevel3">각인 레벨:</label><br>
-            <select id="engLevel3" style="width:100%">
-                <option value="미사용">미사용</option>
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV" selected>4LV</option>
-            </select><br>
-            <label for="engStone3">세공 단계:</label><br>
-            <select id="engStone3" style="width:100%">
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV" selected>3LV</option>
-                <option value="4LV">4LV</option>
-            </select>
-        </div>
+            <div class="box">
+                <h3>각인 3</h3>
+                <label for="engSelect3">각인 종류:</label>
+                <select id="engSelect3">
+                    <option value="none">선택 안함</option>
+                    <option value="원한">원한</option>
+                    <option value="아드레날린">아드레날린</option>
+                    <option value="돌격대장" selected>돌격대장</option>
+                    <option value="질량증가">질량증가</option>
+                    <option value="타격의 대가">타격의 대가</option>
+                    <option value="저주받은 인형">저주받은 인형</option>
+                </select>
+                <label for="engLevel3">각인 레벨:</label>
+                <select id="engLevel3">
+                    <option value="미사용">미사용</option>
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV" selected>4LV</option>
+                </select>
+                <label for="engStone3">세공 단계:</label>
+                <select id="engStone3">
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV" selected>3LV</option>
+                    <option value="4LV">4LV</option>
+                </select>
+            </div>
 
-        <div class="box">
-            <h3>각인 4</h3>
-            <label for="engSelect4">각인 종류:</label><br>
-            <select id="engSelect4" style="width:100%">
-                <option value="none">선택 안함</option>
-                <option value="원한">원한</option>
-                <option value="아드레날린">아드레날린</option>
-                <option value="돌격대장">돌격대장</option>
-                <option value="질량증가">질량증가</option>
-                <option value="타격의 대가" selected>타격의 대가</option>
-                <option value="저주받은 인형">저주받은 인형</option>
-            </select><br>
-            <label for="engLevel4">각인 레벨:</label><br>
-            <select id="engLevel4" style="width:100%">
-                <option value="미사용">미사용</option>
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV" selected>4LV</option>
-            </select><br>
-            <label for="engStone4">세공 단계:</label><br>
-            <select id="engStone4" style="width:100%">
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV" selected>2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV">4LV</option>
-            </select>
-        </div>
+            <div class="box">
+                <h3>각인 4</h3>
+                <label for="engSelect4">각인 종류:</label>
+                <select id="engSelect4">
+                    <option value="none">선택 안함</option>
+                    <option value="원한">원한</option>
+                    <option value="아드레날린">아드레날린</option>
+                    <option value="돌격대장">돌격대장</option>
+                    <option value="질량증가">질량증가</option>
+                    <option value="타격의 대가" selected>타격의 대가</option>
+                    <option value="저주받은 인형">저주받은 인형</option>
+                </select>
+                <label for="engLevel4">각인 레벨:</label>
+                <select id="engLevel4">
+                    <option value="미사용">미사용</option>
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV" selected>4LV</option>
+                </select>
+                <label for="engStone4">세공 단계:</label>
+                <select id="engStone4">
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV" selected>2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV">4LV</option>
+                </select>
+            </div>
 
-        <div class="box">
-            <h3>각인 5</h3>
-            <label for="engSelect5">각인 종류:</label><br>
-            <select id="engSelect5" style="width:100%">
-                <option value="none">선택 안함</option>
-                <option value="원한">원한</option>
-                <option value="아드레날린">아드레날린</option>
-                <option value="돌격대장">돌격대장</option>
-                <option value="질량증가" selected>질량증가</option>
-                <option value="타격의 대가">타격의 대가</option>
-                <option value="저주받은 인형">저주받은 인형</option>
-            </select><br>
-            <label for="engLevel5">각인 레벨:</label><br>
-            <select id="engLevel5" style="width:100%">
-                <option value="미사용">미사용</option>
-                <option value="0LV">0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV" selected>4LV</option>
-            </select><br>
-            <label for="engStone5">세공 단계:</label><br>
-            <select id="engStone5" style="width:100%">
-                <option value="0LV" selected>0LV</option>
-                <option value="1LV">1LV</option>
-                <option value="2LV">2LV</option>
-                <option value="3LV">3LV</option>
-                <option value="4LV">4LV</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- 2. 장신구 세팅 섹션 -->
-    <h2 class="section-title">장신구 세팅</h2>
-    <div class="grid-5">
-        <!-- 목걸이 -->
-        <div class="box">
-            <h3>목걸이</h3>
-            <div class="sub-label">[옵션 1]</div>
-            <select id="neckOpt1" style="width:100%">
-                <option value="none">없음</option>
-                <option value="추가 피해" selected>추가 피해</option>
-                <option value="적에게 주는 피해">적에게 주는 피해</option>
-            </select>
-            <select id="neckGrade1" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
-
-            <div class="sub-label" style="margin-top:12px;">[옵션 2]</div>
-            <select id="neckOpt2" style="width:100%">
-                <option value="none">없음</option>
-                <option value="추가 피해">추가 피해</option>
-                <option value="적에게 주는 피해" selected>적에게 주는 피해</option>
-            </select>
-            <select id="neckGrade2" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+            <div class="box">
+                <h3>각인 5</h3>
+                <label for="engSelect5">각인 종류:</label>
+                <select id="engSelect5">
+                    <option value="none">선택 안함</option>
+                    <option value="원한">원한</option>
+                    <option value="아드레날린">아드레날린</option>
+                    <option value="돌격대장">돌격대장</option>
+                    <option value="질량증가" selected>질량증가</option>
+                    <option value="타격의 대가">타격의 대가</option>
+                    <option value="저주받은 인형">저주받은 인형</option>
+                </select>
+                <label for="engLevel5">각인 레벨:</label>
+                <select id="engLevel5">
+                    <option value="미사용">미사용</option>
+                    <option value="0LV">0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV" selected>4LV</option>
+                </select>
+                <label for="engStone5">세공 단계:</label>
+                <select id="engStone5">
+                    <option value="0LV" selected>0LV</option>
+                    <option value="1LV">1LV</option>
+                    <option value="2LV">2LV</option>
+                    <option value="3LV">3LV</option>
+                    <option value="4LV">4LV</option>
+                </select>
+            </div>
         </div>
 
-        <!-- 귀걸이 1 -->
-        <div class="box">
-            <h3>귀걸이 1</h3>
-            <div class="sub-label">[옵션 1]</div>
-            <select id="ear1Opt1" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공격력 %" selected>공격력 %</option>
-                <option value="무기 공격력 %">무기 공격력 %</option>
-            </select>
-            <select id="ear1Grade1" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+        <!-- 2. 장신구 세팅 섹션 -->
+        <h2 class="section-title">장신구 세팅</h2>
+        <div class="grid-5">
+            <div class="box">
+                <h3>목걸이</h3>
+                <div class="sub-label">[옵션 1]</div>
+                <select id="neckOpt1">
+                    <option value="none">없음</option>
+                    <option value="추가 피해" selected>추가 피해</option>
+                    <option value="적에게 주는 피해">적에게 주는 피해</option>
+                </select>
+                <select id="neckGrade1">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
 
-            <div class="sub-label" style="margin-top:12px;">[옵션 2]</div>
-            <select id="ear1Opt2" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공격력 %">공격력 %</option>
-                <option value="무기 공격력 %" selected>무기 공격력 %</option>
-            </select>
-            <select id="ear1Grade2" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+                <div class="sub-label">[옵션 2]</div>
+                <select id="neckOpt2">
+                    <option value="none">없음</option>
+                    <option value="추가 피해">추가 피해</option>
+                    <option value="적에게 주는 피해" selected>적에게 주는 피해</option>
+                </select>
+                <select id="neckGrade2">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+            </div>
+
+            <div class="box">
+                <h3>귀걸이 1</h3>
+                <div class="sub-label">[옵션 1]</div>
+                <select id="ear1Opt1">
+                    <option value="none">없음</option>
+                    <option value="공격력 %" selected>공격력 %</option>
+                    <option value="무기 공격력 %">무기 공격력 %</option>
+                </select>
+                <select id="ear1Grade1">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+
+                <div class="sub-label">[옵션 2]</div>
+                <select id="ear1Opt2">
+                    <option value="none">없음</option>
+                    <option value="공격력 %">공격력 %</option>
+                    <option value="무기 공격력 %" selected>무기 공격력 %</option>
+                </select>
+                <select id="ear1Grade2">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+            </div>
+
+            <div class="box">
+                <h3>귀걸이 2</h3>
+                <div class="sub-label">[옵션 1]</div>
+                <select id="ear2Opt1">
+                    <option value="none">없음</option>
+                    <option value="공격력 %">공격력 %</option>
+                    <option value="무기 공격력 %" selected>무기 공격력 %</option>
+                </select>
+                <select id="ear2Grade1">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+
+                <div class="sub-label">[옵션 2]</div>
+                <select id="ear2Opt2">
+                    <option value="none">없음</option>
+                    <option value="공격력 %" selected>공격력 %</option>
+                    <option value="무기 공격력 %">무기 공격력 %</option>
+                </select>
+                <select id="ear2Grade2">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+            </div>
+
+            <div class="box">
+                <h3>반지 1</h3>
+                <div class="sub-label">[옵션 1]</div>
+                <select id="ring1Opt1">
+                    <option value="none">없음</option>
+                    <option value="치명타 적중률" selected>치명타 적중률</option>
+                    <option value="치명타 피해">치명타 피해</option>
+                </select>
+                <select id="ring1Grade1">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+
+                <div class="sub-label">[옵션 2]</div>
+                <select id="ring1Opt2">
+                    <option value="none">없음</option>
+                    <option value="치명타 적중률">치명타 적중률</option>
+                    <option value="치명타 피해" selected>치명타 피해</option>
+                </select>
+                <select id="ring1Grade2">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+            </div>
+
+            <div class="box">
+                <h3>반지 2</h3>
+                <div class="sub-label">[옵션 1]</div>
+                <select id="ring2Opt1">
+                    <option value="none">없음</option>
+                    <option value="치명타 적중률">치명타 적중률</option>
+                    <option value="치명타 피해" selected>치명타 피해</option>
+                </select>
+                <select id="ring2Grade1">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+
+                <div class="sub-label">[옵션 2]</div>
+                <select id="ring2Opt2">
+                    <option value="none">없음</option>
+                    <option value="치명타 적중률" selected>치명타 적중률</option>
+                    <option value="치명타 피해">치명타 피해</option>
+                </select>
+                <select id="ring2Grade2">
+                    <option value="상" selected>상</option>
+                    <option value="중">중</option>
+                    <option value="하">하</option>
+                </select>
+            </div>
         </div>
 
-        <!-- 귀걸이 2 -->
-        <div class="box">
-            <h3>귀걸이 2</h3>
-            <div class="sub-label">[옵션 1]</div>
-            <select id="ear2Opt1" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공격력 %">공격력 %</option>
-                <option value="무기 공격력 %" selected>무기 공격력 %</option>
-            </select>
-            <select id="ear2Grade1" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
-
-            <div class="sub-label" style="margin-top:12px;">[옵션 2]</div>
-            <select id="ear2Opt2" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공격력 %" selected>공격력 %</option>
-                <option value="무기 공격력 %">무기 공격력 %</option>
-            </select>
-            <select id="ear2Grade2" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+        <!-- 3. 젬 세팅 섹션 -->
+        <h2 class="section-title">젬 세팅</h2>
+        <div class="grid-responsive">
+            <div class="box">
+                <h3>공격력 (%)</h3>
+                <label for="gemAtk">합계 수치 입력 (%):</label>
+                <input type="number" id="gemAtk" value="1.5" step="0.1" min="0">
+            </div>
+            <div class="box">
+                <h3>추가 피해 (%)</h3>
+                <label for="gemAddDmg">합계 수치 입력 (%):</label>
+                <input type="number" id="gemAddDmg" value="3.5" step="0.1" min="0">
+            </div>
+            <div class="box">
+                <h3>보스 피해 (%)</h3>
+                <label for="gemBossDmg">합계 수치 입력 (%):</label>
+                <input type="number" id="gemBossDmg" value="4.5" step="0.1" min="0">
+            </div>
         </div>
 
-        <!-- 반지 1 -->
+        <!-- 4. 보석 세팅 섹션 -->
+        <h2 class="section-title">보석 세팅 (최대 11개)</h2>
         <div class="box">
-            <h3>반지 1</h3>
-            <div class="sub-label">[옵션 1]</div>
-            <select id="ring1Opt1" style="width:100%">
-                <option value="none">없음</option>
-                <option value="치명타 적중률" selected>치명타 적중률</option>
-                <option value="치명타 피해">치명타 피해</option>
-            </select>
-            <select id="ring1Grade1" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; border: none;">스킬별 보석 선택</h3>
+                <span id="gemTotalCounter" style="font-weight: bold; font-size: 0.95em; color: var(--accent-highlight);">현재 착용 보석: 0 / 11개</span>
+            </div>
+            <div class="table-wrapper">
+                <table class="gem-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">보석</th>
+                            <th style="width: 30%;">겁화</th>
+                            <th style="width: 30%;">작열</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="font-weight: bold;">몰아치기</td>
+                            <td>
+                                <select class="gem-select" data-skill="몰아치기" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="몰아치기" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">회오리걸음</td>
+                            <td>
+                                <select class="gem-select" data-skill="회오리걸음" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="회오리걸음" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">바람송곳</td>
+                            <td>
+                                <select class="gem-select" data-skill="바람송곳" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="바람송곳" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">칼바람</td>
+                            <td>
+                                <select class="gem-select" data-skill="칼바람" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="칼바람" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">마주바람</td>
+                            <td>
+                                <select class="gem-select" data-skill="마주바람" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음" selected>없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="마주바람" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">소용돌이</td>
+                            <td>
+                                <select class="gem-select" data-skill="소용돌이" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="소용돌이" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음" selected>없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-            <div class="sub-label" style="margin-top:12px;">[옵션 2]</div>
-            <select id="ring1Opt2" style="width:100%">
-                <option value="none">없음</option>
-                <option value="치명타 적중률">치명타 적중률</option>
-                <option value="치명타 피해" selected>치명타 피해</option>
-            </select>
-            <select id="ring1Grade2" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+        <!-- 5. 질서 코어 세팅 -->
+        <h2 class="section-title">질서 코어 세팅</h2>
+        <div class="grid-responsive">
+            <div class="box">
+                <h3>질서: 해</h3>
+                <label>등급:</label><select id="orderSunGrade"><option value="유물">유물</option><option value="고대" selected>고대</option></select>
+                <label>레벨:</label><select id="orderSunLevel"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
+            </div>
+            <div class="box">
+                <h3>질서: 달</h3>
+                <label>등급:</label><select id="orderMoonGrade"><option value="유물">유물</option><option value="고대" selected>고대</option></select>
+                <label>레벨:</label><select id="orderMoonLevel"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
+            </div>
+            <div class="box">
+                <h3>질서: 별</h3>
+                <label>등급:</label><select id="orderStarGrade"><option value="유물">유물</option><option value="고대" selected>고대</option></select>
+                <label>레벨:</label><select id="orderStarLevel"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
+            </div>
         </div>
 
-        <!-- 반지 2 -->
-        <div class="box">
-            <h3>반지 2</h3>
-            <div class="sub-label">[옵션 1]</div>
-            <select id="ring2Opt1" style="width:100%">
-                <option value="none">없음</option>
-                <option value="치명타 적중률">치명타 적중률</option>
-                <option value="치명타 피해" selected>치명타 피해</option>
-            </select>
-            <select id="ring2Grade1" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+        <!-- 6. 혼돈 코어 세팅 -->
+        <h2 class="section-title">혼돈 코어 세팅</h2>
+        <div class="grid-responsive">
+            <div class="box">
+                <h3>혼돈: 해</h3>
+                <label>등급:</label><select id="chaosSunGrade"><option value="유물">유물</option><option value="고대" selected>고대</option></select>
+                <label>레벨:</label><select id="chaosSunLevel"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
+            </div>
+            <div class="box">
+                <h3>혼돈: 달</h3>
+                <label>등급:</label><select id="chaosMoonGrade"><option value="유물" selected>유물</option><option value="고대">고대</option></select>
+                <label>레벨:</label><select id="chaosMoonLevel"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
+            </div>
+            <div class="box">
+                <h3>혼돈: 별</h3>
+                <label>등급:</label><select id="chaosStarGrade"><option value="유물">유물</option><option value="고대" selected>고대</option></select>
+                <label>레벨:</label><select id="chaosStarLevel"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
+            </div>
+        </div>
 
-            <div class="sub-label" style="margin-top:12px;">[옵션 2]</div>
-            <select id="ring2Opt2" style="width:100%">
-                <option value="none">없음</option>
-                <option value="치명타 적중률" selected>치명타 적중률</option>
-                <option value="치명타 피해">치명타 피해</option>
-            </select>
-            <select id="ring2Grade2" style="width:100%">
-                <option value="상" selected>상</option>
-                <option value="중">중</option>
-                <option value="하">하</option>
-            </select>
+        <!-- 7. 팔찌 옵션 세팅 -->
+        <h2 class="section-title">팔찌 옵션 세팅</h2>
+        <div class="stat-input-group" style="display: flex; gap: 15px; margin-bottom: 15px;">
+            <div style="flex: 1;">
+                <label for="bracelet-crit" style="font-weight: bold;">치명 스탯 (0 ~ 120)</label>
+                <input type="number" id="bracelet-crit" min="0" max="120" value="119" placeholder="0">
+            </div>
+            <div style="flex: 1;">
+                <label for="bracelet-swift" style="font-weight: bold;">신속 스탯 (0 ~ 120)</label>
+                <input type="number" id="bracelet-swift" min="0" max="120" value="114" placeholder="0">
+            </div>
         </div>
-    </div>
+        <div class="grid-responsive">
+            <div class="box">
+                <h3>팔찌 옵션 1</h3>
+                <label>옵션 선택:</label>
+                <select id="bOpt1">
+                    <option value="none">없음</option>
+                    <option value="공이속">공격 및 이동속도가 % 증가한다.</option>
+                    <option value="치적+치적주피" selected>치명타 적중률 증가 + 치명타 시 적주피</option>
+                    <option value="치피+치적주피">치명타 피해 증가 + 치명타 시 적주피</option>
+                    <option value="적주피">적에게 주는 피해가 %증가한다.</option>
+                    <option value="쿨증+적주피">재사용 대기시간 2% 증가 + 적주피</option>
+                    <option value="추피+악추피">추가 피해 증가 + 악마/대악마 계열 피해량</option>
+                    <option value="백헤드">방향성 공격이 아닌 스킬 적주피</option>
+                    <option value="추피단독">추가 피해 + %</option>
+                    <option value="치적단독">치명타 적중률 + %</option>
+                    <option value="치피단독">치명타 피해 + %</option>
+                </select>
+                <label>등급:</label>
+                <select id="bGrade1"><option value="상" selected>상</option><option value="중">중</option><option value="하">하</option></select>
+            </div>
+            <div class="box">
+                <h3>팔찌 옵션 2</h3>
+                <label>옵션 선택:</label>
+                <select id="bOpt2">
+                    <option value="none">없음</option>
+                    <option value="공이속">공격 및 이동속도가 % 증가한다.</option>
+                    <option value="치적+치적주피">치명타 적중률 증가 + 치명타 시 적주피</option>
+                    <option value="치피+치적주피" selected>치명타 피해 증가 + 치명타 시 적주피</option>
+                    <option value="적주피">적에게 주는 피해가 %증가한다.</option>
+                    <option value="쿨증+적주피">재사용 대기시간 2% 증가 + 적주피</option>
+                    <option value="추피+악추피">추가 피해 증가 + 악마/대악마 계열 피해량</option>
+                    <option value="백헤드">방향성 공격이 아닌 스킬 적주피</option>
+                    <option value="추피단독">추가 피해 + %</option>
+                    <option value="치적단독">치명타 적중률 + %</option>
+                    <option value="치피단독">치명타 피해 + %</option>
+                </select>
+                <label>등급:</label>
+                <select id="bGrade2"><option value="상" selected>상</option><option value="중">중</option><option value="하">하</option></select>
+            </div>
+            <div class="box">
+                <h3>팔찌 옵션 3</h3>
+                <label>옵션 선택:</label>
+                <select id="bOpt3">
+                    <option value="none">없음</option>
+                    <option value="공이속">공격 및 이동속도가 % 증가한다.</option>
+                    <option value="치적+치적주피">치명타 적중률 증가 + 치명타 시 적주피</option>
+                    <option value="치피+치적주피">치명타 피해 증가 + 치명타 시 적주피</option>
+                    <option value="적주피">적에게 주는 피해가 %증가한다.</option>
+                    <option value="쿨증+적주피" selected>재사용 대기시간 2% 증가 + 적주피</option>
+                    <option value="추피+악추피">추가 피해 증가 + 악마/대악마 계열 피해량</option>
+                    <option value="백헤드">방향성 공격이 아닌 스킬 적주피</option>
+                    <option value="추피단독">추가 피해 + %</option>
+                    <option value="치적단독">치명타 적중률 + %</option>
+                    <option value="치피단독">치명타 피해 + %</option>
+                </select>
+                <label>등급:</label>
+                <select id="bGrade3"><option value="상" selected>상</option><option value="중">중</option><option value="하">하</option></select>
+            </div>
+        </div>
 
-    <!-- 3. 젬 세팅 섹션 -->
-    <h2 class="section-title">젬 세팅</h2>
-    <div class="grid">
-        <div class="box">
-            <h3>공격력 (%)</h3>
-            <label for="gemAtk">합계 수치 입력 (%):</label><br>
-            <input type="number" id="gemAtk" value="1.5" step="0.1" min="0" style="width:100%;">
+        <!-- 8. 아크 패시브 - 진화 세팅 -->
+        <h2 class="section-title">아크 패시브 - 진화 세팅</h2>
+        <div class="box ark-passive-container">
+            <h2 class="ark-title">진화</h2>
+            <div class="ark-grid-wrapper" id="arkEvolutionContainer"></div>
         </div>
-        <div class="box">
-            <h3>추가 피해 (%)</h3>
-            <label for="gemAddDmg">합계 수치 입력 (%):</label><br>
-            <input type="number" id="gemAddDmg" value="3.5" step="0.1" min="0" style="width:100%;">
-        </div>
-        <div class="box">
-            <h3>보스 피해 (%)</h3>
-            <label for="gemBossDmg">합계 수치 입력 (%):</label><br>
-            <input type="number" id="gemBossDmg" value="4.5" step="0.1" min="0" style="width:100%;">
-        </div>
-    </div>
 
-    <!-- 4. 보석 세팅 섹션 -->
-    <h2 class="section-title">보석 세팅 (최대 11개)</h2>
-    <div class="box">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0;">스킬별 보석 선택</h3>
-            <span id="gemTotalCounter" style="font-weight: bold; font-size: 1.1em;">현재 착용 보석: 0 / 11개</span>
-        </div>
-        <table class="gem-table">
-            <thead>
-                <tr>
-                    <th style="width: 40%;">보석</th>
-                    <th style="width: 30%;">겁화</th>
-                    <th style="width: 30%;">작열</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="font-weight: bold;">몰아치기</td>
-                    <td>
-                        <select class="gem-select" data-skill="몰아치기" data-type="겁화" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="gem-select" data-skill="몰아치기" data-type="작열" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="font-weight: bold;">회오리걸음</td>
-                    <td>
-                        <select class="gem-select" data-skill="회오리걸음" data-type="겁화" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="gem-select" data-skill="회오리걸음" data-type="작열" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="font-weight: bold;">바람송곳</td>
-                    <td>
-                        <select class="gem-select" data-skill="바람송곳" data-type="겁화" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="gem-select" data-skill="바람송곳" data-type="작열" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="font-weight: bold;">칼바람</td>
-                    <td>
-                        <select class="gem-select" data-skill="칼바람" data-type="겁화" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="gem-select" data-skill="칼바람" data-type="작열" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="font-weight: bold;">마주바람</td>
-                    <td>
-                        <select class="gem-select" data-skill="마주바람" data-type="겁화" onchange="checkGemCount(this)">
-                            <option value="없음" selected>없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="gem-select" data-skill="마주바람" data-type="작열" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="font-weight: bold;">소용돌이</td>
-                    <td>
-                        <select class="gem-select" data-skill="소용돌이" data-type="겁화" onchange="checkGemCount(this)">
-                            <option value="없음">없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="gem-select" data-skill="소용돌이" data-type="작열" onchange="checkGemCount(this)">
-                            <option value="없음" selected>없음</option>
-                            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
-                        </select>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 5. 질서 코어 세팅 -->
-    <h2 class="section-title">질서 코어 세팅</h2>
-    <div class="grid">
-        <div class="box">
-            <h3>질서: 해</h3>
-            <label>등급:</label><br><select id="orderSunGrade" style="width:100%"><option value="유물">유물</option><option value="고대" selected>고대</option></select><br>
-            <label>레벨:</label><br><select id="orderSunLevel" style="width:100%"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
-        </div>
-        <div class="box">
-            <h3>질서: 달</h3>
-            <label>등급:</label><br><select id="orderMoonGrade" style="width:100%"><option value="유물">유물</option><option value="고대" selected>고대</option></select><br>
-            <label>레벨:</label><br><select id="orderMoonLevel" style="width:100%"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
-        </div>
-        <div class="box">
-            <h3>질서: 별</h3>
-            <label>등급:</label><br><select id="orderStarGrade" style="width:100%"><option value="유물">유물</option><option value="고대" selected>고대</option></select><br>
-            <label>레벨:</label><br><select id="orderStarLevel" style="width:100%"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
-        </div>
-    </div>
-
-    <!-- 6. 혼돈 코어 세팅 -->
-    <h2 class="section-title">혼돈 코어 세팅</h2>
-    <div class="grid">
-        <div class="box">
-            <h3>혼돈: 해</h3>
-            <label>등급:</label><br><select id="chaosSunGrade" style="width:100%"><option value="유물">유물</option><option value="고대" selected>고대</option></select><br>
-            <label>레벨:</label><br><select id="chaosSunLevel" style="width:100%"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
-        </div>
-        <div class="box">
-            <h3>혼돈: 달</h3>
-            <label>등급:</label><br><select id="chaosMoonGrade" style="width:100%"><option value="유물" selected>유물</option><option value="고대">고대</option></select><br>
-            <label>레벨:</label><br><select id="chaosMoonLevel" style="width:100%"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
-        </div>
-        <div class="box">
-            <h3>혼돈: 별</h3>
-            <label>등급:</label><br><select id="chaosStarGrade" style="width:100%"><option value="유물">유물</option><option value="고대" selected>고대</option></select><br>
-            <label>레벨:</label><br><select id="chaosStarLevel" style="width:100%"><option value="0">0</option><option value="10">10</option><option value="14">14</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20" selected>20</option></select>
-        </div>
-    </div>
-
-    <!-- 7. 팔찌 옵션 세팅 -->
-    <h2 class="section-title">팔찌 옵션 세팅</h2>
-    <div class="stat-input-group" style="display: flex; gap: 15px; margin-bottom: 15px;">
-        <div style="flex: 1;">
-            <label for="bracelet-crit" style="font-weight: bold; display: block; margin-bottom: 5px;">치명 스탯 (0 ~ 120)</label>
-            <input type="number" id="bracelet-crit" class="form-control" min="0" max="120" value="119" placeholder="0">
-        </div>
-        <div style="flex: 1;">
-            <label for="bracelet-swift" style="font-weight: bold; display: block; margin-bottom: 5px;">신속 스탯 (0 ~ 120)</label>
-            <input type="number" id="bracelet-swift" class="form-control" min="0" max="120" value="114" placeholder="0">
-        </div>
-    </div>
-    <div class="grid">
-        <div class="box">
-            <h3>팔찌 옵션 1</h3>
-            <label>옵션 선택:</label><br>
-            <select id="bOpt1" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공이속">공격 및 이동속도가 % 증가한다.</option>
-                <option value="치적+치적주피" selected>치명타 적중률 증가 + 치명타 시 적주피</option>
-                <option value="치피+치적주피">치명타 피해 증가 + 치명타 시 적주피</option>
-                <option value="적주피" >적에게 주는 피해가 %증가한다.</option>
-                <option value="쿨증+적주피">재사용 대기시간 2% 증가 + 적주피</option>
-                <option value="추피+악추피">추가 피해 증가 + 악마/대악마 계열 피해량</option>
-                <option value="백헤드">방향성 공격이 아닌 스킬 적주피</option>
-                <option value="추피단독">추가 피해 + %</option>
-                <option value="치적단독">치명타 적중률 + %</option>
-                <option value="치피단독">치명타 피해 + %</option>
-            </select><br>
-            <label>등급:</label><br>
-            <select id="bGrade1" style="width:100%"><option value="상" selected>상</option><option value="중" >중</option><option value="하">하</option></select>
-        </div>
-        <div class="box">
-            <h3>팔찌 옵션 2</h3>
-            <label>옵션 선택:</label><br>
-            <select id="bOpt2" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공이속">공격 및 이동속도가 % 증가한다.</option>
-                <option value="치적+치적주피">치명타 적중률 증가 + 치명타 시 적주피</option>
-                <option value="치피+치적주피" selected>치명타 피해 증가 + 치명타 시 적주피</option>
-                <option value="적주피">적에게 주는 피해가 %증가한다.</option>
-                <option value="쿨증+적주피">재사용 대기시간 2% 증가 + 적주피</option>
-                <option value="추피+악추피">추가 피해 증가 + 악마/대악마 계열 피해량</option>
-                <option value="백헤드">방향성 공격이 아닌 스킬 적주피</option>
-                <option value="추피단독">추가 피해 + %</option>
-                <option value="치적단독">치명타 적중률 + %</option>
-                <option value="치피단독">치명타 피해 + %</option>
-            </select><br>
-            <label>등급:</label><br>
-            <select id="bGrade2" style="width:100%"><option value="상" selected>상</option><option value="중">중</option><option value="하">하</option></select>
-        </div>
-        <div class="box">
-            <h3>팔찌 옵션 3</h3>
-            <label>옵션 선택:</label><br>
-            <select id="bOpt3" style="width:100%">
-                <option value="none">없음</option>
-                <option value="공이속">공격 및 이동속도가 % 증가한다.</option>
-                <option value="치적+치적주피">치명타 적중률 증가 + 치명타 시 적주피</option>
-                <option value="치피+치적주피">치명타 피해 증가 + 치명타 시 적주피</option>
-                <option value="적주피">적에게 주는 피해가 %증가한다.</option>
-                <option value="쿨증+적주피" selected>재사용 대기시간 2% 증가 + 적주피</option>
-                <option value="추피+악추피">추가 피해 증가 + 악마/대악마 계열 피해량</option>
-                <option value="백헤드">방향성 공격이 아닌 스킬 적주피</option>
-                <option value="추피단독">추가 피해 + %</option>
-                <option value="치적단독">치명타 적중률 + %</option>
-                <option value="치피단독">치명타 피해 + %</option>
-            </select><br>
-            <label>등급:</label><br>
-            <select id="bGrade3" style="width:100%"><option value="상" selected>상</option><option value="중">중</option><option value="하">하</option></select>
-        </div>
-    </div>
-
-    <!-- 8. 아크 패시브 - 진화 세팅 -->
-    <h2 class="section-title">아크 패시브 - 진화 세팅</h2>
-    <div class="box ark-passive-container">
-        <h2 class="ark-title">진화</h2>
-        <div class="ark-grid-wrapper" id="arkEvolutionContainer"></div>
-    </div>
-
-    <!-- 결과 출력 섹션 -->
-    <div class="box" style="margin-top: 20px;">
-        <h2>시뮬레이션 결과</h2>
-        <div id="output">
-            계산 중입니다...
+        <!-- 결과 출력 섹션 -->
+        <div class="box" style="margin-top: 25px;">
+            <h2>시뮬레이션 결과</h2>
+            <div id="output">계산 중입니다...</div>
         </div>
     </div>
 
     <!-- 비교표 모달 팝업 -->
     <div id="compareModal" class="modal">
-    <div class="modal-content compare-modal-content">
-        <span class="close-btn close-compare-btn">&times;</span>
-        <h2>세팅 비교 결과</h2>
-        
-        <div class="table-wrapper">
-        <table class="compare-table">
-            <thead>
-            <tr>
-                <th rowspan="2">스킬명</th>
-                <th colspan="2">비교군</th>
-                <th colspan="2">지금 세팅</th>
-                <th colspan="3">변화율</th>
-            </tr>
-            <tr>
-                <th>기대값</th>
-                <th>쿨타임</th>
-                <th>기대값</th>
-                <th>쿨타임</th>
-                <th>데미지증감</th>
-                <th>쿨타임증감</th>
-                <th>DPS증감</th>
-            </tr>
-            </thead>
-            <tbody id="compareTableBody">
-            <!-- JS로 동적 생성됩니다 -->
-            </tbody>
-        </table>
+        <div class="modal-content">
+            <span class="close-btn close-compare-btn">&times;</span>
+            <h2>세팅 비교 결과</h2>
+            <div class="table-wrapper">
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">스킬명</th>
+                            <th colspan="2">비교군</th>
+                            <th colspan="2">지금 세팅</th>
+                            <th colspan="3">변화율</th>
+                        </tr>
+                        <tr>
+                            <th>기대값</th>
+                            <th>쿨타임</th>
+                            <th>기대값</th>
+                            <th>쿨타임</th>
+                            <th>데미지증감</th>
+                            <th>쿨타임증감</th>
+                            <th>DPS증감</th>
+                        </tr>
+                    </thead>
+                    <tbody id="compareTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
+
+    <!-- 맞춤 커스텀 알림창 -->
+    <div id="customAlert" class="alert-overlay hidden">
+        <div class="alert-box">
+            <div class="alert-icon">🔔</div>
+            <div class="alert-message" id="alertMessage">알림 메시지</div>
+            <button class="alert-btn" onclick="closeAlert()">확인</button>
+        </div>
     </div>
+
     <!-- 하단 고정 플로팅 버튼 영역 -->
     <div class="floating-container">
-        <!-- 비교 관련 플로팅 버튼 (왼쪽 배치) -->
         <button id="addCompareBtn" class="floating-btn compare-btn" title="현재 세팅 저장">📌 비교군 저장</button>
         <button id="openCompareModalBtn" class="floating-btn compare-btn" title="비교표 보기">📊 비교표 보기</button>
-        <button id="saveBtn" class="float-btn save-btn">💾 세팅 저장</button>
-        <button id="loadBtn" class="float-btn load-btn">📂 불러오기</button>
+        <button id="saveBtn" class="float-btn save-btn" onclick="saveSettings()">💾 세팅 저장</button>
+        <button id="loadBtn" class="float-btn load-btn" onclick="loadSettings()">📂 불러오기</button>
     </div>
 
     <script>
-        // 전역 선택 상태 관리 변수 (기본값 1: 회오리걸음)
+        // 전역 선택 상태 관리 변수
         let selectedSkillIdx = 1;
         let lastCalculatedResults = null;
+        let baselineResults = null;
 
         // 스킬 데이터 테이블 정의
         const skillDatabase = [
@@ -1084,6 +1292,22 @@
             "치명타 피해": { 상: 4.0, 중: 2.4, 하: 1.1 }
         };
 
+        function showAlert(msg) {
+            const alertMsgEl = document.getElementById('alertMessage');
+            const alertOverlay = document.getElementById('customAlert');
+            if (alertMsgEl && alertOverlay) {
+                alertMsgEl.innerText = msg;
+                alertOverlay.classList.remove('hidden');
+            } else {
+                alert(msg);
+            }
+        }
+
+        function closeAlert() {
+            const alertOverlay = document.getElementById('customAlert');
+            if (alertOverlay) alertOverlay.classList.add('hidden');
+        }
+
         function checkGemCount(changedSelect = null) {
             const allGemSelects = document.querySelectorAll('.gem-select');
             let totalCount = 0;
@@ -1149,61 +1373,73 @@
         const rowMaxLimits = [40, 3, 2, 2, 2];
 
         function renderArkPassiveUI() {
-            const container = document.getElementById('arkEvolutionContainer');
-            container.innerHTML = '';
+    const container = document.getElementById('arkEvolutionContainer');
+    container.innerHTML = '';
 
-            evolutionNodes.forEach((row, rowIndex) => {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'ark-row';
-                const maxRowLimit = rowMaxLimits[rowIndex];
+    evolutionNodes.forEach((row, rowIndex) => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'ark-row';
+        const maxRowLimit = rowMaxLimits[rowIndex];
 
-                row.forEach((node) => {
-                    const nodeDiv = document.createElement('div');
-                    nodeDiv.className = 'ark-node';
-                    nodeDiv.oncontextmenu = (e) => e.preventDefault();
+        row.forEach((node) => {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'ark-node';
 
-                    nodeDiv.onmousedown = (e) => {
-                        e.preventDefault();
-                        let delta = 0;
-                        const isShift = e.shiftKey;
+            const currentRowTotal = row.reduce((sum, n) => sum + n.current, 0);
+            nodeDiv.title = `${node.name} (현재: ${node.current}/${node.max} | 라인 합계: ${currentRowTotal}/${maxRowLimit})`;
 
-                        if (e.button === 0) delta = isShift ? 10 : 1;
-                        else if (e.button === 2) delta = isShift ? -10 : -1;
+            const isGrayscale = node.current === 0 ? 'grayscale' : '';
+            
+            // UI에 [-], [+] 버튼 추가
+            nodeDiv.innerHTML = `
+                <img src="https://cdn-lostark.game.onstove.com/efui_iconatlas/ark_passive_evolution/ark_passive_evolution_${node.id}.png" class="ark-icon ${isGrayscale}" alt="${node.name}">
+                <div class="node-controls">
+                    <button type="button" class="btn-node btn-dec">-</button>
+                    <span>${node.current} / ${node.max}</span>
+                    <button type="button" class="btn-node btn-inc">+</button>
+                </div>
+            `;
 
-                        if (delta !== 0) {
-                            let targetValue = node.current + delta;
-                            if (targetValue < 0) targetValue = 0;
-                            if (targetValue > node.max) targetValue = node.max;
+            // 수치 변경 공통 로직
+            const changeValue = (delta) => {
+                let targetValue = node.current + delta;
+                if (targetValue < 0) targetValue = 0;
+                if (targetValue > node.max) targetValue = node.max;
 
-                            const otherNodesSum = row.reduce((sum, n) => (n === node ? sum : sum + n.current), 0);
-                            if (otherNodesSum + targetValue > maxRowLimit) {
-                                targetValue = maxRowLimit - otherNodesSum;
-                                if (targetValue < 0) targetValue = 0;
-                                if (targetValue > node.max) targetValue = node.max;
-                            }
+                const otherNodesSum = row.reduce((sum, n) => (n === node ? sum : sum + n.current), 0);
+                if (otherNodesSum + targetValue > maxRowLimit) {
+                    targetValue = maxRowLimit - otherNodesSum;
+                    if (targetValue < 0) targetValue = 0;
+                    if (targetValue > node.max) targetValue = node.max;
+                }
 
-                            node.current = targetValue;
-                            renderArkPassiveUI();
-                            verifyInputs();
-                        }
-                    };
+                if (node.current !== targetValue) {
+                    node.current = targetValue;
+                    renderArkPassiveUI();
+                    verifyInputs();
+                }
+            };
 
-                    const currentRowTotal = row.reduce((sum, n) => sum + n.current, 0);
-                    nodeDiv.title = `${node.name} (현재: ${node.current}/${node.max} | 라인 합계: ${currentRowTotal}/${maxRowLimit})`;
+            // 버튼 클릭 이벤트 (Shift 키 감지 지원)
+            const decBtn = nodeDiv.querySelector('.btn-dec');
+            const incBtn = nodeDiv.querySelector('.btn-inc');
 
-                    const isGrayscale = node.current === 0 ? 'grayscale' : '';
-                    nodeDiv.innerHTML = `
-                        <img src="https://cdn-lostark.game.onstove.com/efui_iconatlas/ark_passive_evolution/ark_passive_evolution_${node.id}.png" class="ark-icon ${isGrayscale}" alt="${node.name}">
-                        <span>${node.current} / ${node.max}</span>
-                    `;
+            decBtn.onclick = (e) => {
+                e.stopPropagation();
+                changeValue(e.shiftKey ? -10 : -1);
+            };
 
-                    rowDiv.appendChild(nodeDiv);
-                });
+            incBtn.onclick = (e) => {
+                e.stopPropagation();
+                changeValue(e.shiftKey ? 10 : 1);
+            };
 
-                container.appendChild(rowDiv);
-            });
-        }
+            rowDiv.appendChild(nodeDiv);
+        });
 
+        container.appendChild(rowDiv);
+    });
+}
         function getArkEvolutionStats() {
             let arkStats = {};
 
@@ -1274,23 +1510,18 @@
                 if (baseCrit > 0) stats["치명"].push({ source: "캐릭터 기본 스탯", val: baseCrit, unit: "" });
                 if (baseSwift > 0) stats["신속"].push({ source: "캐릭터 기본 스탯", val: baseSwift, unit: "" });
 
-                // 스킬별 출처(source) 라벨 매핑
-                const sourceTypeMap = {
-                    '공간가르기': '깨달음',
-                    '우레바람': '도약'
-                };
-
+                const sourceTypeMap = { '공간가르기': '깨달음', '우레바람': '도약' };
                 const tripodInfo = tripodDataSets[skillName];
-                if (tripodInfo && tripodInfo.damageMult > 0) {
-                    // 매핑에 해당 스킬이 있으면 그 값(깨달음/도약)을, 없으면 기본값('트라이포드') 사용
-                    const sourceType = sourceTypeMap[skillName] || '트라이포드';
 
+                if (tripodInfo && tripodInfo.damageMult > 0) {
+                    const sourceType = sourceTypeMap[skillName] || '트라이포드';
                     stats["적에게 주는 피해"].push({
                         source: `${sourceType}[${skillName}]`,
                         val: tripodInfo.damageMult,
                         unit: "%"
                     });
                 }
+
                 if (tripodInfo && tripodInfo.critDamage > 0) {
                     let critPercent = parseFloat((tripodInfo.critDamage * 100).toFixed(2));
                     stats["치명타 피해"].push({ source: `트라이포드 [${skillName}]`, val: critPercent, unit: "%" });
@@ -1632,15 +1863,13 @@
             renderResultsHTML(allSkillResults);
         }
 
-        // 결과를 화면에 렌더링
         function renderResultsHTML(allSkillResults) {
-            const commonRes = allSkillResults[0]; // 모든 스킬 공통 지표 참조
+            const commonRes = allSkillResults[0];
             let htmlOutput = ``;
 
-            // 1) 캐릭터 공통 스탯 요약 카드 (치명타 적중률, 진화형 피해 추가)
             htmlOutput += `
-                <h3>[캐릭터 공통 세팅 지표]</h3>
-                <div class="grid-6" style="margin-bottom: 20px;">
+                <h3 style="border:none; margin-bottom:10px;">[캐릭터 공통 세팅 지표]</h3>
+                <div class="grid-responsive" style="margin-bottom: 20px;">
                     <div class="stat-card">
                         <div class="label">최종 공격력</div>
                         <div class="value">${Math.floor(commonRes.finalAtk).toLocaleString()}</div>
@@ -1668,18 +1897,18 @@
                 </div>
             `;
 
-            // 2) 스킬별 시뮬레이션 요약 테이블
             htmlOutput += `
-                <h3>[스킬별 시뮬레이션 결과 요약] <span style="font-size: 0.75em; font-weight: normal; color: #aaa;">(행을 클릭하면 해당 스킬 세부 내역이 아래에 표시됩니다)</span></h3>
-                <table class="summary-table">
-                    <thead>
-                        <tr>
-                            <th>스킬명</th>
-                            <th>대미지 기대값</th>
-                            <th>스킬 쿨타임</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <h3 style="border:none; margin-bottom:8px;">[스킬별 시뮬레이션 결과 요약] <span style="font-size: 0.75em; font-weight: normal; color: var(--text-sub);">(행 클릭 시 세부 내역 표시)</span></h3>
+                <div class="table-wrapper">
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>스킬명</th>
+                                <th>대미지 기대값</th>
+                                <th>스킬 쿨타임</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             allSkillResults.forEach((res, idx) => {
@@ -1687,7 +1916,7 @@
                 const selectedClass = isSelected ? 'class="selected-row"' : '';
                 htmlOutput += `
                     <tr ${selectedClass} onclick="selectSkillRow(${idx})">
-                        <td style="font-weight: bold; ${isSelected ? 'color: #4CAF50;' : ''}">${res.skillName} ${isSelected ? '✔' : ''}</td>
+                        <td style="font-weight: bold; ${isSelected ? 'color: white' : ''}">${res.skillName} ${isSelected ? '✔' : ''}</td>
                         <td class="dmg-val">${Math.floor(res.expDmg).toLocaleString()}</td>
                         <td class="highlight-val">${res.finalCooldown.toFixed(2)}초</td>
                     </tr>
@@ -1695,12 +1924,12 @@
             });
 
             htmlOutput += `
-                    </tbody>
-                </table>
-                <hr style="border: 0; border-top: 1px dashed #444; margin: 25px 0;">
+                        </tbody>
+                    </table>
+                </div>
+                <hr style="border: 0; border-top: 1px dashed var(--border-color); margin: 25px 0;">
             `;
 
-            // 3) 선택된 스킬 상세 데이터 내역
             const selectedResult = allSkillResults[selectedSkillIdx];
             htmlOutput += `<div class="details-container">`;
             htmlOutput += `<div class="skill-detail-card">`;
@@ -1730,10 +1959,10 @@
 
                     if (cat === "치명") {
                         const totalCrit = items.reduce((sum, item) => sum + (Number(item.val) || 0), 0);
-                        htmlOutput += `<div class="stat-item" style="color: #61afef; font-weight: bold;">  > 총 치명: ${totalCrit}</div>`;
+                        htmlOutput += `<div class="stat-item" style="color: var(--accent-highlight); font-weight: bold;">  > 총 치명: ${totalCrit}</div>`;
                     } else if (cat === "신속") {
                         const totalSwift = items.reduce((sum, item) => sum + (Number(item.val) || 0), 0);
-                        htmlOutput += `<div class="stat-item" style="color: #61afef; font-weight: bold;">  > 총 신속: ${totalSwift}</div>`;
+                        htmlOutput += `<div class="stat-item" style="color: var(--accent-highlight); font-weight: bold;">  > 총 신속: ${totalSwift}</div>`;
                     }
                 }
             });
@@ -1743,249 +1972,164 @@
             document.getElementById('output').innerHTML = htmlOutput;
         }
 
-        // 페이지 진입 즉시 자동 계산 및 모든 입력 변경 시 실시간 자동 계산 리스너 추가
+        const STORAGE_KEY = 'loa_calc_user_settings';
+
+        function saveSettings() {
+            const settings = {
+                inputs: {},
+                arkEvolution: evolutionNodes.map(row => 
+                    row.map(node => ({ id: node.id, current: node.current }))
+                )
+            };
+
+            document.querySelectorAll('input, select').forEach(el => {
+                if (el.id) {
+                    settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+                }
+            });
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            showAlert('현재 세팅이 기기에 성공적으로 저장되었습니다');
+        }
+
+        function loadSettings() {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (!savedData) {
+                showAlert('저장된 세팅이 없습니다.');
+                return;
+            }
+
+            const settings = JSON.parse(savedData);
+
+            if (settings.inputs) {
+                Object.keys(settings.inputs).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        if (el.type === 'checkbox' || el.type === 'radio') {
+                            el.checked = settings.inputs[id];
+                        } else {
+                            el.value = settings.inputs[id];
+                        }
+                    }
+                });
+            }
+
+            if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
+                settings.arkEvolution.forEach((savedRow, rowIndex) => {
+                    if (evolutionNodes[rowIndex]) {
+                        savedRow.forEach((savedNode, nodeIndex) => {
+                            if (evolutionNodes[rowIndex][nodeIndex]) {
+                                evolutionNodes[rowIndex][nodeIndex].current = savedNode.current;
+                            }
+                        });
+                    }
+                });
+            }
+
+            renderArkPassiveUI();
+            verifyInputs();
+            showAlert('저장된 세팅을 불러왔습니다');
+        }
+
+        function renderCompareTable() {
+            const tbody = document.getElementById('compareTableBody');
+            if (!tbody || !baselineResults || !lastCalculatedResults) return;
+
+            let html = '';
+            lastCalculatedResults.forEach((curr, idx) => {
+                const base = baselineResults[idx];
+                if (!base) return;
+
+                const baseDmg = base.expDmg;
+                const currDmg = curr.expDmg;
+                const dmgDiffPercent = ((currDmg - baseDmg) / baseDmg) * 100;
+
+                const baseCd = base.finalCooldown;
+                const currCd = curr.finalCooldown;
+                const cdDiffPercent = ((currCd - baseCd) / baseCd) * 100;
+
+                const baseDps = baseDmg / baseCd;
+                const currDps = currDmg / currCd;
+                const dpsDiffPercent = ((currDps - baseDps) / baseDps) * 100;
+
+                const getClass = (val) => val > 0 ? 'plus' : (val < 0 ? 'minus' : 'zero');
+
+                html += `
+                    <tr>
+                        <td style="font-weight:bold; color:#fff;">${curr.skillName}</td>
+                        <td>${Math.floor(baseDmg).toLocaleString()}</td>
+                        <td>${baseCd.toFixed(2)}s</td>
+                        <td>${Math.floor(currDmg).toLocaleString()}</td>
+                        <td>${currCd.toFixed(2)}s</td>
+                        <td class="${getClass(dmgDiffPercent)}">${dmgDiffPercent > 0 ? '+' : ''}${dmgDiffPercent.toFixed(2)}%</td>
+                        <td class="${getClass(-cdDiffPercent)}">${cdDiffPercent > 0 ? '+' : ''}${cdDiffPercent.toFixed(2)}%</td>
+                        <td class="${getClass(dpsDiffPercent)}">${dpsDiffPercent > 0 ? '+' : ''}${dpsDiffPercent.toFixed(2)}%</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
         window.onload = function() {
             checkGemCount();
             renderArkPassiveUI();
             verifyInputs();
 
-            // 모든 input 및 select 변경 시 자동 계산 실행
             document.addEventListener('input', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
                     verifyInputs();
                 }
             });
+
             document.addEventListener('change', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
                     verifyInputs();
                 }
             });
+
+            document.getElementById('addCompareBtn')?.addEventListener('click', () => {
+                if (lastCalculatedResults) {
+                    baselineResults = JSON.parse(JSON.stringify(lastCalculatedResults));
+                    showAlert('현재 세팅이 비교군으로 저장되었습니다.');
+                }
+            });
+
+            document.getElementById('openCompareModalBtn')?.addEventListener('click', () => {
+                if (!baselineResults) {
+                    showAlert('저장된 비교군 세팅이 없습니다. 먼저 [비교군 저장]을 눌러주세요.');
+                    return;
+                }
+                renderCompareTable();
+                document.getElementById('compareModal').style.display = 'block';
+            });
+
+            document.querySelectorAll('.close-compare-btn, .close-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const modal = document.getElementById('compareModal');
+                    if (modal) modal.style.display = 'none';
+                });
+            });
+
+            window.addEventListener('click', (e) => {
+                const modal = document.getElementById('compareModal');
+                if (e.target === modal) modal.style.display = 'none';
+            });
         };
     </script>
-    <!-- <script>
-        const modal = document.getElementById('guideModal');
-        const openBtn = document.getElementById('openModalBtn');
-        const closeBtn = document.querySelector('.close-btn');
-
-        // 버튼 클릭 시 모달 열기
-        openBtn.addEventListener('click', () => {
-        modal.style.display = 'block';
-        });
-
-        // X 버튼 클릭 시 모달 닫기
-        closeBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-        });
-
-        // 모달 바깥 배경 클릭 시 닫기
-        window.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-        });
-    </script> -->
     <script>
-        const STORAGE_KEY = 'loa_calc_user_settings';
+        // 수치에 따라 CSS 클래스를 반환하는 함수
+function getDiffClass(value) {
+  if (value > 0) return 'diff-plus';
+  if (value < 0) return 'diff-minus';
+  return 'diff-zero';
+}
 
-        // 1. 세팅 저장 함수
-        function saveSettings() {
-        const settings = {
-            inputs: {},
-            // evolutionNodes 배열에서 각 노드의 현재 레벨(current) 데이터만 추출하여 저장
-            arkEvolution: evolutionNodes.map(row => 
-            row.map(node => ({ id: node.id, current: node.current }))
-            )
-        };
-
-        // 일반 input 및 select 태그 값 저장
-        document.querySelectorAll('input, select').forEach(el => {
-            if (el.id) {
-            settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
-            }
-        });
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        showAlert('현재 세팅이 기기에 저장되었습니다');
-        }
-
-        // 2. 세팅 불러오기 함수
-        function loadSettings() {
-        const savedData = localStorage.getItem(STORAGE_KEY);
-        if (!savedData) {
-            showAlert('저장된 세팅이 없습니다.');
-            return;
-        }
-
-        const settings = JSON.parse(savedData);
-
-        // ① 일반 input / select 복원
-        if (settings.inputs) {
-            Object.keys(settings.inputs).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (el.type === 'checkbox' || el.type === 'radio') {
-                el.checked = settings.inputs[id];
-                } else {
-                el.value = settings.inputs[id];
-                }
-                el.dispatchEvent(new Event('change'));
-            }
-            });
-        }
-
-        // ② 아크패시브(evolutionNodes) 데이터 복원
-        if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
-            settings.arkEvolution.forEach((savedRow, rowIndex) => {
-            if (evolutionNodes[rowIndex]) {
-                savedRow.forEach((savedNode, nodeIndex) => {
-                if (evolutionNodes[rowIndex][nodeIndex]) {
-                    // 저장되었던 레벨(current) 수치 복원
-                    evolutionNodes[rowIndex][nodeIndex].current = savedNode.current;
-                }
-                });
-            }
-            });
-
-            // ③ 화면 UI 재렌더링 및 데미지/스탯 검증 함수 실행
-            renderArkPassiveUI();
-            if (typeof verifyInputs === 'function') {
-            verifyInputs();
-            }
-        }
-
-        showAlert('세팅을 성공적으로 불러왔습니다');
-        }
-
-        // 버튼 이벤트 리스너 연결
-        document.getElementById('saveBtn').addEventListener('click', saveSettings);
-        document.getElementById('loadBtn').addEventListener('click', loadSettings);
-    </script>
-    <script>
-        // 비교군 데이터 저장 변수
-        let baselineData = null;
-
-        // 💡 1. 현재 화면의 모든 스킬 계산 수치를 수집하는 함수
-        // (※ 프로젝트의 기존 스킬 데이터 변수 구조에 맞게 연동해주시면 됩니다)
-        function getSkillResults() {
-            const results = {};
-            
-            if (lastCalculatedResults && Array.isArray(lastCalculatedResults)) {
-                lastCalculatedResults.forEach(res => {
-                    results[res.skillName] = {
-                        damage: res.expDmg,      // 정밀 대미지 기대값
-                        cd: res.finalCooldown     // 정밀 쿨타임(초)
-                    };
-                });
-            }
-
-            return results;
-        }
-
-        // 억 단위 변환 포맷 함수 (예: 725200000 -> 7.252억)
-        function formatToEok(num) {
-            if (!num || num === 0) return '0억';
-            return (num / 100000000).toFixed(3) + '억';
-            }
-
-            // 2. 비교군 저장 버튼 이벤트
-            document.getElementById('addCompareBtn').addEventListener('click', () => {
-            baselineData = getSkillResults();
-            showAlert('현재 세팅이 [비교군]으로 저장되었습니다\n이제 세팅을 변경하신 후 [비교표 보기]를 누르세요.');
-            });
-
-            // 3. 비교표 생성 및 출력
-            function renderComparisonTable() {
-            if (!baselineData) {
-                showAlert('저장된 비교군 세팅이 없습니다.\n먼저 [현재 세팅을 비교군으로 저장] 버튼을 눌러주세요.');
-                return false;
-            }
-
-            const currentData = getSkillResults();
-            const tbody = document.getElementById('compareTableBody');
-            tbody.innerHTML = '';
-
-            Object.keys(currentData).forEach(skillName => {
-                const base = baselineData[skillName] || { damage: 0, cd: 1 };
-                const curr = currentData[skillName] || { damage: 0, cd: 1 };
-
-                // 데미지 증감율 (%)
-                const dmgDiff = base.damage ? ((curr.damage - base.damage) / base.damage) * 100 : 0;
-                
-                // 쿨타임 증감율 (%)
-                const cdDiff = base.cd ? ((curr.cd - base.cd) / base.cd) * 100 : 0;
-
-                // DPS 계산 (데미지 / 쿨타임) 및 DPS 증감율 (%)
-                const baseDps = base.damage / (base.cd || 1);
-                const currDps = curr.damage / (curr.cd || 1);
-                const dpsDiff = baseDps ? ((currDps - baseDps) / baseDps) * 100 : 0;
-
-                // 증감 색상 클래스 판별
-                const getClass = (val, isCooldown = false) => {
-                if (Math.abs(val) < 0.001) return 'zero';
-                // 쿨타임은 감소(-)할수록 좋은 것이므로 반대 처리
-                if (isCooldown) return val < 0 ? 'plus' : 'minus';
-                return val > 0 ? 'plus' : 'minus';
-                };
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                <td><strong>${skillName}</strong></td>
-                <td>${formatToEok(base.damage)}</td>
-                <td>${base.cd.toFixed(2)}</td>
-                <td>${formatToEok(curr.damage)}</td>
-                <td>${curr.cd.toFixed(2)}</td>
-                <td class="${getClass(dmgDiff)}">${dmgDiff > 0 ? '+' : ''}${dmgDiff.toFixed(2)}%</td>
-                <td class="${getClass(cdDiff, true)}">${cdDiff > 0 ? '+' : ''}${cdDiff.toFixed(2)}%</td>
-                <td class="${getClass(dpsDiff)}">${dpsDiff > 0 ? '+' : ''}${dpsDiff.toFixed(3)}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            return true;
-        }
-
-        // 4. 모달 열기/닫기 이벤트
-        const compareModal = document.getElementById('compareModal');
-        const openCompareBtn = document.getElementById('openCompareModalBtn');
-        const closeCompareBtn = document.querySelector('.close-compare-btn');
-
-        openCompareBtn.addEventListener('click', () => {
-        if (renderComparisonTable()) {
-            compareModal.style.display = 'block';
-        }
-        });
-
-        closeCompareBtn.addEventListener('click', () => {
-        compareModal.style.display = 'none';
-        });
-
-        window.addEventListener('click', (e) => {
-        if (e.target === compareModal) compareModal.style.display = 'none';
-        });
-    </script>
-
-    <!-- 📌 커스텀 Alert 모달 -->
-    <div id="customAlertOverlay" class="alert-overlay hidden">
-        <div class="alert-box">
-            <div class="alert-icon">🔔</div>
-            <p id="alertMessage" class="alert-message">메시지가 들어갈 자리입니다.</p>
-            <button id="alertConfirmBtn" class="alert-btn">확인</button>
-        </div>
-    </div>
-    <script>
-        // 커스텀 Alert 출력 함수
-        function showAlert(message) {
-            const overlay = document.getElementById('customAlertOverlay');
-            const messageEl = document.getElementById('alertMessage');
-            
-            messageEl.textContent = message;
-            overlay.classList.remove('hidden');
-        }
-
-        // 확인 버튼 클릭 시 닫기
-        document.getElementById('alertConfirmBtn')?.addEventListener('click', () => {
-            document.getElementById('customAlertOverlay').classList.add('hidden');
-        });
+// 부호(+)까지 자동으로 붙여주는 포맷팅 함수
+function formatPercent(value) {
+  const sign = value > 0 ? '+' : '';
+  const className = getDiffClass(value);
+  return `<span class="diff-val ${className}">${sign}${value.toFixed(2)}%</span>`;
+}
     </script>
 </body>
 </html>
