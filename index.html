@@ -1614,29 +1614,28 @@
 
         // 1. 세팅 저장 함수
         function saveSettings() {
-        const settings = {};
+        const settings = {
+            inputs: {},
+            // evolutionNodes 배열에서 각 노드의 현재 레벨(current) 데이터만 추출하여 저장
+            arkEvolution: evolutionNodes.map(row => 
+            row.map(node => ({ id: node.id, current: node.current }))
+            )
+        };
 
-        // 페이지 안의 모든 input과 select 요소의 id 및 값을 수집
-        const inputs = document.querySelectorAll('input, select');
-        inputs.forEach(el => {
+        // 일반 input 및 select 태그 값 저장
+        document.querySelectorAll('input, select').forEach(el => {
             if (el.id) {
-            if (el.type === 'checkbox' || el.type === 'radio') {
-                settings[el.id] = el.checked;
-            } else {
-                settings[el.id] = el.value;
-            }
+            settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
             }
         });
 
-        // 로컬스토리지에 문자열로 변환하여 저장
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        alert('현재 세팅이 기기에 저장되었습니다!');
+        alert('현재 세팅이 기기에 저장되었습니다');
         }
 
         // 2. 세팅 불러오기 함수
         function loadSettings() {
         const savedData = localStorage.getItem(STORAGE_KEY);
-        
         if (!savedData) {
             alert('저장된 세팅이 없습니다.');
             return;
@@ -1644,27 +1643,45 @@
 
         const settings = JSON.parse(savedData);
 
-        // 저장된 데이터를 화면의 입력창들에 다시 반영
-        Object.keys(settings).forEach(id => {
+        // ① 일반 input / select 복원
+        if (settings.inputs) {
+            Object.keys(settings.inputs).forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-            if (el.type === 'checkbox' || el.type === 'radio') {
-                el.checked = settings[id];
-            } else {
-                el.value = settings[id];
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                el.checked = settings.inputs[id];
+                } else {
+                el.value = settings.inputs[id];
+                }
+                el.dispatchEvent(new Event('change'));
             }
-            // 값 변경 후 데미지 계산 함수가 자동으로 실행되도록 change 이벤트 발생
-            el.dispatchEvent(new Event('change'));
-            }
-        });
-
-        alert('세팅을 성공적으로 불러왔습니다!');
-
-        // 💡 만약 데미지 수치를 재계산하는 메인 함수(예: calculateDamage())가 있다면 아래에 직접 호출해 주셔도 됩니다.
-        // calculateDamage();
+            });
         }
 
-        // 버튼 이벤트 연결
+        // ② 아크패시브(evolutionNodes) 데이터 복원
+        if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
+            settings.arkEvolution.forEach((savedRow, rowIndex) => {
+            if (evolutionNodes[rowIndex]) {
+                savedRow.forEach((savedNode, nodeIndex) => {
+                if (evolutionNodes[rowIndex][nodeIndex]) {
+                    // 저장되었던 레벨(current) 수치 복원
+                    evolutionNodes[rowIndex][nodeIndex].current = savedNode.current;
+                }
+                });
+            }
+            });
+
+            // ③ 화면 UI 재렌더링 및 데미지/스탯 검증 함수 실행
+            renderArkPassiveUI();
+            if (typeof verifyInputs === 'function') {
+            verifyInputs();
+            }
+        }
+
+        alert('세팅을 성공적으로 불러왔습니다!');
+        }
+
+        // 버튼 이벤트 리스너 연결
         document.getElementById('saveBtn').addEventListener('click', saveSettings);
         document.getElementById('loadBtn').addEventListener('click', loadSettings);
     </script>
