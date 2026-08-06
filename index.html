@@ -2004,61 +2004,83 @@ select option:checked {
         const STORAGE_KEY = 'loa_calc_user_settings';
 
         function saveSettings() {
-            const settings = {
-                inputs: {},
-                arkEvolution: evolutionNodes.map(row => 
-                    row.map(node => ({ id: node.id, current: node.current }))
-                )
-            };
+    const settings = {
+        inputs: {},
+        gems: {}, // 보석 전용 데이터 저장 객체
+        arkEvolution: evolutionNodes.map(row => 
+            row.map(node => ({ id: node.id, current: node.current }))
+        )
+    };
 
-            document.querySelectorAll('input, select').forEach(el => {
-                if (el.id) {
-                    settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+    // 1. id가 있는 일반 input, select 저장
+    document.querySelectorAll('input, select').forEach(el => {
+        if (el.id) {
+            settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+        }
+    });
+
+    // 2. 보석(gem-select) 세팅 저장
+    document.querySelectorAll('.gem-select').forEach(select => {
+        const key = `${select.dataset.skill}_${select.dataset.type}`;
+        settings.gems[key] = select.value;
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    showAlert('현재 세팅이 기기에 성공적으로 저장되었습니다');
+}
+
+function loadSettings() {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (!savedData) {
+        showAlert('저장된 세팅이 없습니다.');
+        return;
+    }
+
+    const settings = JSON.parse(savedData);
+
+    // 1. 일반 입력값 불러오기
+    if (settings.inputs) {
+        Object.keys(settings.inputs).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    el.checked = settings.inputs[id];
+                } else {
+                    el.value = settings.inputs[id];
                 }
-            });
-
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-            showAlert('현재 세팅이 기기에 성공적으로 저장되었습니다');
-        }
-
-        function loadSettings() {
-            const savedData = localStorage.getItem(STORAGE_KEY);
-            if (!savedData) {
-                showAlert('저장된 세팅이 없습니다.');
-                return;
             }
+        });
+    }
 
-            const settings = JSON.parse(savedData);
+    // 2. 보석 세팅 불러오기
+    if (settings.gems) {
+        document.querySelectorAll('.gem-select').forEach(select => {
+            const key = `${select.dataset.skill}_${select.dataset.type}`;
+            if (settings.gems[key] !== undefined) {
+                select.value = settings.gems[key];
+            }
+        });
+    }
 
-            if (settings.inputs) {
-                Object.keys(settings.inputs).forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        if (el.type === 'checkbox' || el.type === 'radio') {
-                            el.checked = settings.inputs[id];
-                        } else {
-                            el.value = settings.inputs[id];
-                        }
-                    }
+    // 3. 아크 패시브 불러오기
+    if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
+        settings.arkEvolution.forEach((savedRow, rowIndex) => {
+            if (evolutionNodes[rowIndex]) {
+                savedRow.forEach(savedNode => {
+                    const node = evolutionNodes[rowIndex].find(n => n.id === savedNode.id);
+                    if (node) node.current = savedNode.current;
                 });
             }
+        });
+    }
 
-            if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
-                settings.arkEvolution.forEach((savedRow, rowIndex) => {
-                    if (evolutionNodes[rowIndex]) {
-                        savedRow.forEach((savedNode, nodeIndex) => {
-                            if (evolutionNodes[rowIndex][nodeIndex]) {
-                                evolutionNodes[rowIndex][nodeIndex].current = savedNode.current;
-                            }
-                        });
-                    }
-                });
-            }
+    // 4. UI 및 시뮬레이터 결과 동기화
+    renderArkPassiveUI();
+    checkGemCount();
+    verifyInputs();
 
-            renderArkPassiveUI();
-            verifyInputs();
-            showAlert('저장된 세팅을 불러왔습니다');
-        }
+    showAlert('세팅을 성공적으로 불러왔습니다.');
+}
 
         function renderCompareTable() {
             const tbody = document.getElementById('compareTableBody');
