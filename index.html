@@ -194,7 +194,20 @@ select option:checked {
         .summary-table tbody tr:hover { background-color: var(--bg-card-hover) !important; }
         .summary-table tbody tr.selected-row { background-color: #cb91ff !important; border: 1px solid var(--accent-purple); }
 
+        .summary-table {
+            width: 100%;
+            table-layout: fixed; /* 👈 핵심: 열 너비 자동 계산 방지 */
+            border-collapse: collapse;
+        }
 
+        .summary-table th, 
+        .summary-table td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center; /* 필요시 정렬 지정 */
+        }
+                
 
 /* 3. 본문 셀 기본 정의 */
 .summary-table td {
