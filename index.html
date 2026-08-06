@@ -2035,87 +2035,144 @@ select option:checked {
             document.getElementById('output').innerHTML = htmlOutput;
         }
 
-        const STORAGE_KEY = 'loa_calc_user_settings';
+        // 🔑 저장 공간(Key) 분리
+        const MANUAL_STORAGE_KEY = 'loa_calc_manual_settings'; // 수동 저장 버튼 전용
+        const AUTO_STORAGE_KEY = 'loa_calc_auto_session';      // 자동 복원(종료 직전) 전용
 
-        function saveSettings() {
-    const settings = {
-        inputs: {},
-        gems: {}, // 보석 전용 데이터 저장 객체
-        arkEvolution: evolutionNodes.map(row => 
-            row.map(node => ({ id: node.id, current: node.current }))
-        )
-    };
+        // 📦 [공통] 현재 화면의 모든 입력값 데이터 수집
+        function getSettingsData() {
+            const settings = {
+                inputs: {},
+                gems: {},
+                arkEvolution: evolutionNodes.map(row => 
+                    row.map(node => ({ id: node.id, current: node.current }))
+                )
+            };
 
-    // 1. id가 있는 일반 input, select 저장
-    document.querySelectorAll('input, select').forEach(el => {
-        if (el.id) {
-            settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
-        }
-    });
-
-    // 2. 보석(gem-select) 세팅 저장
-    document.querySelectorAll('.gem-select').forEach(select => {
-        const key = `${select.dataset.skill}_${select.dataset.type}`;
-        settings.gems[key] = select.value;
-    });
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    showAlert('현재 세팅이 기기에 성공적으로 저장되었습니다');
-}
-
-function loadSettings() {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (!savedData) {
-        showAlert('저장된 세팅이 없습니다.');
-        return;
-    }
-
-    const settings = JSON.parse(savedData);
-
-    // 1. 일반 입력값 불러오기
-    if (settings.inputs) {
-        Object.keys(settings.inputs).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (el.type === 'checkbox' || el.type === 'radio') {
-                    el.checked = settings.inputs[id];
-                } else {
-                    el.value = settings.inputs[id];
+            // 일반 input, select 저장
+            document.querySelectorAll('input, select').forEach(el => {
+                if (el.id) {
+                    settings.inputs[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
                 }
-            }
-        });
-    }
+            });
 
-    // 2. 보석 세팅 불러오기
-    if (settings.gems) {
-        document.querySelectorAll('.gem-select').forEach(select => {
-            const key = `${select.dataset.skill}_${select.dataset.type}`;
-            if (settings.gems[key] !== undefined) {
-                select.value = settings.gems[key];
-            }
-        });
-    }
+            // 보석 세팅 저장
+            document.querySelectorAll('.gem-select').forEach(select => {
+                const key = `${select.dataset.skill}_${select.dataset.type}`;
+                settings.gems[key] = select.value;
+            });
 
-    // 3. 아크 패시브 불러오기
-    if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
-        settings.arkEvolution.forEach((savedRow, rowIndex) => {
-            if (evolutionNodes[rowIndex]) {
-                savedRow.forEach(savedNode => {
-                    const node = evolutionNodes[rowIndex].find(n => n.id === savedNode.id);
-                    if (node) node.current = savedNode.current;
+            return settings;
+        }
+
+        // 🛠️ [공통] 수집된 데이터를 화면 UI에 적용
+        function applySettingsData(settings) {
+            if (!settings) return;
+
+            // 일반 입력값 불러오기
+            if (settings.inputs) {
+                Object.keys(settings.inputs).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        if (el.type === 'checkbox' || el.type === 'radio') {
+                            el.checked = settings.inputs[id];
+                        } else {
+                            el.value = settings.inputs[id];
+                        }
+                    }
                 });
             }
-        });
-    }
 
-    // 4. UI 및 시뮬레이터 결과 동기화
-    renderArkPassiveUI();
-    checkGemCount();
-    verifyInputs();
+            // 보석 세팅 불러오기
+            if (settings.gems) {
+                document.querySelectorAll('.gem-select').forEach(select => {
+                    const key = `${select.dataset.skill}_${select.dataset.type}`;
+                    if (settings.gems[key] !== undefined) {
+                        select.value = settings.gems[key];
+                    }
+                });
+            }
 
-    showAlert('세팅을 성공적으로 불러왔습니다.');
-}
+            // 아크 패시브 불러오기
+            if (settings.arkEvolution && Array.isArray(settings.arkEvolution)) {
+                settings.arkEvolution.forEach((savedRow, rowIndex) => {
+                    if (evolutionNodes[rowIndex]) {
+                        savedRow.forEach(savedNode => {
+                            const node = evolutionNodes[rowIndex].find(n => n.id === savedNode.id);
+                            if (node) node.current = savedNode.current;
+                        });
+                    }
+                });
+            }
 
+            // UI 및 시뮬레이터 결과 동기화
+            renderArkPassiveUI();
+            checkGemCount();
+            verifyInputs();
+        }
+
+        // 💾 1. [수동] 세팅 저장 버튼 클릭 시 실행
+        function saveSettings() {
+            try {
+                const settings = getSettingsData();
+                localStorage.setItem(MANUAL_STORAGE_KEY, JSON.stringify(settings));
+                showAlert('현재 세팅이 수동 저장소에 저장되었습니다.');
+            } catch (e) {
+                console.error('수동 저장 오류:', e);
+            }
+        }
+
+        // 📂 2. [수동] 세팅 불러오기 버튼 클릭 시 실행
+        function loadSettings() {
+            try {
+                const savedData = localStorage.getItem(MANUAL_STORAGE_KEY);
+                if (!savedData) {
+                    showAlert('저장된 수동 세팅이 없습니다.');
+                    return;
+                }
+                applySettingsData(JSON.parse(savedData));
+                showAlert('수동 저장된 세팅을 성공적으로 불러왔습니다.');
+            } catch (e) {
+                console.error('수동 불러오기 오류:', e);
+            }
+        }
+
+        // 🔄 3. [자동] 페이지 종료 시 자동 저장
+        function saveAutoSession() {
+            try {
+                const settings = getSettingsData();
+                localStorage.setItem(AUTO_STORAGE_KEY, JSON.stringify(settings));
+            } catch (e) {
+                console.error('자동 저장 오류:', e);
+            }
+        }
+
+        // 🔄 4. [자동] 페이지 접속 시 종료 직전 상태 복원
+        function loadAutoSession() {
+            try {
+                const savedData = localStorage.getItem(AUTO_STORAGE_KEY);
+                if (savedData) {
+                    applySettingsData(JSON.parse(savedData));
+                }
+            } catch (e) {
+                console.error('자동 복원 오류:', e);
+            }
+        }
+
+        // 🎨 수치 변화량 스타일 및 포맷팅 헬퍼
+        function getDiffClass(value) {
+            if (value > 0) return 'diff-plus';
+            if (value < 0) return 'diff-minus';
+            return 'diff-zero';
+        }
+
+        function formatPercent(value) {
+            const sign = value > 0 ? '+' : '';
+            const className = getDiffClass(value);
+            return `<span class="diff-val ${className}">${sign}${value.toFixed(2)}%</span>`;
+        }
+
+        // 📊 비교군 모달 테이블 렌더링
         function renderCompareTable() {
             const tbody = document.getElementById('compareTableBody');
             if (!tbody || !baselineResults || !lastCalculatedResults) return;
@@ -2155,11 +2212,17 @@ function loadSettings() {
             tbody.innerHTML = html;
         }
 
+        // 🚀 페이지 초기화 및 이벤트 바인딩
         window.onload = function() {
+            // 1. 접속 시 종료 직전 자동 세션 복원
+            loadAutoSession();
+
+            // 2. 초기 UI 상태 갱신
             checkGemCount();
             renderArkPassiveUI();
             verifyInputs();
 
+            // 3. 입력값 변경 감지
             document.addEventListener('input', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
                     verifyInputs();
@@ -2172,6 +2235,7 @@ function loadSettings() {
                 }
             });
 
+            // 4. 비교군 관련 이벤트
             document.getElementById('addCompareBtn')?.addEventListener('click', () => {
                 if (lastCalculatedResults) {
                     baselineResults = JSON.parse(JSON.stringify(lastCalculatedResults));
@@ -2200,21 +2264,26 @@ function loadSettings() {
                 if (e.target === modal) modal.style.display = 'none';
             });
         };
+
+        // 🚪 페이지 이탈 시 종료 직전 상태를 자동 저장소에 보존
+        window.addEventListener('beforeunload', () => {
+            saveAutoSession();
+        });
     </script>
     <script>
         // 수치에 따라 CSS 클래스를 반환하는 함수
-function getDiffClass(value) {
-  if (value > 0) return 'diff-plus';
-  if (value < 0) return 'diff-minus';
-  return 'diff-zero';
-}
+        function getDiffClass(value) {
+        if (value > 0) return 'diff-plus';
+        if (value < 0) return 'diff-minus';
+        return 'diff-zero';
+        }
 
-// 부호(+)까지 자동으로 붙여주는 포맷팅 함수
-function formatPercent(value) {
-  const sign = value > 0 ? '+' : '';
-  const className = getDiffClass(value);
-  return `<span class="diff-val ${className}">${sign}${value.toFixed(2)}%</span>`;
-}
+        // 부호(+)까지 자동으로 붙여주는 포맷팅 함수
+        function formatPercent(value) {
+        const sign = value > 0 ? '+' : '';
+        const className = getDiffClass(value);
+        return `<span class="diff-val ${className}">${sign}${value.toFixed(2)}%</span>`;
+        }
     </script>
 </body>
 </html>
