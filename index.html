@@ -140,6 +140,7 @@ select option:checked {
         }
 
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
         .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; }
         .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 
@@ -477,7 +478,7 @@ select option:checked {
             body { padding: 12px 10px 120px; }
             h1 { font-size: 1.4rem; }
             .section-title { font-size: 1.15rem; }
-            .grid-3, .grid-5, .grid-6 { grid-template-columns: repeat(auto-fit, minmax(100%, 1fr)); }
+            .grid-3, .grid-4, .grid-5, .grid-6 { grid-template-columns: repeat(auto-fit, minmax(100%, 1fr)); }
             .stat-input-group { flex-direction: column; gap: 10px !important; }
             .floating-container {
                 left: 10px;
@@ -558,7 +559,7 @@ select option:checked {
         <!-- 최상단 기본 스탯 입력 섹션 -->
         <h2 class="section-title">기본 스탯</h2>
         <div class="box">
-            <div class="grid-responsive">
+            <div class="grid-4">
                 <div>
                     <label for="base-crit" style="font-weight: bold;">기본 치명</label>
                     <input type="number" id="base-crit" min="0" value="79" placeholder="기본 치명 입력">
@@ -570,6 +571,14 @@ select option:checked {
                 <div>
                     <label for="base-atk" style="font-weight: bold;">기본 공격력</label>
                     <input type="number" id="base-atk" min="0" value="210000" placeholder="기본 공격력 입력">
+                </div>
+                <div class="form-group">
+                    <label for="partyCritSynergy">파티 치적 시너지(본인 제외)</label>
+                    <select id="partyCritSynergy">
+                        <option value="0">0명 (0%)</option>
+                        <option value="1">1명 (+10%)</option>
+                        <option value="2">2명 (+20%)</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -1538,6 +1547,9 @@ select option:checked {
             const baseSwift = parseInt(document.getElementById('base-swift')?.value, 10) || 0;
             const baseAtk = parseFloat(document.getElementById('base-atk')?.value) || 0;
 
+            const partyCritCount = Number(document.getElementById('partyCritSynergy')?.value || 0);
+            const partyCritBonus = partyCritCount * 10; // 1명당 10%
+
             let allSkillResults = [];
 
             skillNames.forEach((skillName, skillIndex) => {
@@ -1551,6 +1563,15 @@ select option:checked {
 
                 if (baseCrit > 0) stats["치명"].push({ source: "캐릭터 기본 스탯", val: baseCrit, unit: "" });
                 if (baseSwift > 0) stats["신속"].push({ source: "캐릭터 기본 스탯", val: baseSwift, unit: "" });
+
+                // 3. 시너지 효과가 있을 때만 스탯 내역에 추가
+                if (partyCritBonus > 0) {
+                    stats["치명타 적중률"].push({
+                        source: `파티 시너지 (${partyCritCount}명)`,
+                        val: partyCritBonus,
+                        unit: "%"
+                    });
+                }
 
                 const sourceTypeMap = { '공간가르기': '깨달음', '우레바람': '도약' };
                 const tripodInfo = tripodDataSets[skillName];
