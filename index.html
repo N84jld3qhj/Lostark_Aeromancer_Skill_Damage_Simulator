@@ -1750,7 +1750,9 @@ select option:checked {
             addStat(commonStats, "치명", "캐릭터 기본 스탯", inputs.baseCrit, "");
             addStat(commonStats, "신속", "캐릭터 기본 스탯", inputs.baseSwift, "");
             addStat(commonStats, "치명타 적중률", "자체 시너지", 10);
-            addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
+            if (partyCritBonus > 0) {
+                addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
+            }
 
             // 각인 처리
             const engravingCategoryMap = [
