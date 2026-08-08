@@ -548,7 +548,24 @@ select option:checked {
   background-color: var(--accent-purple, #8b5cf6);
   color: #fff;
 }
+/* h2 접기/펴기 관련 스타일 */
+h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+}
 
+h2:hover {
+    color: var(--accent-light-purple, #a78bfa); /* 마우스 올렸을 때 강조 */
+}
+
+.toggle-icon {
+    font-size: 0.8em;
+    color: #888;
+    display: inline-block;
+    transition: transform 0.2s;
+}
     </style>
 </head>
 <body>
@@ -1310,13 +1327,13 @@ select option:checked {
         <!-- 8. 아크 패시브 - 진화 세팅 -->
         <h2 class="section-title">아크 패시브 - 진화 세팅</h2>
         <div class="box ark-passive-container">
-            <h2 class="ark-title">진화</h2>
+            <h3 class="ark-title">진화</h3>
             <div class="ark-grid-wrapper" id="arkEvolutionContainer"></div>
         </div>
 
         <!-- 결과 출력 섹션 -->
+        <h2>시뮬레이션 결과</h2>
         <div class="box" style="margin-top: 25px;">
-            <h2>시뮬레이션 결과</h2>
             <div id="output">계산 중입니다...</div>
         </div>
     </div>
@@ -2808,6 +2825,31 @@ select option:checked {
         window.addEventListener('beforeunload', () => {
             saveAutoSession();
         });
+    </script>
+    <script>
+        // 페이지 로드 후 h2 태그들에 접기/펴기 기능 적용
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("h2").forEach(h2 => {
+        // 클릭 가능함을 알려주는 커서 스타일 및 접힘 표시 아이콘 추가
+        h2.style.cursor = "pointer";
+        h2.style.userSelect = "none";
+        h2.innerHTML = `<span class="toggle-icon">▼</span> ${h2.innerHTML}`;
+
+        h2.addEventListener("click", () => {
+            const icon = h2.querySelector(".toggle-icon");
+            let nextEl = h2.nextElementSibling;
+
+            // 다음 h2를 만나거나 더 이상 요소가 없을 때까지 아래 요소들의 display 토글
+            const isCollapsing = icon.textContent === "▼";
+            icon.textContent = isCollapsing ? "▶" : "▼";
+
+            while (nextEl && nextEl.tagName !== "H2") {
+                nextEl.style.display = isCollapsing ? "none" : "";
+                nextEl = nextEl.nextElementSibling;
+            }
+        });
+    });
+});
     </script>
 </body>
 </html>
