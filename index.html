@@ -317,17 +317,24 @@ select option:checked {
         .ark-icon.grayscale { filter: grayscale(100%); opacity: 0.5; }
         .ark-node span { font-size: 0.72rem; color: var(--accent-highlight); font-family: monospace; }
 
-        /* Floating Action Bar */
-        .floating-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            z-index: 1000;
-        }
+        /* 플로팅 버튼 컨테이너 */
+.floating-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column; /* 세로 정렬 */
+    gap: 10px;
+    z-index: 1000;
+}
+
+/* 세로 정렬 시 버튼 폭 및 스타일 최적화 */
+.floating-container .floating-btn {
+    width: 140px; /* 고정 너비로 통일감 부여 */
+    justify-content: center;
+    padding: 10px 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
 
         .float-btn, .floating-btn {
             padding: 10px 14px;
@@ -565,6 +572,84 @@ h2:hover {
     color: #888;
     display: inline-block;
     transition: transform 0.2s;
+}
+
+/* 사용법 플로팅 버튼 스타일 (필요 시 기존 플로팅 버튼 색상에 맞춰 변경 가능) */
+.floating-btn.help-btn {
+    background-color: #6366f1; /* 스카이블루/인디고 계열 */
+    color: white;
+}
+.floating-btn.help-btn:hover {
+    background-color: #4f46e5;
+}
+
+/* 사용법 모달 오버레이 */
+.help-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* 최상단 레이어 */
+    backdrop-filter: blur(3px);
+}
+
+/* 모달 본체 */
+.help-modal-content {
+    background-color: #1e1e2e; /* 다크 모드 스타일 컨셉 */
+    color: #cdd6f4;
+    width: 90%;
+    max-width: 550px;
+    max-height: 80vh;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+    border: 1px solid #45475a;
+}
+
+.help-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #45475a;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+
+.help-modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #cba6f7;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #a6adc8;
+    cursor: pointer;
+}
+.close-btn:hover {
+    color: #f38ba8;
+}
+
+.help-modal-body h3 {
+    font-size: 1rem;
+    color: #89b4fa;
+    margin-top: 16px;
+    margin-bottom: 6px;
+}
+
+.help-modal-body p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0;
+    color: #bac2de;
 }
     </style>
 </head>
@@ -1379,12 +1464,34 @@ h2:hover {
 
     <!-- 하단 고정 플로팅 버튼 영역 -->
     <div class="floating-container">
+        <button type="button" class="floating-btn help-btn" id="helpModalOpenBtn">
+            <span class="btn-icon">❓</span>
+            <span class="btn-text">사용법</span>
+        </button>
         <button id="addCompareBtn" class="floating-btn compare-btn" title="현재 세팅 저장">📌 비교군 저장</button>
         <button id="openCompareModalBtn" class="floating-btn compare-btn" title="비교표 보기">📊 비교표 보기</button>
         <button id="saveBtn" class="float-btn save-btn" onclick="saveSettings()">💾 세팅 저장</button>
         <button id="loadBtn" class="float-btn load-btn" onclick="loadSettings()">📂 불러오기</button>
     </div>
-
+    <!-- 사용법 안내 모달 (HTML 최하단 body 닫히기 전에 추가) -->
+    <div id="helpModal" class="help-modal-overlay" style="display: none;">
+        <div class="help-modal-content">
+            <div class="help-modal-header">
+                <h2 class="no-accordion">📖 시뮬레이터 사용법</h2>
+                <button type="button" id="helpModalCloseBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="help-modal-body">
+                <h3>1. 치명 / 신속 설정</h3>
+                <p>팔찌 제거 > 아크 패시브-진화 1티어 초기화 > 캐릭터 정보창에 표기된 수치 입력</p>
+                <h3>2. 주스탯 / 힘민지</h3>
+                <p>인게임 캐릭터 정보 > 상세 정보 > 공격 > 힘민지</p>
+                <h3>3. 무기 공격력</h3>
+                <p>귀걸이 2개 제거 > 인게임 캐릭터 정보 > 상세 정보 > 공격 > 무기 공격력</p>
+                <h3>4. 완갑</h3>
+                <p>완갑 > 기본 공격력 입력.  무기 공격력 X</p>
+            </div>
+        </div>
+    </div>
     <script>
         // 전역 선택 상태 관리 변수
         let selectedSkillIdx = 1;
@@ -2828,26 +2935,47 @@ h2:hover {
     </script>
     <script>
         // 페이지 로드 후 h2 태그들에 접기/펴기 기능 적용
-document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("h2").forEach(h2 => {
-        // 클릭 가능함을 알려주는 커서 스타일 및 접힘 표시 아이콘 추가
-        h2.style.cursor = "pointer";
-        h2.style.userSelect = "none";
-        h2.innerHTML = `<span class="toggle-icon">▼</span> ${h2.innerHTML}`;
+// :not(.no-accordion) 을 추가하여 특정 클래스가 붙은 h2는 제외
+document.querySelectorAll("h2:not(.no-accordion)").forEach(h2 => {
+    h2.style.cursor = "pointer";
+    h2.style.userSelect = "none";
+    h2.innerHTML = `<span class="toggle-icon">▼</span> ${h2.innerHTML}`;
 
-        h2.addEventListener("click", () => {
-            const icon = h2.querySelector(".toggle-icon");
-            let nextEl = h2.nextElementSibling;
+    h2.addEventListener("click", () => {
+        const icon = h2.querySelector(".toggle-icon");
+        let nextEl = h2.nextElementSibling;
 
-            // 다음 h2를 만나거나 더 이상 요소가 없을 때까지 아래 요소들의 display 토글
-            const isCollapsing = icon.textContent === "▼";
-            icon.textContent = isCollapsing ? "▶" : "▼";
+        const isCollapsing = icon.textContent === "▼";
+        icon.textContent = isCollapsing ? "▶" : "▼";
 
-            while (nextEl && nextEl.tagName !== "H2") {
-                nextEl.style.display = isCollapsing ? "none" : "";
-                nextEl = nextEl.nextElementSibling;
-            }
-        });
+        while (nextEl && nextEl.tagName !== "H2") {
+            nextEl.style.display = isCollapsing ? "none" : "";
+            nextEl = nextEl.nextElementSibling;
+        }
+    });
+});
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+    const helpModal = document.getElementById("helpModal");
+    const openBtn = document.getElementById("helpModalOpenBtn");
+    const closeBtn = document.getElementById("helpModalCloseBtn");
+
+    // 모달 열기
+    openBtn?.addEventListener("click", () => {
+        helpModal.style.display = "flex";
+    });
+
+    // X 버튼으로 닫기
+    closeBtn?.addEventListener("click", () => {
+        helpModal.style.display = "none";
+    });
+
+    // 바깥 검은 배경 클릭 시 닫기
+    helpModal?.addEventListener("click", (e) => {
+        if (e.target === helpModal) {
+            helpModal.style.display = "none";
+        }
     });
 });
     </script>
