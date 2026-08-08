@@ -1960,21 +1960,25 @@ select option:checked {
             });
 
             // 장신구 처리 (슬롯 3개 순회)
+            // 장신구 처리 (슬롯 3개 순회)
             inputs.accessories.forEach(acc => {
-                // acc.slots (슬롯 1, 2, 3 배열) 순회
                 acc.slots.forEach((slot, idx) => {
                     if (slot.opt !== "none" && accessoryTable[slot.opt]?.[slot.grade] !== undefined) {
                         const val = accessoryTable[slot.opt][slot.grade];
                         
-                        // 옵션명이 "공격력 %"일 때 기존 스탯 범주 이름으로 매핑 (필요에 따라 제어)
+                        // 옵션명이 "공격력 %"일 때 category 매핑 처리
                         const category = (slot.opt === "공격력 %") ? "공격력 %" : slot.opt;
                         
-                        // 슬롯 번호(idx + 1)를 반영하여 출처 기록
+                        // 🔑 옵션명에 '%'가 포함되어 있으면 단위를 "%"로, 아니면 ""로 설정
+                        const unit = slot.opt.includes("%") ? "%" : "";
+
+                        // 슬롯 번호(idx + 1)를 반영하여 출처 및 단위(unit) 기록
                         addStat(
                             commonStats, 
                             category, 
                             `장신구: ${acc.name} (슬롯${idx + 1}) [${slot.opt} - ${slot.grade}]`, 
-                            val,""
+                            val,
+                            unit // 🔑 unit 전달
                         );
                     }
                 });
@@ -2287,6 +2291,42 @@ select option:checked {
                 </div>
             `;
 
+
+            // =========================================================================
+            // 2. 스킬별 요약 테이블
+            // =========================================================================
+            htmlOutput += `<p>
+                <h3 style="border:none; margin-bottom:8px;">[스킬별 시뮬레이션 결과 요약] <span style="font-size: 0.75em; font-weight: normal; color: var(--text-sub);">(행 클릭 시 세부 내역 표시)</span></h3>
+                <div class="table-wrapper">
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>스킬명</th>
+                                <th>대미지 기대값</th>
+                                <th>스킬 쿨타임</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            allSkillResults.forEach((res, idx) => {
+                const isSelected = (idx === selectedSkillIdx);
+                const selectedClass = isSelected ? 'class="selected-row"' : '';
+                htmlOutput += `
+                    <tr ${selectedClass} onclick="selectSkillRow(${idx})">
+                        <td style="font-weight: bold; ${isSelected ? 'color: white' : ''}">${res.skillName} ${isSelected ? '✔' : ''}</td>
+                        <td class="dmg-val">${Math.floor(res.expDmg).toLocaleString()}</td>
+                        <td class="highlight-val">${res.finalCooldown.toFixed(2)}초</td>
+                    </tr>
+                `;
+            });
+
+            htmlOutput += `
+                        </tbody>
+                    </table>
+                </div>
+                <hr style="border: 0; border-top: 1px dashed var(--border-color); margin: 25px 0;">
+            `;
             // =========================================================================
             // 0. [공격력 산출 과정 요약 카드] 추가
             // =========================================================================
@@ -2301,53 +2341,53 @@ select option:checked {
             const flatAtkBonus = commonRes.flatAtkBonus || 0;
             const percentAtkBonus = commonRes.percentAtkBonus || 0;
             const finalAtk = commonRes.finalAtk || 0;
-            // 1. 무기 공격력 객체(배열) 가져오기
-// 1. 무기 공격력 (고정 수치) 세로 출력 조립
-const weaponAtkObj = commonRes.stats["무기 공격력"];
-let weaponAtkDetailStr = "";
 
-if (Array.isArray(weaponAtkObj) && weaponAtkObj.length > 0) {
-    weaponAtkDetailStr = weaponAtkObj
-        .map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`)
-        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
-} else {
-    weaponAtkDetailStr = `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
-}
+            // 1. 무기 공격력 (고정 수치) 세로 출력 조립
+            const weaponAtkObj = commonRes.stats["무기 공격력"];
+            let weaponAtkDetailStr = "";
 
-// 2. 무기 공격력 % 세로 출력 조립
-const weaponAtkPercentArr = commonRes.stats["무기 공격력 %"] || commonRes.stats["무기 공격력%"] || [];
-let weaponAtkPercentDetailStr = "";
+            if (Array.isArray(weaponAtkObj) && weaponAtkObj.length > 0) {
+                weaponAtkDetailStr = weaponAtkObj
+                    .map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`)
+                    .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+            } else {
+                weaponAtkDetailStr = `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
+            }
 
-if (Array.isArray(weaponAtkPercentArr) && weaponAtkPercentArr.length > 0) {
-    weaponAtkPercentDetailStr = weaponAtkPercentArr
-        .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
-        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
-} else {
-    weaponAtkPercentDetailStr = `${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
-}
-const AtkArr = commonRes.stats["공격력"];
+            // 2. 무기 공격력 % 세로 출력 조립
+            const weaponAtkPercentArr = commonRes.stats["무기 공격력 %"] || commonRes.stats["무기 공격력%"] || [];
+            let weaponAtkPercentDetailStr = "";
 
-const AtkPercentArr = commonRes.stats["공격력 %"] ;
-let AtkPercentDetailStr ="";
-let AtkDetailStr ="";
+            if (Array.isArray(weaponAtkPercentArr) && weaponAtkPercentArr.length > 0) {
+                weaponAtkPercentDetailStr = weaponAtkPercentArr
+                    .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
+                    .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+            } else {
+                weaponAtkPercentDetailStr = `${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
+            }
+            const AtkArr = commonRes.stats["공격력"];
 
-if (Array.isArray(AtkArr) && AtkArr.length > 0) {
-        AtkDetailStr = AtkArr
-        .map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`)
-        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
-} else {
-    AtkDetailStr= ""
-}
+            const AtkPercentArr = commonRes.stats["공격력 %"] ;
+            let AtkPercentDetailStr ="";
+            let AtkDetailStr ="";
+
+            if (Array.isArray(AtkArr) && AtkArr.length > 0) {
+                    AtkDetailStr = AtkArr
+                    .map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`)
+                    .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+            } else {
+                AtkDetailStr= ""
+            }
 
 
-if (Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0) {
-    AtkPercentDetailStr = AtkPercentArr
-        .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
-        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
-} else {
-    AtkPercentDetailStr = ""
-   
-}
+            if (Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0) {
+                AtkPercentDetailStr = AtkPercentArr
+                    .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
+                    .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+            } else {
+                AtkPercentDetailStr = ""
+            
+            }
 
 
             // 세공 5레벨 이상일 때 수식 텍스트 추가
@@ -2421,41 +2461,7 @@ if (Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0) {
             `;
 
 
-            // =========================================================================
-            // 2. 스킬별 요약 테이블
-            // =========================================================================
-            htmlOutput += `<p>
-                <h3 style="border:none; margin-bottom:8px;">[스킬별 시뮬레이션 결과 요약] <span style="font-size: 0.75em; font-weight: normal; color: var(--text-sub);">(행 클릭 시 세부 내역 표시)</span></h3>
-                <div class="table-wrapper">
-                    <table class="summary-table">
-                        <thead>
-                            <tr>
-                                <th>스킬명</th>
-                                <th>대미지 기대값</th>
-                                <th>스킬 쿨타임</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            allSkillResults.forEach((res, idx) => {
-                const isSelected = (idx === selectedSkillIdx);
-                const selectedClass = isSelected ? 'class="selected-row"' : '';
-                htmlOutput += `
-                    <tr ${selectedClass} onclick="selectSkillRow(${idx})">
-                        <td style="font-weight: bold; ${isSelected ? 'color: white' : ''}">${res.skillName} ${isSelected ? '✔' : ''}</td>
-                        <td class="dmg-val">${Math.floor(res.expDmg).toLocaleString()}</td>
-                        <td class="highlight-val">${res.finalCooldown.toFixed(2)}초</td>
-                    </tr>
-                `;
-            });
-
-            htmlOutput += `
-                        </tbody>
-                    </table>
-                </div>
-                <hr style="border: 0; border-top: 1px dashed var(--border-color); margin: 25px 0;">
-            `;
+            
 
             // =========================================================================
             // 3. 선택 스킬 상세 항목
@@ -2491,13 +2497,13 @@ if (Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0) {
                         htmlOutput += `<div class="stat-item">  - ${item.source}: ${prefix}${item.val}${item.unit}</div>`;
                     });
 
-                    if (cat === "치명") {
-                        const totalCrit = items.reduce((sum, item) => sum + (Number(item.val) || 0), 0);
-                        htmlOutput += `<div class="stat-item" style="color: var(--accent-highlight); font-weight: bold;">  > 총 치명: ${totalCrit}</div>`;
-                    } else if (cat === "신속") {
-                        const totalSwift = items.reduce((sum, item) => sum + (Number(item.val) || 0), 0);
-                        htmlOutput += `<div class="stat-item" style="color: var(--accent-highlight); font-weight: bold;">  > 총 신속: ${totalSwift}</div>`;
-                    }
+                    // if (cat === "치명") {
+                    //     const totalCrit = items.reduce((sum, item) => sum + (Number(item.val) || 0), 0);
+                    //     htmlOutput += `<div class="stat-item" style="color: var(--accent-highlight); font-weight: bold;">  > 총 치명: ${totalCrit}</div>`;
+                    // } else if (cat === "신속") {
+                    //     const totalSwift = items.reduce((sum, item) => sum + (Number(item.val) || 0), 0);
+                    //     htmlOutput += `<div class="stat-item" style="color: var(--accent-highlight); font-weight: bold;">  > 총 신속: ${totalSwift}</div>`;
+                    // }
                 }
             });
 
