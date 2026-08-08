@@ -1959,7 +1959,15 @@ select option:checked {
                 }
             });
 
-            // 장신구 처리 (슬롯 3개 순회)
+            const percentStatList = [
+                "공격력 %", 
+                "무기 공격력 %", 
+                "치명타 피해", 
+                "치명타 적중률", 
+                "피해 증가", 
+                "추가 피해"
+            ];
+
             // 장신구 처리 (슬롯 3개 순회)
             inputs.accessories.forEach(acc => {
                 acc.slots.forEach((slot, idx) => {
@@ -1969,8 +1977,9 @@ select option:checked {
                         // 옵션명이 "공격력 %"일 때 category 매핑 처리
                         const category = (slot.opt === "공격력 %") ? "공격력 %" : slot.opt;
                         
-                        // 🔑 옵션명에 '%'가 포함되어 있으면 단위를 "%"로, 아니면 ""로 설정
-                        const unit = slot.opt.includes("%") ? "%" : "";
+                        // 🔑 옵션명에 '%'가 포함되어 있거나, percentStatList 목록에 속하면 단위 "%" 부여
+                        const isPercent = slot.opt.includes("%") || percentStatList.includes(slot.opt);
+                        const unit = isPercent ? "%" : "";
 
                         // 슬롯 번호(idx + 1)를 반영하여 출처 및 단위(unit) 기록
                         addStat(
@@ -1978,7 +1987,7 @@ select option:checked {
                             category, 
                             `장신구: ${acc.name} (슬롯${idx + 1}) [${slot.opt} - ${slot.grade}]`, 
                             val,
-                            unit // 🔑 unit 전달
+                            unit
                         );
                     }
                 });
