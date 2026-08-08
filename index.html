@@ -559,7 +559,7 @@ select option:checked {
         <!-- 최상단 기본 스탯 입력 섹션 -->
         <h2 class="section-title">기본 스탯</h2>
 <div class="box">
-    <div class="grid-3">
+    <div class="grid-4">
         <!-- 1열: 치명 / 신속 -->
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <div>
@@ -570,12 +570,11 @@ select option:checked {
                 <label for="base-swift" style="font-weight: bold;">기본 신속</label>
                 <input type="number" id="base-swift" min="0" value="237" placeholder="기본 신속 입력">
             </div>
-        </div>
 
-        <!-- 2열: 주 스탯 / 무기 공격력 -->
+        </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <div>
-                <label for="base-stat" style="font-weight: bold;">주 스탯 (힘/민/지)</label>
+                <label for="base-stat" style="font-weight: bold;">주스탯 (힘/민/지)</label>
                 <input type="number" id="base-stat" min="0" value="500000" placeholder="예: 500000">
             </div>
             <div>
@@ -584,14 +583,29 @@ select option:checked {
             </div>
         </div>
 
-        <!-- 3열: 파티 치적 시너지 -->
-        <div class="form-group">
-            <label for="partyCritSynergy" style="font-weight: bold;">파티 치적 시너지(본인 제외)</label>
-            <select id="partyCritSynergy">
-                <option value="0">0명 (0%)</option>
-                <option value="1">1명 (+10%)</option>
-                <option value="2">2명 (+20%)</option>
-            </select>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div>
+                <label for="vambrace-normal-atk" style="font-weight: bold;">완갑 기본 공격력</label>
+                <input type="number" id="vambrace-normal-atk" min="0" value="5900" placeholder="예: 5900">
+            </div>
+            <div>
+                <label for="vambrace-normal-atk-percent" style="font-weight: bold;">완갑 기본 공격력 %</label>
+                <input type="number" id="vambrace-normal-atk-percent" min="0" value="2" placeholder="예: 2">
+            </div>
+        </div>
+        <!-- 3열: 파티 치적 시너지  -->
+         <div style="display: flex; flex-direction: column; gap: 8px;">
+
+             <div class="form-group">
+                     <label for="partyCritSynergy" style="font-weight: bold;">파티 치적 시너지(본인 제외)</label>
+                     <select id="partyCritSynergy">
+                         <option value="0">0명 (0%)</option>
+                         <option value="1">1명 (+10%)</option>
+                         <option value="2">2명 (+20%)</option>
+                     </select>
+         </div>
+
         </div>
     </div>
 </div>
@@ -1815,7 +1829,8 @@ select option:checked {
             // 🔑 기존 baseAtk 제거 후 주 스탯 및 무기 공격력으로 대체
             const baseStat = parseFloat(document.getElementById('base-stat')?.value) || 0;
             const weaponAtk = parseFloat(document.getElementById('weapon-atk')?.value) || 0;
-            
+            const vambraceNomalAtk = parseFloat(document.getElementById('vambrace-normal-atk')?.value) || 0;
+            const vambraceNormalAtkPercent = parseFloat(document.getElementById('vambrace-normal-atk-percent')?.value) || 0;
             const partyCritCount = Number(document.getElementById('partyCritSynergy')?.value || 0);
 
             // 각인 입력 수집
@@ -1891,7 +1906,9 @@ select option:checked {
             };
 
             return {
-                baseStat, weaponAtk, baseCrit, baseSwift, partyCritCount,
+                baseStat, weaponAtk, baseCrit, baseSwift, 
+                vambraceNomalAtk , vambraceNormalAtkPercent,
+                partyCritCount,
                 engravings, accessories, gems, skillGems,
                 chaosCores, orderCores, bracelet
             };
@@ -1906,20 +1923,24 @@ select option:checked {
             let massIncreasePenalty = 0;
 
             let commonStats = {
-                "무기 공격력":[],"공격력":[],
+                "무기 공격력":[],"무기 공격력 %": [],"기본 공격력":[] , "기본 공격력 %":[], "공격력":[],"공격력 %": [], 
                 "치명": [], "신속": [], "진화형 피해": [], "추가 피해": [],
                 "치명타 적중률": [], "치명타 피해": [], "적에게 주는 피해": [],
-                "치명타 시 적에게 주는 피해": [], "보석 공격력 %":[],"공격력 %": [], "무기 공격력 %": [],
+                "치명타 시 적에게 주는 피해": [], 
                 "공이속": [], "공격속도": [], "쿨타임 감소": [],
                 "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소":[]
             };
 
             // 기본 스탯 & 파티 시너지
+            const originWeaponAtk = inputs.weaponAtk / 1.03
+            const originBaseStat = inputs.baseStat / 1.09
             addStat(commonStats,"무기 공격력", "무기", inputs.weaponAtk,"")
             addStat(commonStats,"무기 공격력", "만찬", 1800,"")
             addStat(commonStats, "치명", "캐릭터 기본 스탯", inputs.baseCrit, "");
             addStat(commonStats, "신속", "캐릭터 기본 스탯", inputs.baseSwift, "");
             addStat(commonStats, "치명타 적중률", "자체 시너지", 10);
+            addStat(commonStats,"기본 공격력","완갑 기본 공격력",inputs.vambraceNomalAtk,"");
+            addStat(commonStats,"기본 공격력 %","완갑 기본 공격력 %",inputs.vambraceNormalAtkPercent,"%");
             if (partyCritBonus > 0) {
                 addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
             }
@@ -2008,7 +2029,7 @@ select option:checked {
                 // 1. 기본 공격력 연산용 보석 공증을 개별 보석 항목으로 등록
                 if (gemAtkVal > 0) {
                     const sourceText = `보석(${gem.type}): ${gem.skillName} [${gem.level}레벨]`;
-                    addStat(commonStats, "보석 공격력 %", sourceText, parseFloat(gemAtkVal.toFixed(2)));
+                    addStat(commonStats, "기본 공격력 %", sourceText, parseFloat(gemAtkVal.toFixed(2)));
                 }
 
                 // 2. 스킬별 겁화/작열 효과 적용을 위한 개별 맵 구성
@@ -2125,9 +2146,11 @@ select option:checked {
 
                 // const finalWeaponAtk = (inputs.weaponAtk + 1800) * (1 + (weaponAtkPercent / 100)+0.03)
 
-                const gemAtkPercent = getStatSum(commonStats, "보석 공격력 %");
+                const normalAtkPercent = getStatSum(commonStats, "기본 공격력 %");
+
+                // 기본 공격력
                 const calculatedBaseAtk = inputs.baseStat > 0 && finalWeaponAtk > 0 
-                    ? Math.sqrt((inputs.baseStat * finalWeaponAtk) / 6) * (1 + (gemAtkPercent + carveAtkBonusPercent) / 100)
+                    ? (Math.sqrt((inputs.baseStat * finalWeaponAtk) / 6)+ inputs.vambraceNomalAtk ) * (1 + (normalAtkPercent + carveAtkBonusPercent) / 100)
                     : 0;
 
                 const flatAtkBonus = getStatSum(commonStats, "공격력");
@@ -2139,7 +2162,7 @@ select option:checked {
                     inputs: { baseStat: inputs.baseStat, weaponAtk: inputs.weaponAtk },
                     weaponAtkPercent,
                     finalWeaponAtk,
-                    gemAtkPercent,
+                    normalAtkPercent,
                     calculatedBaseAtk,
                     flatAtkBonus,
                     percentAtkBonus,
@@ -2238,13 +2261,14 @@ select option:checked {
                     inputs,
                     weaponAtkPercent,
                     finalWeaponAtk,
-                    gemAtkPercent,
+                    normalAtkPercent,
                     carveAtkBonusPercent, // 🔑 세공 보너스 퍼센트 (1.5 또는 0)
                     totalStoneLevel,      // 🔑 세공 합산 레벨
                     calculatedBaseAtk,
                     flatAtkBonus: getStatSum(stats, "공격력"),
                     percentAtkBonus: getStatSum(stats, "공격력 %"),
-
+                    vambraceNormalAtk: getStatSum(stats,"기본 공격력"),
+                    vambraceNormalAtkPercent: getStatSum(stats,"기본 공격력 %"),
                     // 기존 데이터
                     finalAtk,
                     totalCritStat,
@@ -2343,10 +2367,12 @@ select option:checked {
             const inputs = commonRes.inputs || { baseStat: 0, weaponAtk: 0 };
             const weaponAtkPercent = commonRes.weaponAtkPercent || 0;
             const finalWeaponAtk = commonRes.finalWeaponAtk || 0;
-            const gemAtkPercent = commonRes.gemAtkPercent || 0;
+            const normalAtkPercent = commonRes.normalAtkPercent || 0;
             const carveAtkBonusPercent = commonRes.carveAtkBonusPercent || 0;
             const totalStoneLevel = commonRes.totalStoneLevel || 0;
             const calculatedBaseAtk = commonRes.calculatedBaseAtk || 0;
+            const vambraceNormalAtck = commonRes.vambraceNomalAtk || 0;
+            const vambraceNormalAtckPercent = commonRes.vambraceNormalAtckPercent || 0;
             const flatAtkBonus = commonRes.flatAtkBonus || 0;
             const percentAtkBonus = commonRes.percentAtkBonus || 0;
             const finalAtk = commonRes.finalAtk || 0;
@@ -2398,6 +2424,28 @@ select option:checked {
             
             }
 
+            const VambraceNormalAtk = commonRes.stats["기본 공격력"] ;
+            const VambraceNormalAtkPercent = commonRes.stats["기본 공격력 %"] ;
+            let VambraceNormalAtkDetailStr ="";
+            let VambraceNormalAtkPercentDetailStr ="";
+
+            if (Array.isArray(VambraceNormalAtk) && VambraceNormalAtk.length > 0) {
+                    VambraceNormalAtkDetailStr = VambraceNormalAtk
+                    .map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`)
+                    .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+            } else {
+                VambraceNormalAtkDetailStr= ""
+            }
+
+
+            if (Array.isArray(VambraceNormalAtkPercent) && VambraceNormalAtkPercent.length > 0) {
+                VambraceNormalAtkPercentDetailStr = VambraceNormalAtkPercent
+                    .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
+                    .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+            } else {
+                VambraceNormalAtkPercentDetailStr = ""
+            
+            }
 
             // 세공 5레벨 이상일 때 수식 텍스트 추가
             const carveText = carveAtkBonusPercent > 0 
@@ -2438,7 +2486,12 @@ select option:checked {
                             </div>
                             <code style="font-size: 0.92rem; color: var(--text-sub); font-family: monospace; display: block; word-break: break-all;">
                                 <strong>[기본 공격력 합산]</strong><br>
-                                √( ${inputs.baseStat.toLocaleString()} [주스탯] × ${Math.floor(finalWeaponAtk).toLocaleString()} [최종무공] / 6 ) × (1 + ${gemAtkPercent.toFixed(2)}% [보석공증]${carveText});
+                                (√( ${inputs.baseStat.toLocaleString()} [주스탯] + × ${Math.floor(finalWeaponAtk).toLocaleString()} [최종무공]) / 6) + ${VambraceNormalAtkDetailStr}
+                                <br><br>
+                                <strong>[계수]</strong><br>
+                                
+                                &nbsp;&nbsp;&nbsp;&nbsp;${VambraceNormalAtkPercentDetailStr}<br>
+                                &nbsp;${carveText}
                                 
                             </code>
                             <div style="text-align: right; font-weight: bold; color: var(--text-main); margin-top: 8px; font-size: 1.05rem;">
