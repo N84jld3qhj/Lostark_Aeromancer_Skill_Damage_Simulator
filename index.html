@@ -1963,7 +1963,7 @@ select option:checked {
                 const CritBaseDamage = nonCritBaseDamage * (totalCritDamagePercent / 100) * critHitDamageMultiplier;
 
                 const totalCritStat = getStatSum(stats, "치명");
-                const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + partyCritBonus + (Math.min(finalMoveSpeed, STAT_CONSTANTS.SPEED_CAP) * STAT_CONSTANTS.SPEED_TO_CRIT_RATE_COEFF) + getStatSum(stats, "치명타 적중률");
+                const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + (Math.min(finalMoveSpeed, STAT_CONSTANTS.SPEED_CAP) * STAT_CONSTANTS.SPEED_TO_CRIT_RATE_COEFF) + getStatSum(stats, "치명타 적중률");
                 const critRate = Math.min(totalCritRatePercent / 100, 1.0);
                 const expDmg = CritBaseDamage * critRate + nonCritBaseDamage * (1 - critRate);
 
