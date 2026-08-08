@@ -558,30 +558,43 @@ select option:checked {
         
         <!-- 최상단 기본 스탯 입력 섹션 -->
         <h2 class="section-title">기본 스탯</h2>
-        <div class="box">
-            <div class="grid-4">
-                <div>
-                    <label for="base-crit" style="font-weight: bold;">기본 치명</label>
-                    <input type="number" id="base-crit" min="0" value="79" placeholder="기본 치명 입력">
-                </div>
-                <div>
-                    <label for="base-swift" style="font-weight: bold;">기본 신속</label>
-                    <input type="number" id="base-swift" min="0" value="237" placeholder="기본 신속 입력">
-                </div>
-                <div>
-                    <label for="base-atk" style="font-weight: bold;">기본 공격력</label>
-                    <input type="number" id="base-atk" min="0" value="210000" placeholder="기본 공격력 입력">
-                </div>
-                <div class="form-group">
-                    <label for="partyCritSynergy">파티 치적 시너지(본인 제외)</label>
-                    <select id="partyCritSynergy">
-                        <option value="0">0명 (0%)</option>
-                        <option value="1">1명 (+10%)</option>
-                        <option value="2">2명 (+20%)</option>
-                    </select>
-                </div>
+<div class="box">
+    <div class="grid-3">
+        <!-- 1열: 치명 / 신속 -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div>
+                <label for="base-crit" style="font-weight: bold;">기본 치명</label>
+                <input type="number" id="base-crit" min="0" value="79" placeholder="기본 치명 입력">
+            </div>
+            <div>
+                <label for="base-swift" style="font-weight: bold;">기본 신속</label>
+                <input type="number" id="base-swift" min="0" value="237" placeholder="기본 신속 입력">
             </div>
         </div>
+
+        <!-- 2열: 주 스탯 / 무기 공격력 -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div>
+                <label for="base-stat" style="font-weight: bold;">주 스탯 (힘/민/지)</label>
+                <input type="number" id="base-stat" min="0" value="500000" placeholder="예: 500000">
+            </div>
+            <div>
+                <label for="weapon-atk" style="font-weight: bold;">무기 공격력</label>
+                <input type="number" id="weapon-atk" min="0" value="130000" placeholder="예: 130000">
+            </div>
+        </div>
+
+        <!-- 3열: 파티 치적 시너지 -->
+        <div class="form-group">
+            <label for="partyCritSynergy" style="font-weight: bold;">파티 치적 시너지(본인 제외)</label>
+            <select id="partyCritSynergy">
+                <option value="0">0명 (0%)</option>
+                <option value="1">1명 (+10%)</option>
+                <option value="2">2명 (+20%)</option>
+            </select>
+        </div>
+    </div>
+</div>
 
         <!-- 1. 각인 세팅 섹션 -->
         <h2 class="section-title">각인 세팅 (최대 5개)</h2>
@@ -744,142 +757,267 @@ select option:checked {
 
         <!-- 2. 장신구 세팅 섹션 -->
         <h2 class="section-title">장신구 세팅</h2>
-        <div class="grid-5">
-            <div class="box">
-                <h3>목걸이</h3>
-                <div class="sub-label">[옵션 1]</div>
-                <select id="neckOpt1">
-                    <option value="none">없음</option>
-                    <option value="추가 피해" selected>추가 피해</option>
-                    <option value="적에게 주는 피해">적에게 주는 피해</option>
-                </select>
-                <select id="neckGrade1">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
+<div class="grid-5">
+    <!-- 목걸이 -->
+    <div class="box">
+        <h3>목걸이</h3>
+        <div class="sub-label">[옵션 1]</div>
+        <select id="neckOpt1">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해" selected>추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="neckGrade1">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
 
-                <div class="sub-label">[옵션 2]</div>
-                <select id="neckOpt2">
-                    <option value="none">없음</option>
-                    <option value="추가 피해">추가 피해</option>
-                    <option value="적에게 주는 피해" selected>적에게 주는 피해</option>
-                </select>
-                <select id="neckGrade2">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
-            </div>
+        <div class="sub-label">[옵션 2]</div>
+        <select id="neckOpt2">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해" selected>적에게 주는 피해</option>
+        </select>
+        <select id="neckGrade2">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
 
-            <div class="box">
-                <h3>귀걸이 1</h3>
-                <div class="sub-label">[옵션 1]</div>
-                <select id="ear1Opt1">
-                    <option value="none">없음</option>
-                    <option value="공격력 %" selected>공격력 %</option>
-                    <option value="무기 공격력 %">무기 공격력 %</option>
-                </select>
-                <select id="ear1Grade1">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
+        <div class="sub-label">[옵션 3]</div>
+        <select id="neckOpt3">
+            <option value="none" selected>없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="neckGrade3">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+    </div>
 
-                <div class="sub-label">[옵션 2]</div>
-                <select id="ear1Opt2">
-                    <option value="none">없음</option>
-                    <option value="공격력 %">공격력 %</option>
-                    <option value="무기 공격력 %" selected>무기 공격력 %</option>
-                </select>
-                <select id="ear1Grade2">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
-            </div>
+    <!-- 귀걸이 1 -->
+    <div class="box">
+        <h3>귀걸이 1</h3>
+        <div class="sub-label">[옵션 1]</div>
+        <select id="ear1Opt1">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %" selected>공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="ear1Grade1">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
 
-            <div class="box">
-                <h3>귀걸이 2</h3>
-                <div class="sub-label">[옵션 1]</div>
-                <select id="ear2Opt1">
-                    <option value="none">없음</option>
-                    <option value="공격력 %">공격력 %</option>
-                    <option value="무기 공격력 %" selected>무기 공격력 %</option>
-                </select>
-                <select id="ear2Grade1">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
+        <div class="sub-label">[옵션 2]</div>
+        <select id="ear1Opt2">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %" selected>무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="ear1Grade2">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
 
-                <div class="sub-label">[옵션 2]</div>
-                <select id="ear2Opt2">
-                    <option value="none">없음</option>
-                    <option value="공격력 %" selected>공격력 %</option>
-                    <option value="무기 공격력 %">무기 공격력 %</option>
-                </select>
-                <select id="ear2Grade2">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
-            </div>
+        <div class="sub-label">[옵션 3]</div>
+        <select id="ear1Opt3">
+            <option value="none" selected>없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="ear1Grade3">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+    </div>
 
-            <div class="box">
-                <h3>반지 1</h3>
-                <div class="sub-label">[옵션 1]</div>
-                <select id="ring1Opt1">
-                    <option value="none">없음</option>
-                    <option value="치명타 적중률" selected>치명타 적중률</option>
-                    <option value="치명타 피해">치명타 피해</option>
-                </select>
-                <select id="ring1Grade1">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
+    <!-- 귀걸이 2 -->
+    <div class="box">
+        <h3>귀걸이 2</h3>
+        <div class="sub-label">[옵션 1]</div>
+        <select id="ear2Opt1">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %" selected>무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="ear2Grade1">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
 
-                <div class="sub-label">[옵션 2]</div>
-                <select id="ring1Opt2">
-                    <option value="none">없음</option>
-                    <option value="치명타 적중률">치명타 적중률</option>
-                    <option value="치명타 피해" selected>치명타 피해</option>
-                </select>
-                <select id="ring1Grade2">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
-            </div>
+        <div class="sub-label">[옵션 2]</div>
+        <select id="ear2Opt2">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %" selected>공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="ear2Grade2">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
 
-            <div class="box">
-                <h3>반지 2</h3>
-                <div class="sub-label">[옵션 1]</div>
-                <select id="ring2Opt1">
-                    <option value="none">없음</option>
-                    <option value="치명타 적중률">치명타 적중률</option>
-                    <option value="치명타 피해" selected>치명타 피해</option>
-                </select>
-                <select id="ring2Grade1">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
+        <div class="sub-label">[옵션 3]</div>
+        <select id="ear2Opt3">
+            <option value="none" selected>없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="추가 피해">추가 피해</option>
+            <option value="적에게 주는 피해">적에게 주는 피해</option>
+        </select>
+        <select id="ear2Grade3">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+    </div>
 
-                <div class="sub-label">[옵션 2]</div>
-                <select id="ring2Opt2">
-                    <option value="none">없음</option>
-                    <option value="치명타 적중률" selected>치명타 적중률</option>
-                    <option value="치명타 피해">치명타 피해</option>
-                </select>
-                <select id="ring2Grade2">
-                    <option value="상" selected>상</option>
-                    <option value="중">중</option>
-                    <option value="하">하</option>
-                </select>
-            </div>
-        </div>
+    <!-- 반지 1 -->
+    <div class="box">
+        <h3>반지 1</h3>
+        <div class="sub-label">[옵션 1]</div>
+        <select id="ring1Opt1">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="치명타 적중률" selected>치명타 적중률</option>
+            <option value="치명타 피해">치명타 피해</option>
+        </select>
+        <select id="ring1Grade1">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+
+        <div class="sub-label">[옵션 2]</div>
+        <select id="ring1Opt2">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="치명타 적중률">치명타 적중률</option>
+            <option value="치명타 피해" selected>치명타 피해</option>
+        </select>
+        <select id="ring1Grade2">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+
+        <div class="sub-label">[옵션 3]</div>
+        <select id="ring1Opt3">
+            <option value="none" selected>없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="치명타 적중률">치명타 적중률</option>
+            <option value="치명타 피해">치명타 피해</option>
+        </select>
+        <select id="ring1Grade3">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+    </div>
+
+    <!-- 반지 2 -->
+    <div class="box">
+        <h3>반지 2</h3>
+        <div class="sub-label">[옵션 1]</div>
+        <select id="ring2Opt1">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="치명타 적중률">치명타 적중률</option>
+            <option value="치명타 피해" selected>치명타 피해</option>
+        </select>
+        <select id="ring2Grade1">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+
+        <div class="sub-label">[옵션 2]</div>
+        <select id="ring2Opt2">
+            <option value="none">없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="치명타 적중률" selected>치명타 적중률</option>
+            <option value="치명타 피해">치명타 피해</option>
+        </select>
+        <select id="ring2Grade2">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+
+        <div class="sub-label">[옵션 3]</div>
+        <select id="ring2Opt3">
+            <option value="none" selected>없음</option>
+            <option value="공격력">공격력</option>
+            <option value="공격력 %">공격력 %</option>
+            <option value="무기 공격력">무기 공격력</option>
+            <option value="무기 공격력 %">무기 공격력 %</option>
+            <option value="치명타 적중률">치명타 적중률</option>
+            <option value="치명타 피해">치명타 피해</option>
+        </select>
+        <select id="ring2Grade3">
+            <option value="상" selected>상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+        </select>
+    </div>
+</div>
 
         <!-- 3. 젬 세팅 섹션 -->
         <h2 class="section-title">젬 세팅</h2>
@@ -1018,6 +1156,21 @@ select option:checked {
                             </td>
                             <td>
                                 <select class="gem-select" data-skill="싹쓸바람" data-type="작열" onchange="checkGemCount(this)">
+                                    <option value="없음" selected>없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold;">여우비</td>
+                            <td>
+                                <select class="gem-select" data-skill="여우비" data-type="겁화" onchange="checkGemCount(this)">
+                                    <option value="없음">없음</option>
+                                    <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="gem-select" data-skill="여우비" data-type="작열" onchange="checkGemCount(this)">
                                     <option value="없음" selected>없음</option>
                                     <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
                                 </select>
@@ -1372,6 +1525,55 @@ select option:checked {
             "치피단독": { "치피": { 상: 10, 중: 8.4, 하: 6.8 } }
         };
 
+ braceletTable = {
+    // 1. 공이속
+    "공이속": { "공이속": { 상: 6, 중: 5, 하: 4 } },
+
+    // 2. 복합 딜 옵션 (치적+치적주피, 치피+치적주피, 쿨증+적주피 등)
+    "치적+치적주피": { "치적": { 상: 5, 중: 4.2, 하: 3.4 }, "치적주피": { 상: 1.5, 중: 1.5, 하: 1.5 } },
+    "치피+치적주피": { "치피": { 상: 10, 중: 8.4, 하: 6.8 }, "치적주피": { 상: 1.5, 중: 1.5, 하: 1.5 } },
+    "적주피": { "적주피": { 상: 3.0, 중: 2.5, 하: 2.0 } },
+    "적주피+무력화": { "적주피": { 상: 3.0, 중: 2.5, 하: 2.0 }, "무력화 적주피": { 상: 5.0, 중: 4.5, 하: 4.0 } },
+    "쿨증+적주피": { "적주피": { 상: 5.5, 중: 5.0, 하: 4.5 }, "쿨증": { 상: 2, 중: 2, 하: 2 } },
+    "추피+악추피": { "추피": { 상: 3.5, 중: 3.0, 하: 2.5 }, "악추피": { 상: 2.5, 중: 2.5, 하: 2.5 } },
+
+    // 3. 무기 공격력 관련 옵션
+    "무공중첩": { "무기 공격력": { 상: 8880, 중: 7920, 하: 6960 }, "공이속": { 상: 1, 중: 1, 하: 1 } }, // 1480/1320/1160 * 6중첩
+    "무공+조건부무공": { "무기 공격력": { 상: 9000, 중: 8100, 하: 7200 }, "조건부무기공격력": { 상: 2400, 중: 2200, 하: 2000 } },
+    "무공+스택무공": { "무기 공격력": { 상: 8700, 중: 7800, 하: 6900 }, "스택무기공격력": { 상: 4500, 중: 4200, 하: 3900 } }, // 150/140/130 * 30중첩
+    "무기공격력단독": { "무기 공격력": { 상: 9000, 중: 8100, 하: 7200 } },
+
+    // 4. 포지션 / 스킬 유형별 피해 증가
+    "백어택": { "백어택적주피": { 상: 3.5, 중: 3.0, 하: 2.5 } },
+    "헤드어택": { "헤드어택적주피": { 상: 3.5, 중: 3.0, 하: 2.5 } },
+    "타대": { "타대적주피": { 상: 3.5, 중: 3.0, 하: 2.5 } },
+
+    // 5. 단독 수치 옵션
+    "추피단독": { "추피": { 상: 4.0, 중: 3.5, 하: 3.0 } },
+    "치적단독": { "치적": { 상: 5.0, 중: 4.2, 하: 3.4 } },
+    "치피단독": { "치피": { 상: 10.0, 중: 8.4, 하: 6.8 } },
+
+    // 6. 서포터 / 시너지 옵션 (아공강, 아피강, 방깎, 치저, 치피저 등)
+    "아군공격력강화": { "아군공격력강화": { 상: 6.0, 중: 5.0, 하: 4.0 } },
+    "아군피해량강화": { "아군피해량강화": { 상: 9.0, 중: 7.5, 하: 6.0 } },
+    "방깎+아공강": { "방어력감소": { 상: 2.5, 중: 2.1, 하: 1.8 }, "아군공격력강화": { 상: 3.0, 중: 2.5, 하: 2.0 } },
+    "치저감소+아공강": { "치명타저항감소": { 상: 2.5, 중: 2.1, 하: 1.8 }, "아군공격력강화": { 상: 3.0, 중: 2.5, 하: 2.0 } },
+    "보호대상적주피+아공강": { "보호적주피": { 상: 1.3, 중: 1.1, 하: 0.9 }, "아군공격력강화": { 상: 3.0, 중: 2.5, 하: 2.0 } },
+    "치피저감소+아공강": { "치피저감소": { 상: 4.8, 중: 4.2, 하: 3.6 }, "아군공격력강화": { 상: 3.0, 중: 2.5, 하: 2.0 } },
+    "보호및회복": { "보호회복효과": { 상: 3.5, 중: 3.0, 하: 2.5 } },
+
+    // 7. 기타 잡옵 / 방어 / 유틸
+    "시드이하적주피": { "시드적주피": { 상: 6.0, 중: 5.0, 하: 4.0 } },
+    "시드이하받피감": { "시드받피감": { 상: 10.0, 중: 8.0, 하: 6.0 } },
+    "물리방어력": { "물리방어력": { 상: 7000, 중: 6000, 하: 5000 } },
+    "마법방어력": { "마법방어력": { 상: 7000, 중: 6000, 하: 5000 } },
+    "최대생명력": { "최대생명력": { 상: 16800, 중: 14000, 하: 11200 } },
+    "생명력회복": { "생명력회복": { 상: 160, 중: 130, 하: 100 } },
+    "자원회복": { "자원회복": { 상: 12.0, 중: 10.0, 하: 8.0 } },
+    "이동기쿨감": { "이동기쿨감": { 상: 12.0, 중: 10.0, 하: 8.0 } },
+    "경피면": { "경피면": { 상: 1, 중: 1, 하: 1 } }
+};
+
         // 장신구 연마 정보
         const accessoryTable = {
             "추가 피해": { 상: 2.6, 중: 1.6, 하: 0.7 },
@@ -1379,7 +1581,9 @@ select option:checked {
             "공격력 %": { 상: 1.55, 중: 0.95, 하: 0.4 },
             "무기 공격력 %": { 상: 3.0, 중: 1.8, 하: 0.8 },
             "치명타 적중률": { 상: 1.55, 중: 0.95, 하: 0.4 },
-            "치명타 피해": { 상: 4.0, 중: 2.4, 하: 1.1 }
+            "치명타 피해": { 상: 4.0, 중: 2.4, 하: 1.1 },
+            "무기 공격력":{상:960, 중:480, 하:195},
+            "공격력":{상:390, 중:190, 하:80}
         };
 
         function showAlert(msg) {
@@ -1653,9 +1857,13 @@ select option:checked {
         // 2. DOM 입력값 수집 함수 (DOM -> Data)
         // =============================================================================
         function getUserInputs() {
-            const baseAtk = parseFloat(document.getElementById('base-atk')?.value) || 0;
             const baseCrit = parseInt(document.getElementById('base-crit')?.value, 10) || 0;
             const baseSwift = parseInt(document.getElementById('base-swift')?.value, 10) || 0;
+            
+            // 🔑 기존 baseAtk 제거 후 주 스탯 및 무기 공격력으로 대체
+            const baseStat = parseFloat(document.getElementById('base-stat')?.value) || 0;
+            const weaponAtk = parseFloat(document.getElementById('weapon-atk')?.value) || 0;
+            
             const partyCritCount = Number(document.getElementById('partyCritSynergy')?.value || 0);
 
             // 각인 입력 수집
@@ -1667,18 +1875,25 @@ select option:checked {
                     stone: document.getElementById(`engStone${i}`)?.value
                 });
             }
-
-            // 장신구 입력 수집
-            const accPrefixes = [
-                { name: "목걸이", prefix: "neck" }, { name: "귀걸이 1", prefix: "ear1" },
-                { name: "귀걸이 2", prefix: "ear2" }, { name: "반지 1", prefix: "ring1" }, { name: "반지 2", prefix: "ring2" }
-            ];
             
+            // 장신구 입력 수집 (슬롯 3개 확장)
+            const accPrefixes = [
+                { name: "목걸이", prefix: "neck" }, 
+                { name: "귀걸이 1", prefix: "ear1" },
+                { name: "귀걸이 2", prefix: "ear2" }, 
+                { name: "반지 1", prefix: "ring1" }, 
+                { name: "반지 2", prefix: "ring2" }
+            ];
+
             const accessories = accPrefixes.map(acc => ({
                 name: acc.name,
-                slot1: { opt: document.getElementById(`${acc.prefix}Opt1`)?.value, grade: document.getElementById(`${acc.prefix}Grade1`)?.value },
-                slot2: { opt: document.getElementById(`${acc.prefix}Opt2`)?.value, grade: document.getElementById(`${acc.prefix}Grade2`)?.value }
+                // [1, 2, 3] 슬롯을 순회하며 옵션과 등급을 배열로 자동 수집
+                slots: [1, 2, 3].map(slotNum => ({
+                    opt: document.getElementById(`${acc.prefix}Opt${slotNum}`)?.value || 'none',
+                    grade: document.getElementById(`${acc.prefix}Grade${slotNum}`)?.value || '상'
+                }))
             }));
+
 
             // 젬 입력 수집
             const gems = {
@@ -1724,7 +1939,7 @@ select option:checked {
             };
 
             return {
-                baseAtk, baseCrit, baseSwift, partyCritCount,
+                baseStat, weaponAtk, baseCrit, baseSwift, partyCritCount,
                 engravings, accessories, gems, skillGems,
                 chaosCores, orderCores, bracelet
             };
@@ -1739,25 +1954,28 @@ select option:checked {
             let massIncreasePenalty = 0;
 
             let commonStats = {
+                "무기 공격력":[],"공격력":[],
                 "치명": [], "신속": [], "진화형 피해": [], "추가 피해": [],
                 "치명타 적중률": [], "치명타 피해": [], "적에게 주는 피해": [],
-                "치명타 시 적에게 주는 피해": [], "공격력 % 증가": [], "무기 공격력 %": [],
-                "고정 공격력 증가": [], "공이속": [], "공격속도": [], "쿨타임 감소": [],
+                "치명타 시 적에게 주는 피해": [], "보석 공격력 %":[],"공격력 %": [], "무기 공격력 %": [],
+                "공이속": [], "공격속도": [], "쿨타임 감소": [],
                 "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소":[]
             };
 
             // 기본 스탯 & 파티 시너지
+            addStat(commonStats,"무기 공격력", "무기", inputs.weaponAtk,"")
+            addStat(commonStats,"무기 공격력", "만찬", 1800,"")
             addStat(commonStats, "치명", "캐릭터 기본 스탯", inputs.baseCrit, "");
             addStat(commonStats, "신속", "캐릭터 기본 스탯", inputs.baseSwift, "");
             addStat(commonStats, "치명타 적중률", "자체 시너지", 10);
             if (partyCritBonus > 0) {
                 addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
             }
-
+            addStat(commonStats, "무기 공격력 %","아크 패시브 깨달음",3,"%")
             // 각인 처리
             const engravingCategoryMap = [
-                "적에게 주는 피해", "공격력 % 증가", "치명타 적중률",
-                "적에게 주는 피해", "적에게 주는 피해", "적에게 주는 피해", "공격력 % 증가"
+                "적에게 주는 피해", "공격력 %", "치명타 적중률",
+                "적에게 주는 피해", "적에게 주는 피해", "적에게 주는 피해", "공격력 %"
             ];
 
             inputs.engravings.forEach(eng => {
@@ -1789,34 +2007,52 @@ select option:checked {
                 }
             });
 
-            // 장신구 처리
+            // 장신구 처리 (슬롯 3개 순회)
             inputs.accessories.forEach(acc => {
-                [acc.slot1, acc.slot2].forEach((slot, idx) => {
+                // acc.slots (슬롯 1, 2, 3 배열) 순회
+                acc.slots.forEach((slot, idx) => {
                     if (slot.opt !== "none" && accessoryTable[slot.opt]?.[slot.grade] !== undefined) {
                         const val = accessoryTable[slot.opt][slot.grade];
-                        const category = (slot.opt === "공격력 %") ? "공격력 % 증가" : slot.opt;
-                        addStat(commonStats, category, `장신구: ${acc.name} (슬롯${idx + 1}) [${slot.opt} - ${slot.grade}]`, val);
+                        
+                        // 옵션명이 "공격력 %"일 때 기존 스탯 범주 이름으로 매핑 (필요에 따라 제어)
+                        const category = (slot.opt === "공격력 %") ? "공격력 %" : slot.opt;
+                        
+                        // 슬롯 번호(idx + 1)를 반영하여 출처 기록
+                        addStat(
+                            commonStats, 
+                            category, 
+                            `장신구: ${acc.name} (슬롯${idx + 1}) [${slot.opt} - ${slot.grade}]`, 
+                            val,""
+                        );
                     }
                 });
             });
 
             // 젬 처리
-            addStat(commonStats, "공격력 % 증가", "젬: 공격력", inputs.gems.atk);
+            addStat(commonStats, "공격력 %", "젬: 공격력", inputs.gems.atk);
             addStat(commonStats, "추가 피해", "젬: 추가 피해", inputs.gems.addDmg);
             addStat(commonStats, "적에게 주는 피해", "젬: 보스 피해", inputs.gems.bossDmg);
 
             // 보석 매핑
+            // 보석 매핑 및 개별 수치 등록
             const skillGemMap = {};
-            let totalGemAtkBonus = 0;
+
             inputs.skillGems.forEach(gem => {
-                totalGemAtkBonus += gemDataTable["공증"][gem.level] || 0;
+                const gemAtkVal = gemDataTable["공증"]?.[gem.level] || 0;
+                
+                // 1. 기본 공격력 연산용 보석 공증을 개별 보석 항목으로 등록
+                if (gemAtkVal > 0) {
+                    const sourceText = `보석(${gem.type}): ${gem.skillName} [${gem.level}레벨]`;
+                    addStat(commonStats, "보석 공격력 %", sourceText, parseFloat(gemAtkVal.toFixed(2)));
+                }
+
+                // 2. 스킬별 겁화/작열 효과 적용을 위한 개별 맵 구성
                 if (!skillGemMap[gem.skillName]) skillGemMap[gem.skillName] = [];
                 skillGemMap[gem.skillName].push({ type: gem.type, level: gem.level });
             });
-            addStat(commonStats, "공격력 % 증가", "보석 착용 공통 효과 (총합)", parseFloat(totalGemAtkBonus.toFixed(2)));
 
             // 혼돈 코어
-            const chaosTypeMap = { "적주피": "적에게 주는 피해", "치적주피": "치명타 시 적에게 주는 피해", "퍼센트공증": "공격력 % 증가", "고정공증": "고정 공격력 증가" };
+            const chaosTypeMap = { "적주피": "적에게 주는 피해", "치적주피": "치명타 시 적에게 주는 피해", "퍼센트공증": "공격력 %", "고정공증": "공격력" };
             ['Sun', 'Moon', 'Star'].forEach(target => {
                 const { grade, level } = inputs.chaosCores[target];
                 const data = chaosDataSets[grade]?.[target.toLowerCase()];
@@ -1902,8 +2138,49 @@ select option:checked {
                     }
                 });
 
-                // 수치 계산
-                const finalAtk = (inputs.baseAtk + getStatSum(stats, "고정 공격력 증가")) * (1 + (getStatSum(stats, "공격력 % 증가") / 100));
+
+                // =============================================================
+                // 어빌리티 스톤 세공 보너스 체크 (세공 합산 5레벨 이상 시 +1.5%)
+                // =============================================================
+                let totalStoneLevel = 0;
+
+                if (Array.isArray(inputs.engravings)) {
+                    totalStoneLevel = inputs.engravings.reduce((sum, eng) => {
+                        // eng.stone 문자열/숫자를 정수로 변환하여 합산
+                        return sum + (parseInt(eng.stone, 10) || 0);
+                    }, 0);
+                }
+
+                // 세공 레벨 합이 5 이상이면 1.5% 적용, 아니면 0%
+                const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
+
+                const weaponAtkPercent = getStatSum(commonStats, "무기 공격력 %");
+                const finalWeaponAtk = getStatSum(commonStats,"무기 공격력")*(1 + (weaponAtkPercent / 100))
+                // const finalWeaponAtk = getStatSum(commonStats,"무기 공격력")*(1 + (weaponAtkPercent / 100)+0.03)
+
+                // const finalWeaponAtk = (inputs.weaponAtk + 1800) * (1 + (weaponAtkPercent / 100)+0.03)
+
+                const gemAtkPercent = getStatSum(commonStats, "보석 공격력 %");
+                const calculatedBaseAtk = inputs.baseStat > 0 && finalWeaponAtk > 0 
+                    ? Math.sqrt((inputs.baseStat * finalWeaponAtk) / 6) * (1 + (gemAtkPercent + carveAtkBonusPercent) / 100)
+                    : 0;
+
+                const flatAtkBonus = getStatSum(commonStats, "공격력");
+                const percentAtkBonus = getStatSum(commonStats, "공격력 %");
+                const finalAtk = (calculatedBaseAtk + flatAtkBonus) * (1 + (percentAtkBonus / 100));
+
+                // 요약 객체 생성
+                const attackPowerSummary = {
+                    inputs: { baseStat: inputs.baseStat, weaponAtk: inputs.weaponAtk },
+                    weaponAtkPercent,
+                    finalWeaponAtk,
+                    gemAtkPercent,
+                    calculatedBaseAtk,
+                    flatAtkBonus,
+                    percentAtkBonus,
+                    finalAtk
+                };
+                
                 const skillDamageData = skillDatabase.find(s => s.name === skillName);
                 let baseDamage = skillDamageData ? calculateDamageBase(finalAtk, skillDamageData.coefficient, skillDamageData.constant) : 0;
 
@@ -1990,9 +2267,31 @@ select option:checked {
                 const finalCooldown = adjustedBaseCooldown * swiftMultiplier * appliedManaCdrMultiplier * passiveCdrMultiplier * otherCdrMultiplier * cdrIncreaseMultiplier;
 
                 allSkillResults.push({
-                    skillName, finalAtk, totalCritStat, totalSwiftStat: totalSwift,
-                    totalCritRatePercent, totalEvolutionDamage, finalAtkSpeed,
-                    finalMoveSpeed, totalSonicDmg, expDmg, finalCooldown, stats
+                    skillName,
+                    
+                    // 🔑 [공격력 산출 과정용 데이터 추가]
+                    inputs,
+                    weaponAtkPercent,
+                    finalWeaponAtk,
+                    gemAtkPercent,
+                    carveAtkBonusPercent, // 🔑 세공 보너스 퍼센트 (1.5 또는 0)
+                    totalStoneLevel,      // 🔑 세공 합산 레벨
+                    calculatedBaseAtk,
+                    flatAtkBonus: getStatSum(stats, "공격력"),
+                    percentAtkBonus: getStatSum(stats, "공격력 %"),
+
+                    // 기존 데이터
+                    finalAtk,
+                    totalCritStat,
+                    totalSwiftStat: totalSwift,
+                    totalCritRatePercent,
+                    totalEvolutionDamage,
+                    finalAtkSpeed,
+                    finalMoveSpeed,
+                    totalSonicDmg,
+                    expDmg,
+                    finalCooldown,
+                    stats
                 });
             });
 
@@ -2003,7 +2302,9 @@ select option:checked {
         function renderResultsHTML(allSkillResults) {
             const commonRes = allSkillResults[0];
             let htmlOutput = ``;
-
+            // =========================================================================
+            // 1. 캐릭터 공통 세팅 지표
+            // =========================================================================
             htmlOutput += `
                 <h3 style="border:none; margin-bottom:10px;">[캐릭터 공통 세팅 지표]</h3>
                 <div class="grid-responsive" style="margin-bottom: 20px;">
@@ -2034,7 +2335,144 @@ select option:checked {
                 </div>
             `;
 
+            // =========================================================================
+            // 0. [공격력 산출 과정 요약 카드] 추가
+            // =========================================================================
+            // ※ commonRes 객체에 연산에 필요한 데이터(inputs, weaponAtkPercent 등)가 포함되어 있다고 가정합니다.
+            const inputs = commonRes.inputs || { baseStat: 0, weaponAtk: 0 };
+            const weaponAtkPercent = commonRes.weaponAtkPercent || 0;
+            const finalWeaponAtk = commonRes.finalWeaponAtk || 0;
+            const gemAtkPercent = commonRes.gemAtkPercent || 0;
+            const carveAtkBonusPercent = commonRes.carveAtkBonusPercent || 0;
+            const totalStoneLevel = commonRes.totalStoneLevel || 0;
+            const calculatedBaseAtk = commonRes.calculatedBaseAtk || 0;
+            const flatAtkBonus = commonRes.flatAtkBonus || 0;
+            const percentAtkBonus = commonRes.percentAtkBonus || 0;
+            const finalAtk = commonRes.finalAtk || 0;
+            // 1. 무기 공격력 객체(배열) 가져오기
+// 1. 무기 공격력 (고정 수치) 세로 출력 조립
+const weaponAtkObj = commonRes.stats["무기 공격력"];
+let weaponAtkDetailStr = "";
+
+if (Array.isArray(weaponAtkObj) && weaponAtkObj.length > 0) {
+    weaponAtkDetailStr = weaponAtkObj
+        .map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`)
+        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+} else {
+    weaponAtkDetailStr = `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
+}
+
+// 2. 무기 공격력 % 세로 출력 조립
+const weaponAtkPercentArr = commonRes.stats["무기 공격력 %"] || commonRes.stats["무기 공격력%"] || [];
+let weaponAtkPercentDetailStr = "";
+
+if (Array.isArray(weaponAtkPercentArr) && weaponAtkPercentArr.length > 0) {
+    weaponAtkPercentDetailStr = weaponAtkPercentArr
+        .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
+        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+} else {
+    weaponAtkPercentDetailStr = `${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
+}
+const AtkArr = commonRes.stats["공격력"];
+
+const AtkPercentArr = commonRes.stats["공격력 %"] ;
+let AtkPercentDetailStr ="";
+let AtkDetailStr ="";
+
+if (Array.isArray(AtkArr) && AtkArr.length > 0) {
+        AtkDetailStr = AtkArr
+        .map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`)
+        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+} else {
+    AtkDetailStr= ""
+}
+
+
+if (Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0) {
+    AtkPercentDetailStr = AtkPercentArr
+        .map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`)
+        .join("<br>&nbsp;&nbsp;+ "); // 🔑 줄바꿈 + 들여쓰기 연결
+} else {
+    AtkPercentDetailStr = ""
+   
+}
+
+
+            // 세공 5레벨 이상일 때 수식 텍스트 추가
+            const carveText = carveAtkBonusPercent > 0 
+                ? ` + ${carveAtkBonusPercent}% [세공 ${totalStoneLevel}LV]` 
+                : ``;
+
+            
+        //  (${inputs.weaponAtk.toLocaleString()} [무공] + 1800 [만찬]) × (1 + ${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3% [카르마])
             htmlOutput += `
+                    <h3 style="border:none; margin-bottom:10px;">📊 [공격력 산출 과정]</h3>
+                    <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem; line-height: 1.6;">
+                        
+                        <!-- 1단계: 최종 무기 공격력 -->
+                        <div style="background: #181920; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                            <div style="font-weight: 600; color: var(--accent-light-purple); margin-bottom: 8px; font-size: 0.95rem;">
+                                1. 최종 무기 공격력
+                            </div>
+                            
+                            <code style="font-size: 0.9rem; color: var(--text-sub); font-family: monospace; display: block; line-height: 1.8;">
+                                <strong>[무기 공격력 합산]</strong><br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkDetailStr}<br>
+                                <br>
+                                <strong>[계수]</strong><br>
+                                
+                                &nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkPercentDetailStr}
+                                &nbsp;
+                            </code>
+
+                            <div style="text-align: right; font-weight: bold; color: var(--text-main); margin-top: 10px; font-size: 1.05rem; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+                                = <span style="color: #38bdf8;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <!-- 2단계: 기본 공격력 -->
+                        <div style="background: #181920; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                            <div style="font-weight: 600; color: var(--accent-light-purple); margin-bottom: 6px; font-size: 0.95rem;">
+                                2. 기본 공격력
+                            </div>
+                            <code style="font-size: 0.92rem; color: var(--text-sub); font-family: monospace; display: block; word-break: break-all;">
+                                <strong>[기본 공격력 합산]</strong><br>
+                                √( ${inputs.baseStat.toLocaleString()} [주스탯] × ${Math.floor(finalWeaponAtk).toLocaleString()} [최종무공] / 6 ) × (1 + ${gemAtkPercent.toFixed(2)}% [보석공증]${carveText});
+                                
+                            </code>
+                            <div style="text-align: right; font-weight: bold; color: var(--text-main); margin-top: 8px; font-size: 1.05rem;">
+                                = <span style="color: #38bdf8;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <!-- 3단계: 최종 공격력 -->
+                        <div style="background: #181920; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                            <div style="font-weight: 600; color: var(--accent-light-purple); margin-bottom: 6px; font-size: 0.95rem;">
+                                3. 최종 공격력
+                            </div>
+                            <code style="font-size: 0.92rem; color: var(--text-sub); font-family: monospace; display: block; word-break: break-all;">
+                                <strong>[공격력 합산]</strong><br>
+                                &nbsp;&nbsp;&nbsp;
+                                ${Math.floor(calculatedBaseAtk).toLocaleString()} [기본 공격력] <br>
+                                &nbsp;&nbsp;+ ${AtkDetailStr}
+                                <br>
+                                <br><strong>[계수]</strong><br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;${AtkPercentDetailStr}
+                                
+                            </code>
+                            <div style="text-align: right; font-weight: bold; font-size: 1.15rem; color: #facc15; margin-top: 8px;">
+                                = ${Math.floor(finalAtk).toLocaleString()}
+                            </div>
+                        </div>
+
+                    </div>
+            `;
+
+
+            // =========================================================================
+            // 2. 스킬별 요약 테이블
+            // =========================================================================
+            htmlOutput += `<p>
                 <h3 style="border:none; margin-bottom:8px;">[스킬별 시뮬레이션 결과 요약] <span style="font-size: 0.75em; font-weight: normal; color: var(--text-sub);">(행 클릭 시 세부 내역 표시)</span></h3>
                 <div class="table-wrapper">
                     <table class="summary-table">
@@ -2067,23 +2505,29 @@ select option:checked {
                 <hr style="border: 0; border-top: 1px dashed var(--border-color); margin: 25px 0;">
             `;
 
+            // =========================================================================
+            // 3. 선택 스킬 상세 항목
+            // =========================================================================
             const selectedResult = allSkillResults[selectedSkillIdx];
             htmlOutput += `<div class="details-container">`;
             htmlOutput += `<div class="skill-detail-card">`;
             htmlOutput += `<div class="skill-detail-title">▶ [선택 스킬] ${selectedResult.skillName} 상세 세팅 적용 내역</div>`;
 
-
             Object.keys(selectedResult.stats).forEach(cat => {
                 if (cat.startsWith('_')) return;
 
-                let items = selectedResult.stats[cat];
-                if (items && items.length > 0) {
-                    items.sort((a, b) => {
-                        const aIsEng = a.source.startsWith("각인:") ? 0 : 1;
-                        const bIsEng = b.source.startsWith("각인:") ? 0 : 1;
-                        return aIsEng - bIsEng;
-                    });
-                }
+                    let items = selectedResult.stats[cat];
+                    if (items && items.length > 0) {
+                        items.sort((a, b) => {
+                            // String()으로 명시적 형변환을 해서 startsWith 에러 방지
+                            const aSrc = String(a?.source || "");
+                            const bSrc = String(b?.source || "");
+
+                            const aIsEng = aSrc.startsWith("각인:") ? 0 : 1;
+                            const bIsEng = bSrc.startsWith("각인:") ? 0 : 1;
+                            return aIsEng - bIsEng;
+                        });
+                    }
 
                 htmlOutput += `<div class="category-title">■ ${cat}</div>`;
 
