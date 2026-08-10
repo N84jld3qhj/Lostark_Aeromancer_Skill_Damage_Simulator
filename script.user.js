@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         로스트아크 시뮬레이터 연산 헬퍼
+// @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
 // @version      2026-08-10
 // @description  시뮬레이터 DOM 파싱 및 실시간 데미지/스탯 연산
