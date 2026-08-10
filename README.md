@@ -14,8 +14,8 @@
 ### 1단계: Tampermonkey 확장 프로그램 설치
 사용 중인 브라우저에 맞는 확장 프로그램을 먼저 설치해 주세요.
 * [Chrome 웹 스토어](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
-* [Naver Whale 스토어](https://store.whale.naver.com/detail/dhdgffkkebhmkfjojejmpbldmpobfkfo)
-* [Microsoft Edge 스토어](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikflhdfbebdobogbikmfbcbdncbdhmk)
+* [Firefox 웹 스토어](https://addons.mozilla.org/ko/firefox/addon/tampermonkey/)
+* [Microsoft Edge 스토어](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
 
 ### 2단계: 스크립트 설치
 아래 설치 버튼(링크)을 클릭하면 Tampermonkey 설치 화면으로 바로 이동합니다.
