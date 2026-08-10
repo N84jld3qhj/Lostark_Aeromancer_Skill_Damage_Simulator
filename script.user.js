@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         로스트아크 시뮬레이터 연산 헬퍼
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-09
+// @version      2026-08-10
 // @description  시뮬레이터 DOM 파싱 및 실시간 데미지/스탯 연산
-// @author       You
+// @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=lopec.kr
 // @grant        GM_addStyle
@@ -1416,7 +1416,7 @@ function loadArkPassive() {
             bracelet: parseBracelet(),
             equipment: parseEquipment()
         };
-}
+    }
 
     function mapExtractedDataToInputs(extracted) {
         const eq = extracted.equipment || {};
@@ -1577,79 +1577,75 @@ function loadArkPassive() {
         addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", inputs.vambraceNormalAtkPercent, "%");
 
 
+
         // =============================================================================
-        // 아크 패시브
+        // 아크 패시브 진화 (Rank 수치 기반 스탯 연산)
         // =============================================================================
+        // 1. 객체 형태 ("진화": { rank: 6 }) 및 다양한 키(evolution, 진화) 대응
+        const evolutionData = inputs?.arkPassive?.["진화"] || inputs?.arkPassive?.evolution;
+
+        // 2. Rank 수치 추출
+        let evolutionRank = 0;
+
+        if (typeof evolutionData === "object" && evolutionData !== null) {
+            evolutionRank = Number(evolutionData.rank) || 0;
+        } else {
+            evolutionRank = Number(inputs?.arkPassive?.evolutionRank) || 0;
+        }
+
+        // 3. 스탯 추가 적용
+        if (evolutionRank > 0) {
+            // TODO: Rank당 증가시킬 % 수치를 설정하세요. (예: Rank 1당 1%면 1, 1.5%면 1.5)
+            const STAT_PER_RANK = 1;
+
+            // 부동소수점 오차 방지
+            const statValue = Number((evolutionRank * STAT_PER_RANK).toFixed(2));
+
+            addStat(
+                commonStats,
+                "진화형 피해",
+                `아크 패시브 진화 (Rank.${evolutionRank})`,
+                statValue,
+                "%"
+            );
+
+        }
+
+        // 아크 패시브 깨달음 (무기 공격력 % 연산)
         // =============================================================================
+        // 1. 객체 형태 ("깨달음": { level: 30 }) 및 다양한 키(enlighten, 깨달음) 대응
+        const enlightenData = inputs?.arkPassive?.["깨달음"] || inputs?.arkPassive?.enlighten;
 
-// =============================================================================
-// 아크 패시브 진화 (Rank 수치 기반 스탯 연산)
-// =============================================================================
-// 1. 객체 형태 ("진화": { rank: 6 }) 및 다양한 키(evolution, 진화) 대응
-const evolutionData = inputs?.arkPassive?.["진화"] || inputs?.arkPassive?.evolution;
+        // 2. 수치 추출 (객체 안의 level 또는 배열/숫자 형태 fallback)
+        let enlightenLevel = 0;
 
-// 2. Rank 수치 추출
-let evolutionRank = 0;
+        if (typeof enlightenData === "object" && enlightenData !== null) {
+            // inputs.arkPassive["깨달음"].level 가져오기
+            enlightenLevel = Number(enlightenData.level) || 0;
+        } else if (Array.isArray(enlightenData)) {
+            // 만약 기존처럼 배열 구조일 경우 무기 공격력 노드 탐색
+            const atkNode = enlightenData.find(node =>
+                node.name && (node.name.includes("무기 공격력") || node.name.includes("깨달음"))
+            );
+            enlightenLevel = Number(atkNode?.level) || 0;
+        } else {
+            enlightenLevel = Number(inputs?.arkPassive?.enlightenLevel) || 0;
+        }
 
-if (typeof evolutionData === "object" && evolutionData !== null) {
-    evolutionRank = Number(evolutionData.rank) || 0;
-} else {
-    evolutionRank = Number(inputs?.arkPassive?.evolutionRank) || 0;
-}
+        // 3. 스탯 추가 적용
+        if (enlightenLevel > 0) {
+            // 자바스크립트 부동소수점 오차 방지 (예: 30 * 0.1 = 3)
+            const statValue = Number((enlightenLevel * 0.1).toFixed(2));
 
-// 3. 스탯 추가 적용
-if (evolutionRank > 0) {
-    // TODO: Rank당 증가시킬 % 수치를 설정하세요. (예: Rank 1당 1%면 1, 1.5%면 1.5)
-    const STAT_PER_RANK = 1;
+            addStat(
+                commonStats,
+                "무기 공격력 %",
+                `아크 패시브 깨달음 (Lv.${enlightenLevel})`,
+                statValue,
+                "%"
+            );
 
-    // 부동소수점 오차 방지
-    const statValue = Number((evolutionRank * STAT_PER_RANK).toFixed(2));
-
-    addStat(
-        commonStats,
-        "진화형 피해",
-        `아크 패시브 진화 (Rank.${evolutionRank})`,
-        statValue,
-        "%"
-    );
-
-}
-
-// 아크 패시브 깨달음 (무기 공격력 % 연산)
-// =============================================================================
-// 1. 객체 형태 ("깨달음": { level: 30 }) 및 다양한 키(enlighten, 깨달음) 대응
-const enlightenData = inputs?.arkPassive?.["깨달음"] || inputs?.arkPassive?.enlighten;
-
-// 2. 수치 추출 (객체 안의 level 또는 배열/숫자 형태 fallback)
-let enlightenLevel = 0;
-
-if (typeof enlightenData === "object" && enlightenData !== null) {
-    // inputs.arkPassive["깨달음"].level 가져오기
-    enlightenLevel = Number(enlightenData.level) || 0;
-} else if (Array.isArray(enlightenData)) {
-    // 만약 기존처럼 배열 구조일 경우 무기 공격력 노드 탐색
-    const atkNode = enlightenData.find(node =>
-        node.name && (node.name.includes("무기 공격력") || node.name.includes("깨달음"))
-    );
-    enlightenLevel = Number(atkNode?.level) || 0;
-} else {
-    enlightenLevel = Number(inputs?.arkPassive?.enlightenLevel) || 0;
-}
-
-// 3. 스탯 추가 적용
-if (enlightenLevel > 0) {
-    // 자바스크립트 부동소수점 오차 방지 (예: 30 * 0.1 = 3)
-    const statValue = Number((enlightenLevel * 0.1).toFixed(2));
-
-    addStat(
-        commonStats,
-        "무기 공격력 %",
-        `아크 패시브 깨달음 (Lv.${enlightenLevel})`,
-        statValue,
-        "%"
-    );
-
-}
+        }
 
 
         const engravingCategoryMap = [
@@ -2050,293 +2046,293 @@ if (enlightenLevel > 0) {
     };
 
     window.renderResultsHTML = function(allSkillResults, selectedSkillIdx = null) {
-    if (!allSkillResults || allSkillResults.length === 0) return;
+        if (!allSkillResults || allSkillResults.length === 0) return;
 
-    window.lastSkillResults = allSkillResults;
+        window.lastSkillResults = allSkillResults;
 
-    // 💡 [핵심 1] 선택된 스킬 인덱스를 전역 변수에 기억 (실시간 연산이 실행되어도 선택 유지)
-    if (selectedSkillIdx !== null && selectedSkillIdx !== undefined) {
-        window.currentSelectedSkillIdx = selectedSkillIdx;
-    } else if (window.currentSelectedSkillIdx === undefined) {
-        window.currentSelectedSkillIdx = 0;
-    }
+        // 💡 [핵심 1] 선택된 스킬 인덱스를 전역 변수에 기억 (실시간 연산이 실행되어도 선택 유지)
+        if (selectedSkillIdx !== null && selectedSkillIdx !== undefined) {
+            window.currentSelectedSkillIdx = selectedSkillIdx;
+        } else if (window.currentSelectedSkillIdx === undefined) {
+            window.currentSelectedSkillIdx = 0;
+        }
 
-    const currentIdx = window.currentSelectedSkillIdx;
-    const commonRes = allSkillResults[0];
-    let bodyContent = ``;
+        const currentIdx = window.currentSelectedSkillIdx;
+        const commonRes = allSkillResults[0];
+        let bodyContent = ``;
 
-    // 1. 공통 세팅 지표
-    bodyContent += `
-        <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">[캐릭터 공통 세팅 지표]</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px;">
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8;">최종 공격력</div>
-                <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${Math.floor(commonRes.finalAtk || 0).toLocaleString()}</div>
+        // 1. 공통 세팅 지표
+        bodyContent += `
+            <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">[캐릭터 공통 세팅 지표]</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px;">
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">최종 공격력</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${Math.floor(commonRes.finalAtk || 0).toLocaleString()}</div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">치명 / 신속</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalCritStat || 0} / ${commonRes.totalSwiftStat || 0}</div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">치명타 적중률</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.totalCritRatePercent || 0).toFixed(2)}%</div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">진화형 피해</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalEvolutionDamage || 0).toFixed(2)}%</div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">공속 / 이속</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalAtkSpeed || 0).toFixed(1)}% / ${(commonRes.finalMoveSpeed || 0).toFixed(1)}%</div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">음속 돌파 효율</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalSonicDmg || 0).toFixed(2)}%</div>
+                </div>
             </div>
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8;">치명 / 신속</div>
-                <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalCritStat || 0} / ${commonRes.totalSwiftStat || 0}</div>
-            </div>
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8;">치명타 적중률</div>
-                <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.totalCritRatePercent || 0).toFixed(2)}%</div>
-            </div>
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8;">진화형 피해</div>
-                <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalEvolutionDamage || 0).toFixed(2)}%</div>
-            </div>
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8;">공속 / 이속</div>
-                <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalAtkSpeed || 0).toFixed(1)}% / ${(commonRes.finalMoveSpeed || 0).toFixed(1)}%</div>
-            </div>
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8;">음속 돌파 효율</div>
-                <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalSonicDmg || 0).toFixed(2)}%</div>
-            </div>
-        </div>
-    `;
+        `;
 
-    // 2. 스킬별 요약 테이블
-    bodyContent += `
-        <h3 style="border:none; margin:0 0 8px 0; color: #c084fc; font-size: 1.1rem;">
-            [스킬별 시뮬레이션 결과 요약]
-            <span style="font-size: 0.75em; font-weight: normal; color: #94a3b8;">(행 클릭 시 세부 내역 표시)</span>
-        </h3>
-        <div style="overflow-x: auto; margin-top: 10px;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                <thead>
-                    <tr style="background-color: #181920; color: #94a3b8; border-bottom: 1px solid #2e323d;">
-                        <th style="padding: 10px;">스킬명</th>
-                        <th style="padding: 10px;">대미지 기대값</th>
-                        <th style="padding: 10px;">스킬 쿨타임</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
+        // 2. 스킬별 요약 테이블
+        bodyContent += `
+            <h3 style="border:none; margin:0 0 8px 0; color: #c084fc; font-size: 1.1rem;">
+                [스킬별 시뮬레이션 결과 요약]
+                <span style="font-size: 0.75em; font-weight: normal; color: #94a3b8;">(행 클릭 시 세부 내역 표시)</span>
+            </h3>
+            <div style="overflow-x: auto; margin-top: 10px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="background-color: #181920; color: #94a3b8; border-bottom: 1px solid #2e323d;">
+                            <th style="padding: 10px;">스킬명</th>
+                            <th style="padding: 10px;">대미지 기대값</th>
+                            <th style="padding: 10px;">스킬 쿨타임</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
 
-    allSkillResults.forEach((res, idx) => {
-        const isSelected = (idx === currentIdx); // 💡 저장된 currentIdx 기반으로 체크
-        const rowStyle = isSelected
-            ? 'background-color: #2d3142; cursor: pointer; border-bottom: 1px solid #2e323d;'
-            : 'cursor: pointer; border-bottom: 1px solid #2e323d;';
+        allSkillResults.forEach((res, idx) => {
+            const isSelected = (idx === currentIdx); // 💡 저장된 currentIdx 기반으로 체크
+            const rowStyle = isSelected
+                ? 'background-color: #2d3142; cursor: pointer; border-bottom: 1px solid #2e323d;'
+                : 'cursor: pointer; border-bottom: 1px solid #2e323d;';
+
+            bodyContent += `
+                <tr class="sim-skill-row" data-idx="${idx}" style="${rowStyle}">
+                    <td style="padding: 10px; font-weight: bold; ${isSelected ? 'color: #38bdf8;' : 'color: #e2e8f0;'}">
+                        ${res.skillName} ${isSelected ? '✔' : ''}
+                    </td>
+                    <td style="padding: 10px; color: #facc15; font-weight: bold;">${Math.floor(res.expDmg || 0).toLocaleString()}</td>
+                    <td style="padding: 10px; color: #38bdf8;">${(res.finalCooldown || 0).toFixed(2)}초</td>
+                </tr>
+            `;
+        });
 
         bodyContent += `
-            <tr class="sim-skill-row" data-idx="${idx}" style="${rowStyle}">
-                <td style="padding: 10px; font-weight: bold; ${isSelected ? 'color: #38bdf8;' : 'color: #e2e8f0;'}">
-                    ${res.skillName} ${isSelected ? '✔' : ''}
-                </td>
-                <td style="padding: 10px; color: #facc15; font-weight: bold;">${Math.floor(res.expDmg || 0).toLocaleString()}</td>
-                <td style="padding: 10px; color: #38bdf8;">${(res.finalCooldown || 0).toFixed(2)}초</td>
-            </tr>
-        `;
-    });
-
-    bodyContent += `
-                </tbody>
-            </table>
-        </div>
-        <hr style="border: 0; border-top: 1px dashed #2e323d; margin: 25px 0;">
-    `;
-
-    // 3. 공격력 산출 상세 정보 계산
-    const inputs = commonRes.inputs || { baseStat: 0, weaponAtk: 0 };
-    const weaponAtkPercent = commonRes.weaponAtkPercent || 0;
-    const finalWeaponAtk = commonRes.finalWeaponAtk || 0;
-    const carveAtkBonusPercent = commonRes.carveAtkBonusPercent || 0;
-    const totalStoneLevel = commonRes.totalStoneLevel || 0;
-    const calculatedBaseAtk = commonRes.calculatedBaseAtk || 0;
-    const finalAtk = commonRes.finalAtk || 0;
-
-    const stats = commonRes.stats || {};
-    const finalStat = commonRes.finalStat || 0;
-    const baseStat = stats["주스탯"];
-    let statDetailStr = Array.isArray(baseStat) && baseStat.length > 0
-        ? baseStat.map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
-
-    const statPercentArr = stats["주스탯 %"] || [];
-    let statPercentDetailStr = Array.isArray(statPercentArr) && statPercentArr.length > 0
-        ? statPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : `${statPercentArr.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
-
-    const weaponAtkObj = stats["무기 공격력"];
-    let weaponAtkDetailStr = Array.isArray(weaponAtkObj) && weaponAtkObj.length > 0
-        ? weaponAtkObj.map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
-
-    const weaponAtkPercentArr = stats["무기 공격력 %"] || stats["무기 공격력%"] || [];
-    let weaponAtkPercentDetailStr = Array.isArray(weaponAtkPercentArr) && weaponAtkPercentArr.length > 0
-        ? weaponAtkPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : `${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
-
-    const AtkArr = stats["공격력"] || [];
-    const AtkPercentArr = stats["공격력 %"] || [];
-    let AtkDetailStr = Array.isArray(AtkArr) && AtkArr.length > 0
-        ? AtkArr.map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : "";
-    let AtkPercentDetailStr = Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0
-        ? AtkPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : "";
-
-    const VambraceNormalAtk = stats["기본 공격력"] || [];
-    const VambraceNormalAtkPercent = stats["기본 공격력 %"] || [];
-    let VambraceNormalAtkDetailStr = Array.isArray(VambraceNormalAtk) && VambraceNormalAtk.length > 0
-        ? VambraceNormalAtk.map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : "";
-    let VambraceNormalAtkPercentDetailStr = Array.isArray(VambraceNormalAtkPercent) && VambraceNormalAtkPercent.length > 0
-        ? VambraceNormalAtkPercent.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-        : "";
-
-    const carveText = carveAtkBonusPercent > 0
-        ? ` + ${carveAtkBonusPercent}% [세공 ${totalStoneLevel}LV]`
-        : ``;
-
-    bodyContent += `
-        <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">📊 [공격력 산출 과정]</h3>
-        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; line-height: 1.6;">
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px;">0. 주스탯</div>
-                <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; line-height: 1.8;">
-                    <strong>[주스탯 합산]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${statDetailStr}<br><br>
-                    <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${statPercentDetailStr}
-                </code>
-                <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                    = <span style="color: #38bdf8;">${Math.floor(finalStat).toLocaleString()}</span>
-                </div>
+                    </tbody>
+                </table>
             </div>
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px;">1. 최종 무기 공격력</div>
-                <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; line-height: 1.8;">
-                    <strong>[무기 공격력 합산]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkDetailStr}<br><br>
-                    <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkPercentDetailStr}
-                </code>
-                <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                    = <span style="color: #38bdf8;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
-                </div>
-            </div>
-
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-weight: 600; color: #c084fc; margin-bottom: 6px;">2. 기본 공격력</div>
-                <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; word-break: break-all;">
-                    <strong>[기본 공격력 합산]</strong><br>
-                    (√( ${finalStat.toLocaleString(0)} [주스탯] + × ${Math.floor(finalWeaponAtk).toLocaleString()} [최종무공]) / 6) + ${VambraceNormalAtkDetailStr}<br><br>
-                    <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${VambraceNormalAtkPercentDetailStr}<br>&nbsp;${carveText}
-                </code>
-                <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 8px; font-size: 1rem;">
-                    = <span style="color: #38bdf8;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
-                </div>
-            </div>
-
-            <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                <div style="font-weight: 600; color: #c084fc; margin-bottom: 6px;">3. 최종 공격력</div>
-                <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; word-break: break-all;">
-                    <strong>[공격력 합산]</strong><br>
-                    &nbsp;&nbsp;&nbsp;${Math.floor(calculatedBaseAtk).toLocaleString()} [기본 공격력] <br>&nbsp;&nbsp;+ ${AtkDetailStr}<br><br>
-                    <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${AtkPercentDetailStr}
-                </code>
-                <div style="text-align: right; font-weight: bold; font-size: 1.1rem; color: #facc15; margin-top: 8px;">
-                    = ${Math.floor(finalAtk).toLocaleString()}
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 4. 선택한 스킬 상세 적용 내역 (currentIdx 기반)
-    const selectedResult = allSkillResults[currentIdx] || allSkillResults[0];
-    bodyContent += `<div style="margin-top: 20px;">`;
-    bodyContent += `<div style="background: #181920; border: 1px solid #2e323d; padding: 16px; border-radius: 8px;">`;
-    bodyContent += `<div style="font-size: 1.05rem; font-weight: bold; color: #facc15; margin-bottom: 15px;">▶ [선택 스킬] ${selectedResult.skillName} 상세 세팅 적용 내역</div>`;
-
-    if (selectedResult.stats) {
-        Object.keys(selectedResult.stats).forEach(cat => {
-            if (cat.startsWith('_')) return;
-
-            let items = selectedResult.stats[cat];
-            if (items && items.length > 0) {
-                items.sort((a, b) => {
-                    const aSrc = String(a?.source || "");
-                    const bSrc = String(b?.source || "");
-                    return (aSrc.startsWith("각인:") ? 0 : 1) - (bSrc.startsWith("각인:") ? 0 : 1);
-                });
-            }
-
-            bodyContent += `<div style="font-weight: bold; color: #c084fc; margin-top: 12px; margin-bottom: 4px; font-size: 0.9rem;">■ ${cat}</div>`;
-
-            if (!items || items.length === 0) {
-                bodyContent += `<div style="font-size: 0.85rem; color: #666; margin-left: 8px;">  - 입력된 데이터 없음</div>`;
-            } else {
-                items.forEach(item => {
-                    let prefix = (typeof item.val === 'number' && item.val > 0) ? "+" : "";
-                    bodyContent += `<div style="font-size: 0.85rem; color: #94a3b8; margin-left: 8px; line-height: 1.5;">  - ${item.source}: ${prefix}${item.val}${item.unit || ''}</div>`;
-                });
-            }
-        });
-    }
-
-    bodyContent += `</div></div>`;
-
-    // 5. 결과 섹션 요소 생성 및 배치
-    let resultSection = document.getElementById('sim-result-section');
-
-    if (!resultSection) {
-        resultSection = document.createElement('div');
-        resultSection.id = 'sim-result-section';
-        resultSection.style.cssText = `
-            width: var(--main-width) !important;
-            min-width: var(--main-width) !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            margin-top: 20px !important;
-            margin-bottom: 50px !important;
-            box-sizing: border-box !important;
-
-            background: #0f1015;
-            color: #e2e8f0;
-            border-radius: 12px;
-            border: 1px solid #2e323d;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            padding: 24px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            clear: both;
+            <hr style="border: 0; border-top: 1px dashed #2e323d; margin: 25px 0;">
         `;
 
-        const arkPanel = document.getElementById('arkPassiveModal');
-        if (arkPanel && arkPanel.parentNode) {
-            arkPanel.parentNode.insertBefore(resultSection, arkPanel.nextSibling);
-        } else {
-            document.body.appendChild(resultSection);
+        // 3. 공격력 산출 상세 정보 계산
+        const inputs = commonRes.inputs || { baseStat: 0, weaponAtk: 0 };
+        const weaponAtkPercent = commonRes.weaponAtkPercent || 0;
+        const finalWeaponAtk = commonRes.finalWeaponAtk || 0;
+        const carveAtkBonusPercent = commonRes.carveAtkBonusPercent || 0;
+        const totalStoneLevel = commonRes.totalStoneLevel || 0;
+        const calculatedBaseAtk = commonRes.calculatedBaseAtk || 0;
+        const finalAtk = commonRes.finalAtk || 0;
+
+        const stats = commonRes.stats || {};
+        const finalStat = commonRes.finalStat || 0;
+        const baseStat = stats["주스탯"];
+        let statDetailStr = Array.isArray(baseStat) && baseStat.length > 0
+            ? baseStat.map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
+
+        const statPercentArr = stats["주스탯 %"] || [];
+        let statPercentDetailStr = Array.isArray(statPercentArr) && statPercentArr.length > 0
+            ? statPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : `${statPercentArr.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
+
+        const weaponAtkObj = stats["무기 공격력"];
+        let weaponAtkDetailStr = Array.isArray(weaponAtkObj) && weaponAtkObj.length > 0
+            ? weaponAtkObj.map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
+
+        const weaponAtkPercentArr = stats["무기 공격력 %"] || stats["무기 공격력%"] || [];
+        let weaponAtkPercentDetailStr = Array.isArray(weaponAtkPercentArr) && weaponAtkPercentArr.length > 0
+            ? weaponAtkPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : `${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
+
+        const AtkArr = stats["공격력"] || [];
+        const AtkPercentArr = stats["공격력 %"] || [];
+        let AtkDetailStr = Array.isArray(AtkArr) && AtkArr.length > 0
+            ? AtkArr.map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : "";
+        let AtkPercentDetailStr = Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0
+            ? AtkPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : "";
+
+        const VambraceNormalAtk = stats["기본 공격력"] || [];
+        const VambraceNormalAtkPercent = stats["기본 공격력 %"] || [];
+        let VambraceNormalAtkDetailStr = Array.isArray(VambraceNormalAtk) && VambraceNormalAtk.length > 0
+            ? VambraceNormalAtk.map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : "";
+        let VambraceNormalAtkPercentDetailStr = Array.isArray(VambraceNormalAtkPercent) && VambraceNormalAtkPercent.length > 0
+            ? VambraceNormalAtkPercent.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
+            : "";
+
+        const carveText = carveAtkBonusPercent > 0
+            ? ` + ${carveAtkBonusPercent}% [세공 ${totalStoneLevel}LV]`
+            : ``;
+
+        bodyContent += `
+            <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">📊 [공격력 산출 과정]</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; line-height: 1.6;">
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px;">0. 주스탯</div>
+                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; line-height: 1.8;">
+                        <strong>[주스탯 합산]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${statDetailStr}<br><br>
+                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${statPercentDetailStr}
+                    </code>
+                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                        = <span style="color: #38bdf8;">${Math.floor(finalStat).toLocaleString()}</span>
+                    </div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px;">1. 최종 무기 공격력</div>
+                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; line-height: 1.8;">
+                        <strong>[무기 공격력 합산]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkDetailStr}<br><br>
+                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkPercentDetailStr}
+                    </code>
+                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                        = <span style="color: #38bdf8;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
+                    </div>
+                </div>
+
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 6px;">2. 기본 공격력</div>
+                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; word-break: break-all;">
+                        <strong>[기본 공격력 합산]</strong><br>
+                        (√( ${finalStat.toLocaleString(0)} [주스탯] + × ${Math.floor(finalWeaponAtk).toLocaleString()} [최종무공]) / 6) + ${VambraceNormalAtkDetailStr}<br><br>
+                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${VambraceNormalAtkPercentDetailStr}<br>&nbsp;${carveText}
+                    </code>
+                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 8px; font-size: 1rem;">
+                        = <span style="color: #38bdf8;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
+                    </div>
+                </div>
+
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 6px;">3. 최종 공격력</div>
+                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; word-break: break-all;">
+                        <strong>[공격력 합산]</strong><br>
+                        &nbsp;&nbsp;&nbsp;${Math.floor(calculatedBaseAtk).toLocaleString()} [기본 공격력] <br>&nbsp;&nbsp;+ ${AtkDetailStr}<br><br>
+                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${AtkPercentDetailStr}
+                    </code>
+                    <div style="text-align: right; font-weight: bold; font-size: 1.1rem; color: #facc15; margin-top: 8px;">
+                        = ${Math.floor(finalAtk).toLocaleString()}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 4. 선택한 스킬 상세 적용 내역 (currentIdx 기반)
+        const selectedResult = allSkillResults[currentIdx] || allSkillResults[0];
+        bodyContent += `<div style="margin-top: 20px;">`;
+        bodyContent += `<div style="background: #181920; border: 1px solid #2e323d; padding: 16px; border-radius: 8px;">`;
+        bodyContent += `<div style="font-size: 1.05rem; font-weight: bold; color: #facc15; margin-bottom: 15px;">▶ [선택 스킬] ${selectedResult.skillName} 상세 세팅 적용 내역</div>`;
+
+        if (selectedResult.stats) {
+            Object.keys(selectedResult.stats).forEach(cat => {
+                if (cat.startsWith('_')) return;
+
+                let items = selectedResult.stats[cat];
+                if (items && items.length > 0) {
+                    items.sort((a, b) => {
+                        const aSrc = String(a?.source || "");
+                        const bSrc = String(b?.source || "");
+                        return (aSrc.startsWith("각인:") ? 0 : 1) - (bSrc.startsWith("각인:") ? 0 : 1);
+                    });
+                }
+
+                bodyContent += `<div style="font-weight: bold; color: #c084fc; margin-top: 12px; margin-bottom: 4px; font-size: 0.9rem;">■ ${cat}</div>`;
+
+                if (!items || items.length === 0) {
+                    bodyContent += `<div style="font-size: 0.85rem; color: #666; margin-left: 8px;">  - 입력된 데이터 없음</div>`;
+                } else {
+                    items.forEach(item => {
+                        let prefix = (typeof item.val === 'number' && item.val > 0) ? "+" : "";
+                        bodyContent += `<div style="font-size: 0.85rem; color: #94a3b8; margin-left: 8px; line-height: 1.5;">  - ${item.source}: ${prefix}${item.val}${item.unit || ''}</div>`;
+                    });
+                }
+            });
         }
-    }
 
-    // HTML 결과 업데이트
-    resultSection.innerHTML = bodyContent;
-    injectPauseButton();
-    // 💡 [핵심 2] 이벤트 위임 방식으로 변경 (클릭 요소 추적 완벽 보장)
-    resultSection.onclick = function(e) {
-        const row = e.target.closest('.sim-skill-row');
-        if (!row) return;
+        bodyContent += `</div></div>`;
 
-        const clickIdx = Number(row.getAttribute('data-idx'));
-        if (!isNaN(clickIdx)) {
-            window.renderResultsHTML(window.lastSkillResults, clickIdx);
+        // 5. 결과 섹션 요소 생성 및 배치
+        let resultSection = document.getElementById('sim-result-section');
+
+        if (!resultSection) {
+            resultSection = document.createElement('div');
+            resultSection.id = 'sim-result-section';
+            resultSection.style.cssText = `
+                width: var(--main-width) !important;
+                min-width: var(--main-width) !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                margin-top: 20px !important;
+                margin-bottom: 50px !important;
+                box-sizing: border-box !important;
+
+                background: #0f1015;
+                color: #e2e8f0;
+                border-radius: 12px;
+                border: 1px solid #2e323d;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+                padding: 24px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                clear: both;
+            `;
+
+            const arkPanel = document.getElementById('arkPassiveModal');
+            if (arkPanel && arkPanel.parentNode) {
+                arkPanel.parentNode.insertBefore(resultSection, arkPanel.nextSibling);
+            } else {
+                document.body.appendChild(resultSection);
+            }
+        }
+
+        // HTML 결과 업데이트
+        resultSection.innerHTML = bodyContent;
+        injectPauseButton();
+        // 💡 [핵심 2] 이벤트 위임 방식으로 변경 (클릭 요소 추적 완벽 보장)
+        resultSection.onclick = function(e) {
+            const row = e.target.closest('.sim-skill-row');
+            if (!row) return;
+
+            const clickIdx = Number(row.getAttribute('data-idx'));
+            if (!isNaN(clickIdx)) {
+                window.renderResultsHTML(window.lastSkillResults, clickIdx);
+            }
+        };
+
+        // 6. 미니 모달 업데이트
+        try {
+            const allHeaders = Array.from(resultSection.querySelectorAll('h3'));
+            const metricsHeader = allHeaders.find(h3 => h3.textContent.includes('캐릭터 공통 세팅 지표'));
+
+            if (metricsHeader && metricsHeader.nextElementSibling) {
+                const metricsGridHtml = metricsHeader.nextElementSibling.outerHTML;
+                if (typeof updateMiniResultModal === 'function') {
+                    updateMiniResultModal(metricsGridHtml);
+                }
+            }
+        } catch (err) {
+            console.warn('미니 모달 업데이트 중 오류 발생 (무시하고 연산 진행):', err);
         }
     };
-
-    // 6. 미니 모달 업데이트
-    try {
-        const allHeaders = Array.from(resultSection.querySelectorAll('h3'));
-        const metricsHeader = allHeaders.find(h3 => h3.textContent.includes('캐릭터 공통 세팅 지표'));
-
-        if (metricsHeader && metricsHeader.nextElementSibling) {
-            const metricsGridHtml = metricsHeader.nextElementSibling.outerHTML;
-            if (typeof updateMiniResultModal === 'function') {
-                updateMiniResultModal(metricsGridHtml);
-            }
-        }
-    } catch (err) {
-        console.warn('미니 모달 업데이트 중 오류 발생 (무시하고 연산 진행):', err);
-    }
-};
     
 
     window.addEventListener('keydown', (e) => {
@@ -2344,1124 +2340,1123 @@ if (enlightenLevel > 0) {
     });
 
     function initArkPassivePanel() {
-    if (document.getElementById('arkPassiveModal')) return;
+        if (document.getElementById('arkPassiveModal')) return;
 
-    const panelHtml = `
-        <div id="arkPassiveModal" class="custom-ark-panel">
-            <div class="ark-panel-header">
-            <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">⚙️ 아크 패시브 진화 설정</h3>
+        const panelHtml = `
+            <div id="arkPassiveModal" class="custom-ark-panel">
+                <div class="ark-panel-header">
+                <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">⚙️ 아크 패시브 진화 설정</h3>
+                </div>
+                <div id="arkEvolutionContainer"></div>
             </div>
-            <div id="arkEvolutionContainer"></div>
-        </div>
-    `;
+        `;
 
-    // 💡 main 등을 찾지 말고, React 루트 영역 밖인 document.body에 직접 붙입니다.
-    document.body.insertAdjacentHTML('beforeend', panelHtml);
+        // 💡 main 등을 찾지 말고, React 루트 영역 밖인 document.body에 직접 붙입니다.
+        document.body.insertAdjacentHTML('beforeend', panelHtml);
 
-    const style = document.createElement('style');
-    style.innerHTML = `
-    .custom-ark-panel {
-        /* 💡 원본 사이트의 CSS 변수 및 정렬 속성 그대로 적용 */
-        width: var(--main-width) !important;
-        min-width: var(--main-width) !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        margin-top: 20px !important;
-        margin-bottom: 20px !important;
-        box-sizing: border-box !important;
+        const style = document.createElement('style');
+        style.innerHTML = `
+        .custom-ark-panel {
+            /* 💡 원본 사이트의 CSS 변수 및 정렬 속성 그대로 적용 */
+            width: var(--main-width) !important;
+            min-width: var(--main-width) !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            margin-top: 20px !important;
+            margin-bottom: 20px !important;
+            box-sizing: border-box !important;
 
-        /* 커스텀 디자인 유지 */
-        background: #18181c;
-        border: 1px solid #2a2a32;
-        border-radius: 12px;
-        padding: 20px;
-        color: #e1e1e6;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        font-size: 12px;
-        font-family: sans-serif;
-        clear: both;
+            /* 커스텀 디자인 유지 */
+            background: #18181c;
+            border: 1px solid #2a2a32;
+            border-radius: 12px;
+            padding: 20px;
+            color: #e1e1e6;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            font-size: 12px;
+            font-family: sans-serif;
+            clear: both;
+        }
+        `;
+        document.head.appendChild(style);
+
+        renderArkPassiveUI();
     }
-    `;
-    document.head.appendChild(style);
-
-    renderArkPassiveUI();
-}
 
     function renderArkPassiveUI() {
-    const container = document.getElementById('arkEvolutionContainer');
-    if (!container) return;
+        const container = document.getElementById('arkEvolutionContainer');
+        if (!container) return;
 
-    container.innerHTML = '';
+        container.innerHTML = '';
 
-    evolutionNodes.forEach((row, rowIndex) => {
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'ark-row';
-        const maxRowLimit = rowMaxLimits[rowIndex];
+        evolutionNodes.forEach((row, rowIndex) => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'ark-row';
+            const maxRowLimit = rowMaxLimits[rowIndex];
 
-        row.forEach((node) => {
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = 'ark-node';
+            row.forEach((node) => {
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = 'ark-node';
 
-            const currentRowTotal = row.reduce((sum, n) => sum + n.current, 0);
-            nodeDiv.title = `${node.name} (현재: ${node.current}/${node.max} | 라인 합계: ${currentRowTotal}/${maxRowLimit})`;
+                const currentRowTotal = row.reduce((sum, n) => sum + n.current, 0);
+                nodeDiv.title = `${node.name} (현재: ${node.current}/${node.max} | 라인 합계: ${currentRowTotal}/${maxRowLimit})`;
 
-            const isGrayscale = node.current === 0 ? 'grayscale' : '';
+                const isGrayscale = node.current === 0 ? 'grayscale' : '';
 
-            nodeDiv.innerHTML = `
-                <span style="font-size: 11px; margin-bottom: 4px; color: #c9d1d9;">${node.name}</span>
-                <img src="https://cdn-lostark.game.onstove.com/efui_iconatlas/ark_passive_evolution/ark_passive_evolution_${node.id}.png" class="ark-icon ${isGrayscale}" alt="${node.name}" width="40" height="40">
-                <div class="node-controls">
-                    <button type="button" class="btn-node btn-dec">-</button>
-                    <span style="min-width: 36px; text-align: center; color: #58a6ff;">${node.current}/${node.max}</span>
-                    <button type="button" class="btn-node btn-inc">+</button>
-                </div>
-            `;
+                nodeDiv.innerHTML = `
+                    <span style="font-size: 11px; margin-bottom: 4px; color: #c9d1d9;">${node.name}</span>
+                    <img src="https://cdn-lostark.game.onstove.com/efui_iconatlas/ark_passive_evolution/ark_passive_evolution_${node.id}.png" class="ark-icon ${isGrayscale}" alt="${node.name}" width="40" height="40">
+                    <div class="node-controls">
+                        <button type="button" class="btn-node btn-dec">-</button>
+                        <span style="min-width: 36px; text-align: center; color: #58a6ff;">${node.current}/${node.max}</span>
+                        <button type="button" class="btn-node btn-inc">+</button>
+                    </div>
+                `;
 
-            const changeValue = (delta) => {
-                let targetValue = node.current + delta;
-                if (targetValue < 0) targetValue = 0;
-                if (targetValue > node.max) targetValue = node.max;
-
-                const otherNodesSum = row.reduce((sum, n) => (n === node ? sum : sum + n.current), 0);
-                if (otherNodesSum + targetValue > maxRowLimit) {
-                    targetValue = maxRowLimit - otherNodesSum;
+                const changeValue = (delta) => {
+                    let targetValue = node.current + delta;
                     if (targetValue < 0) targetValue = 0;
                     if (targetValue > node.max) targetValue = node.max;
-                }
 
-                if (node.current !== targetValue) {
-                    node.current = targetValue;
-                    renderArkPassiveUI();
-                }
-            };
+                    const otherNodesSum = row.reduce((sum, n) => (n === node ? sum : sum + n.current), 0);
+                    if (otherNodesSum + targetValue > maxRowLimit) {
+                        targetValue = maxRowLimit - otherNodesSum;
+                        if (targetValue < 0) targetValue = 0;
+                        if (targetValue > node.max) targetValue = node.max;
+                    }
 
-            const decBtn = nodeDiv.querySelector('.btn-dec');
-            const incBtn = nodeDiv.querySelector('.btn-inc');
-            const iconImg = nodeDiv.querySelector('.ark-icon');
+                    if (node.current !== targetValue) {
+                        node.current = targetValue;
+                        renderArkPassiveUI();
+                    }
+                };
 
-            // [수정] saveArkPassive() 호출 후 triggerCalculation()을 명시적으로 트리거
-            const handleNodeChange = (delta, e) => {
-                e.stopPropagation();
-                changeValue(delta);
-                if (typeof saveArkPassive === 'function') saveArkPassive();
-                if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-            };
+                const decBtn = nodeDiv.querySelector('.btn-dec');
+                const incBtn = nodeDiv.querySelector('.btn-inc');
+                const iconImg = nodeDiv.querySelector('.ark-icon');
 
-            decBtn.onclick = (e) => handleNodeChange(e.shiftKey ? -10 : -1, e);
-            incBtn.onclick = (e) => handleNodeChange(e.shiftKey ? 10 : 1, e);
-            iconImg.onclick = (e) => handleNodeChange(e.shiftKey ? 10 : 1, e);
-            iconImg.oncontextmenu = (e) => {
-                e.preventDefault();
-                handleNodeChange(e.shiftKey ? -10 : -1, e);
-            };
+                // [수정] saveArkPassive() 호출 후 triggerCalculation()을 명시적으로 트리거
+                const handleNodeChange = (delta, e) => {
+                    e.stopPropagation();
+                    changeValue(delta);
+                    if (typeof saveArkPassive === 'function') saveArkPassive();
+                    if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+                };
 
-            rowDiv.appendChild(nodeDiv);
+                decBtn.onclick = (e) => handleNodeChange(e.shiftKey ? -10 : -1, e);
+                incBtn.onclick = (e) => handleNodeChange(e.shiftKey ? 10 : 1, e);
+                iconImg.onclick = (e) => handleNodeChange(e.shiftKey ? 10 : 1, e);
+                iconImg.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    handleNodeChange(e.shiftKey ? -10 : -1, e);
+                };
+
+                rowDiv.appendChild(nodeDiv);
+            });
+
+            container.appendChild(rowDiv);
         });
-
-        container.appendChild(rowDiv);
-    });
-}
+    }
 
 
     // ==========================================
-// [추가] 실시간 계산 일시정지 토글 버튼 로직
-// ==========================================
-window.toggleCalcPause = function() {
-    window.isCalcPaused = !window.isCalcPaused;
-    
-    const btn = document.getElementById('calc-pause-btn');
-    if (!btn) return;
+    // [추가] 실시간 계산 일시정지 토글 버튼 로직
+    // ==========================================
+    window.toggleCalcPause = function() {
+        window.isCalcPaused = !window.isCalcPaused;
+        
+        const btn = document.getElementById('calc-pause-btn');
+        if (!btn) return;
 
-    if (window.isCalcPaused) {
-        btn.innerText = '⏸️ 실시간 계산 : OFF';
-        btn.style.backgroundColor = '#ef4444';
-        btn.style.borderColor = '#f87171';
-    } else {
-        btn.innerText = '▶️ 실시간 계산 : ON';
-        btn.style.backgroundColor = '#22c55e';
-        btn.style.borderColor = '#4ade80';
+        if (window.isCalcPaused) {
+            btn.innerText = '⏸️ 실시간 계산 : OFF';
+            btn.style.backgroundColor = '#ef4444';
+            btn.style.borderColor = '#f87171';
+        } else {
+            btn.innerText = '▶️ 실시간 계산 : ON';
+            btn.style.backgroundColor = '#22c55e';
+            btn.style.borderColor = '#4ade80';
 
-        if (typeof window.triggerCalculation === 'function') {
-            window.triggerCalculation();
+            if (typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            }
         }
+    };
+
+    window.setBaseline = function() {
+        if (!lastCalculatedResults || lastCalculatedResults.length === 0) {
+            showAlert('비교군으로 설정할 계산 결과가 없습니다.');
+            return;
+        }
+        // 깊은 복사를 통해 현재 결과를 기준점으로 완전 고정
+        baselineResults = JSON.parse(JSON.stringify(lastCalculatedResults));
+        renderCompareTable();
+        showAlert('현재 세팅 결과가 비교군으로 설정되었습니다!');
+    };
+
+
+    /**
+     * 비교 테이블 렌더링 함수
+     */
+    function renderCompareTable() {
+        const tbody = document.getElementById('compareTableBody');
+        if (!tbody) return;
+
+        if (!baselineResults || !lastCalculatedResults) {
+            tbody.innerHTML = '<tr><td colspan="8" style="padding: 30px; color: #a1a1aa;">비교할 세팅 데이터가 없습니다.<br>플로팅 메뉴의 <b>[📌 비교군 저장]</b> 버튼을 먼저 눌러주세요.</td></tr>';
+            return;
+        }
+
+        let html = '';
+
+        lastCalculatedResults.forEach((curr, idx) => {
+            const base = baselineResults.find(b => b.skillName === curr.skillName) || baselineResults[idx];
+            if (!base) return;
+
+            // 수치 추출
+            const baseDmg = base.expDmg || 0;
+            const currDmg = curr.expDmg || 0;
+            const dmgDiffPercent = baseDmg > 0 ? ((currDmg - baseDmg) / baseDmg) * 100 : 0;
+
+            const baseCd = base.finalCooldown || 0.001;
+            const currCd = curr.finalCooldown || 0.001;
+            const cdDiffPercent = baseCd > 0 ? ((currCd - baseCd) / baseCd) * 100 : 0;
+
+            const baseDps = baseCd > 0 ? baseDmg / baseCd : 0;
+            const currDps = currCd > 0 ? currDmg / currCd : 0;
+            const dpsDiffPercent = baseDps > 0 ? ((currDps - baseDps) / baseDps) * 100 : 0;
+
+            // 클래스 판별 (이득 = pos, 손해 = neg)
+            // 데미지/DPS: +가 이득(pos), -가 손해(neg)
+            const getDmgClass = (val) => val > 0 ? 'pos' : (val < 0 ? 'neg' : 'zero');
+            // 쿨타임: -가 감소(이득: pos), +가 증가(손해: neg)
+            const getCdClass = (val) => val < 0 ? 'pos' : (val > 0 ? 'neg' : 'zero');
+
+            html += `
+                <tr>
+                    <td class="skill-name">${curr.skillName}</td>
+                    <td>${Math.floor(baseDmg).toLocaleString()}</td>
+                    <td>${baseCd.toFixed(2)}s</td>
+                    <td>${Math.floor(currDmg).toLocaleString()}</td>
+                    <td>${currCd.toFixed(2)}s</td>
+                    <td class="${getDmgClass(dmgDiffPercent)}">${dmgDiffPercent > 0 ? '+' : ''}${dmgDiffPercent.toFixed(2)}%</td>
+                    <td class="${getCdClass(cdDiffPercent)}">${cdDiffPercent > 0 ? '+' : ''}${cdDiffPercent.toFixed(2)}%</td>
+                    <td class="${getDmgClass(dpsDiffPercent)}">${dpsDiffPercent > 0 ? '+' : ''}${dpsDiffPercent.toFixed(2)}%</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
     }
-};
 
-window.setBaseline = function() {
-    if (!lastCalculatedResults || lastCalculatedResults.length === 0) {
-        showAlert('비교군으로 설정할 계산 결과가 없습니다.');
-        return;
-    }
-    // 깊은 복사를 통해 현재 결과를 기준점으로 완전 고정
-    baselineResults = JSON.parse(JSON.stringify(lastCalculatedResults));
-    renderCompareTable();
-    showAlert('현재 세팅 결과가 비교군으로 설정되었습니다!');
-};
+    // 전역 변수로 partyCritCount 관리 (기본값: 0)
+    window.partyCritCount = 0;
 
 
-/**
- * 비교 테이블 렌더링 함수
- */
-function renderCompareTable() {
-    const tbody = document.getElementById('compareTableBody');
-    if (!tbody) return;
 
-    if (!baselineResults || !lastCalculatedResults) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding: 30px; color: #a1a1aa;">비교할 세팅 데이터가 없습니다.<br>플로팅 메뉴의 <b>[📌 비교군 저장]</b> 버튼을 먼저 눌러주세요.</td></tr>';
-        return;
-    }
+    /**
+     * 1. 좌측 하단 통합 플로팅 패널 생성
 
-    let html = '';
+    */
+    // 외부(parseArkCores 등)에서 코어 세팅 변경 시 호출할 수 있는 UI 갱신 함수
+    window.updateCoreSetUI = function() {
+        const badge = document.getElementById('core-set-badge');
+        if (!badge) return;
 
-    lastCalculatedResults.forEach((curr, idx) => {
-        const base = baselineResults.find(b => b.skillName === curr.skillName) || baselineResults[idx];
-        if (!base) return;
+        // window.isGiRyuSet 값을 확실히 참조
+        const isGiRyu = !!window.isGiRyuSet;
+        
+        badge.innerText = isGiRyu ? '🌀 기류 조절' : '⚔️ 비연참';
+        badge.style.backgroundColor = isGiRyu ? '#1e3a8a' : '#831843';
+        badge.style.borderColor = isGiRyu ? '#3b82f6' : '#f43f5e';
+        badge.style.color = isGiRyu ? '#bfdbfe' : '#fbcfe8';
+    };
 
-        // 수치 추출
-        const baseDmg = base.expDmg || 0;
-        const currDmg = curr.expDmg || 0;
-        const dmgDiffPercent = baseDmg > 0 ? ((currDmg - baseDmg) / baseDmg) * 100 : 0;
+    function injectPauseButton() {
+        if (document.getElementById('calc-floating-panel')) return;
 
-        const baseCd = base.finalCooldown || 0.001;
-        const currCd = curr.finalCooldown || 0.001;
-        const cdDiffPercent = baseCd > 0 ? ((currCd - baseCd) / baseCd) * 100 : 0;
-
-        const baseDps = baseCd > 0 ? baseDmg / baseCd : 0;
-        const currDps = currCd > 0 ? currDmg / currCd : 0;
-        const dpsDiffPercent = baseDps > 0 ? ((currDps - baseDps) / baseDps) * 100 : 0;
-
-        // 클래스 판별 (이득 = pos, 손해 = neg)
-        // 데미지/DPS: +가 이득(pos), -가 손해(neg)
-        const getDmgClass = (val) => val > 0 ? 'pos' : (val < 0 ? 'neg' : 'zero');
-        // 쿨타임: -가 감소(이득: pos), +가 증가(손해: neg)
-        const getCdClass = (val) => val < 0 ? 'pos' : (val > 0 ? 'neg' : 'zero');
-
-        html += `
-            <tr>
-                <td class="skill-name">${curr.skillName}</td>
-                <td>${Math.floor(baseDmg).toLocaleString()}</td>
-                <td>${baseCd.toFixed(2)}s</td>
-                <td>${Math.floor(currDmg).toLocaleString()}</td>
-                <td>${currCd.toFixed(2)}s</td>
-                <td class="${getDmgClass(dmgDiffPercent)}">${dmgDiffPercent > 0 ? '+' : ''}${dmgDiffPercent.toFixed(2)}%</td>
-                <td class="${getCdClass(cdDiffPercent)}">${cdDiffPercent > 0 ? '+' : ''}${cdDiffPercent.toFixed(2)}%</td>
-                <td class="${getDmgClass(dpsDiffPercent)}">${dpsDiffPercent > 0 ? '+' : ''}${dpsDiffPercent.toFixed(2)}%</td>
-            </tr>
+        // 1) 전체 플로팅 컨테이너
+        const panel = document.createElement('div');
+        panel.id = 'calc-floating-panel';
+        panel.style.cssText = `
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #161d24;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 175px;
         `;
-    });
 
-    tbody.innerHTML = html;
-}
-
-// 전역 변수로 partyCritCount 관리 (기본값: 0)
-window.partyCritCount = 0;
-
-/**
- * 좌측 하단 플로팅 패널 (치적 시너지 선택 + 실시간 연산 토글 버튼) 생성
- */
-
-/**
- * 1. 좌측 하단 통합 플로팅 패널 생성
- * [🎯 치적 시너지] + [▶️ 실시간 계산 토글] + [📁 아크패시브 세팅 관리]
- */
-// 외부(parseArkCores 등)에서 코어 세팅 변경 시 호출할 수 있는 UI 갱신 함수
-window.updateCoreSetUI = function() {
-    const badge = document.getElementById('core-set-badge');
-    if (!badge) return;
-
-    // window.isGiRyuSet 값을 확실히 참조
-    const isGiRyu = !!window.isGiRyuSet;
-    
-    badge.innerText = isGiRyu ? '🌀 기류 조절' : '⚔️ 비연참';
-    badge.style.backgroundColor = isGiRyu ? '#1e3a8a' : '#831843';
-    badge.style.borderColor = isGiRyu ? '#3b82f6' : '#f43f5e';
-    badge.style.color = isGiRyu ? '#bfdbfe' : '#fbcfe8';
-};
-
-function injectPauseButton() {
-    if (document.getElementById('calc-floating-panel')) return;
-
-    // 1) 전체 플로팅 컨테이너
-    const panel = document.createElement('div');
-    panel.id = 'calc-floating-panel';
-    panel.style.cssText = `
-        position: fixed;
-        bottom: 25px;
-        left: 25px;
-        z-index: 999999;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        background: #161d24;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 12px;
-        border-radius: 10px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        width: 175px;
-    `;
-
-    // -------------------------------------------------------------------------
-    // 🌟 현재 코어 세팅 표시 뱃지 (다른 버튼들과 규격 완벽 통일)
-    // -------------------------------------------------------------------------
-    const coreBadge = document.createElement('div');
-    coreBadge.id = 'core-set-badge';
-    coreBadge.style.cssText = `
-        width: 100%;
-        padding: 8px 0;
-        font-size: 0.8rem;
-        font-weight: 700;
-        border-radius: 6px;
-        border: 1px solid #f43f5e;
-        background-color: #831843;
-        color: #fbcfe8;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        transition: all 0.2s ease;
-    `;
-    panel.appendChild(coreBadge);
-
-    // 공통 버튼 생성 함수
-    const createButton = (text, bgColor, borderColor, onClick, id = '') => {
-        const btn = document.createElement('button');
-        if (id) btn.id = id;
-        btn.type = 'button';
-        btn.innerText = text;
-        btn.style.cssText = `
+        // -------------------------------------------------------------------------
+        // 🌟 현재 코어 세팅 표시 뱃지 (다른 버튼들과 규격 완벽 통일)
+        // -------------------------------------------------------------------------
+        const coreBadge = document.createElement('div');
+        coreBadge.id = 'core-set-badge';
+        coreBadge.style.cssText = `
             width: 100%;
             padding: 8px 0;
             font-size: 0.8rem;
-            font-weight: 600;
+            font-weight: 700;
             border-radius: 6px;
-            border: 1px solid ${borderColor};
-            background-color: ${bgColor};
-            color: #f1f5f9;
-            cursor: pointer;
-            transition: all 0.15s ease;
+            border: 1px solid #f43f5e;
+            background-color: #831843;
+            color: #fbcfe8;
+            box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            box-sizing: border-box;
+            transition: all 0.2s ease;
         `;
-        btn.onmouseover = () => btn.style.filter = 'brightness(1.15)';
-        btn.onmouseout = () => btn.style.filter = 'none';
-        btn.onclick = onClick;
-        return btn;
-    };
+        panel.appendChild(coreBadge);
 
-    // 2) ⚖️ 비교 세팅 버튼
-    const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
-        if (typeof window.setBaseline === 'function') window.setBaseline();
-    });
+        // 공통 버튼 생성 함수
+        const createButton = (text, bgColor, borderColor, onClick, id = '') => {
+            const btn = document.createElement('button');
+            if (id) btn.id = id;
+            btn.type = 'button';
+            btn.innerText = text;
+            btn.style.cssText = `
+                width: 100%;
+                padding: 8px 0;
+                font-size: 0.8rem;
+                font-weight: 600;
+                border-radius: 6px;
+                border: 1px solid ${borderColor};
+                background-color: ${bgColor};
+                color: #f1f5f9;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                box-sizing: border-box;
+            `;
+            btn.onmouseover = () => btn.style.filter = 'brightness(1.15)';
+            btn.onmouseout = () => btn.style.filter = 'none';
+            btn.onclick = onClick;
+            return btn;
+        };
 
-    const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
-        if (typeof openCompareModal === 'function') openCompareModal();
-    });
+        // 2) ⚖️ 비교 세팅 버튼
+        const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
+            if (typeof window.setBaseline === 'function') window.setBaseline();
+        });
 
-    // 3) 🎯 치적 시너지 입력 박스
-    const synergyBox = document.createElement('div');
-    synergyBox.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 6px 0;
-        margin: 2px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    `;
+        const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
+            if (typeof openCompareModal === 'function') openCompareModal();
+        });
 
-    const label = document.createElement('span');
-    label.innerText = '파티 치적 시너지(본인 제외)';
-    label.style.cssText = `
-        color: #a5b4fc;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-align: left;
-        padding-left: 2px;
-    `;
+        // 3) 🎯 치적 시너지 입력 박스
+        const synergyBox = document.createElement('div');
+        synergyBox.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 6px 0;
+            margin: 2px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        `;
 
-    const select = document.createElement('select');
-    select.id = 'party-crit-select';
-    select.style.cssText = `
-        width: 100%;
-        background-color: #0f172a;
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 6px;
-        padding: 7px 10px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        cursor: pointer;
-        outline: none;
-        box-sizing: border-box;
-        transition: border-color 0.15s ease;
-    `;
+        const label = document.createElement('span');
+        label.innerText = '파티 치적 시너지(본인 제외)';
+        label.style.cssText = `
+            color: #a5b4fc;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 2px;
+        `;
 
-    select.onmouseover = () => select.style.borderColor = '#38bdf8';
-    select.onmouseout = () => select.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-
-    [0, 1, 2].forEach(val => {
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.innerText = `${val}명 (${val * 10}%)`;
-        if (val === window.partyCritCount) opt.selected = true;
-        select.appendChild(opt);
-    });
-
-    select.onchange = function(e) {
-        window.partyCritCount = Number(e.target.value);
-        if (typeof window.triggerCalculation === 'function') {
-            window.triggerCalculation();
-        }
-    };
-
-    synergyBox.appendChild(label);
-    synergyBox.appendChild(select);
-
-    // 4) ⏸️ 실시간 연산 토글 버튼
-    const pauseBg = window.isCalcPaused ? '#991b1b' : '#166534';
-    const pauseBorder = window.isCalcPaused ? '#dc2626' : '#22c55e';
-    const pauseText = window.isCalcPaused ? '⏸️ 실시간 계산 : OFF' : '▶️ 실시간 계산 : ON';
-    
-    const pauseBtn = createButton(pauseText, pauseBg, pauseBorder, window.toggleCalcPause, 'calc-pause-btn');
-
-    // 5) 📁 아크패시브 세팅 관리 버튼
-    const presetBtn = createButton('📁 아크패시브 세팅 관리', '#1d4ed8', '#60a5fa', typeof openPresetModal === 'function' ? openPresetModal : () => {}, 'calc-preset-btn');
-
-    // 패널 조립
-    panel.appendChild(setBaseBtn);
-    panel.appendChild(toggleViewBtn);
-    panel.appendChild(synergyBox);
-    panel.appendChild(pauseBtn);
-    panel.appendChild(presetBtn);
-
-    document.body.appendChild(panel);
-
-    // 패널 생성 직후 UI 업데이트
-    window.updateCoreSetUI();
-}
-
-/**
- * [템퍼몽키 전용] 비교표 모달창 생성 및 출력 함수
- */
-/**
- * 1. 세팅 비교 모달 생성 및 출력 (가로 70vw + 세로 자동 스크롤)
- */
-function openCompareModal() {
-    let modal = document.getElementById('calc-compare-modal');
-
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'calc-compare-modal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000000;
-            background: #0f0e15;
-            border: 1px solid #3b2d54;
-            border-radius: 12px;
-            padding: 20px;
-            /* 1) 가로 크기: 화면 기준 70% (모바일/작은 화면을 위해 min-width 설정) */
-            width: 70vw;
-            min-width: 720px;
-            
-            /* 2) 세로 크기: 내용에 따라 자동 조정, 화면 85% 넘어가면 자동 스크롤 생성 */
-            height: auto;
-            max-height: 85vh;
-            overflow-y: auto;
-            
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        const select = document.createElement('select');
+        select.id = 'party-crit-select';
+        select.style.cssText = `
+            width: 100%;
+            background-color: #0f172a;
             color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 7px 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease;
+        `;
+
+        select.onmouseover = () => select.style.borderColor = '#38bdf8';
+        select.onmouseout = () => select.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+
+        [0, 1, 2].forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.innerText = `${val}명 (${val * 10}%)`;
+            if (val === window.partyCritCount) opt.selected = true;
+            select.appendChild(opt);
+        });
+
+        select.onchange = function(e) {
+            window.partyCritCount = Number(e.target.value);
+            if (typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            }
+        };
+
+        synergyBox.appendChild(label);
+        synergyBox.appendChild(select);
+
+        // 4) ⏸️ 실시간 연산 토글 버튼
+        const pauseBg = window.isCalcPaused ? '#991b1b' : '#166534';
+        const pauseBorder = window.isCalcPaused ? '#dc2626' : '#22c55e';
+        const pauseText = window.isCalcPaused ? '⏸️ 실시간 계산 : OFF' : '▶️ 실시간 계산 : ON';
+        
+        const pauseBtn = createButton(pauseText, pauseBg, pauseBorder, window.toggleCalcPause, 'calc-pause-btn');
+
+        // 5) 📁 아크패시브 세팅 관리 버튼
+        const presetBtn = createButton('📁 아크패시브 세팅 관리', '#1d4ed8', '#60a5fa', typeof openPresetModal === 'function' ? openPresetModal : () => {}, 'calc-preset-btn');
+
+        // 패널 조립
+        panel.appendChild(setBaseBtn);
+        panel.appendChild(toggleViewBtn);
+        panel.appendChild(synergyBox);
+        panel.appendChild(pauseBtn);
+        panel.appendChild(presetBtn);
+
+        document.body.appendChild(panel);
+
+        // 패널 생성 직후 UI 업데이트
+        window.updateCoreSetUI();
+    }
+
+    /**
+    비교표 모달창 생성 및 출력 함수
+    */
+    /**
+     * 1. 세팅 비교 모달 생성 및 출력 (가로 70vw + 세로 자동 스크롤)
+     */
+    function openCompareModal() {
+        let modal = document.getElementById('calc-compare-modal');
+
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'calc-compare-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000000;
+                background: #0f0e15;
+                border: 1px solid #3b2d54;
+                border-radius: 12px;
+                padding: 20px;
+                /* 1) 가로 크기: 화면 기준 70% (모바일/작은 화면을 위해 min-width 설정) */
+                width: 70vw;
+                min-width: 720px;
+                
+                /* 2) 세로 크기: 내용에 따라 자동 조정, 화면 85% 넘어가면 자동 스크롤 생성 */
+                height: auto;
+                max-height: 85vh;
+                overflow-y: auto;
+                
+                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                color: #ffffff;
+            `;
+
+            modal.innerHTML = `
+                <!-- 상단 타이틀 바 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="font-size: 1.15rem; font-weight: bold; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+                        <span style="color: #c084fc; font-size: 0.9rem;">▼</span> 세팅 비교 결과
+                    </div>
+                    <button id="close-compare-modal" style="background: none; border: none; color: #a1a1aa; font-size: 1.2rem; cursor: pointer; transition: color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#a1a1aa'">✕</button>
+                </div>
+
+                <!-- 커스텀 스타일 정의 -->
+                <style>
+                    .compare-table-wrapper {
+                        border: 1px solid #282237;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        background-color: #13111c;
+                    }
+                    .tm-compare-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        text-align: center;
+                        font-size: 0.88rem; /* 화면이 넓어졌으므로 글자 크기도 살짝 키워 가독성을 높였습니다 */
+                    }
+                    .tm-compare-table th {
+                        background: #1a1625;
+                        color: #d8b4fe;
+                        padding: 10px 6px;
+                        border: 1px solid #282237;
+                        font-weight: 600;
+                    }
+                    .tm-compare-table th.header-group {
+                        color: #c084fc;
+                        font-size: 0.92rem;
+                        background: #1f1a2e;
+                    }
+                    .tm-compare-table th.header-skill {
+                        color: #e879f9;
+                        font-size: 0.92rem;
+                        vertical-align: middle;
+                    }
+                    .tm-compare-table td {
+                        padding: 11px 8px;
+                        border: 1px solid #231e30;
+                        color: #e4e4e7;
+                    }
+                    .tm-compare-table tr:nth-child(even) {
+                        background-color: #110f19;
+                    }
+                    .tm-compare-table tr:hover {
+                        background-color: #1e192c;
+                    }
+                    .tm-compare-table .skill-name {
+                        font-weight: bold;
+                        color: #ffffff;
+                        text-align: center;
+                    }
+                    .tm-compare-table .pos { color: #38bdf8 !important; font-weight: bold; }
+                    .tm-compare-table .neg { color: #f87171 !important; font-weight: bold; }
+                    .tm-compare-table .zero { color: #71717a; }
+                </style>
+
+                <!-- 2단 구조 비교 테이블 -->
+                <div class="compare-table-wrapper">
+                    <table class="tm-compare-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="header-skill" style="width: 16%;">스킬명</th>
+                                <th colspan="2" class="header-group" style="width: 28%;">비교군</th>
+                                <th colspan="2" class="header-group" style="width: 28%;">지금 세팅</th>
+                                <th colspan="3" class="header-group" style="width: 28%;">변화율</th>
+                            </tr>
+                            <tr>
+                                <th>기대값</th>
+                                <th>쿨타임</th>
+                                <th>기대값</th>
+                                <th>쿨타임</th>
+                                <th>데미지증감</th>
+                                <th>쿨타임증감</th>
+                                <th>DPS증감</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compareTableBody">
+                            <tr><td colspan="8" style="padding: 30px; color: #71717a;">데이터를 연산하는 중입니다...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            document.getElementById('close-compare-modal').onclick = () => modal.style.display = 'none';
+        }
+
+        modal.style.display = 'block';
+        renderCompareTable();
+    }
+
+    /**
+     * 2. 아크 패시브 세팅 관리 모달 팝업 생성 및 오픈
+     */
+    function openPresetModal() {
+        let modal = document.getElementById('preset-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            window.renderPresetList();
+            return;
+        }
+
+        modal = document.createElement('div');
+        modal.id = 'preset-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7); z-index: 1000000;
+            display: flex; align-items: center; justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         `;
 
         modal.innerHTML = `
-            <!-- 상단 타이틀 바 -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <div style="font-size: 1.15rem; font-weight: bold; color: #ffffff; display: flex; align-items: center; gap: 6px;">
-                    <span style="color: #c084fc; font-size: 0.9rem;">▼</span> 세팅 비교 결과
+            <div style="background: #1e2029; border: 1px solid #333745; width: 380px; padding: 20px; border-radius: 12px; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+                    <h3 style="margin:0; font-size: 1.05rem; color: #60a5fa; display:flex; align-items:center; gap:6px;">
+                        ⚡ 아크 패시브 세팅 관리
+                    </h3>
+                    <button id="modal-close-btn" style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1.2rem; line-height:1;">✕</button>
                 </div>
-                <button id="close-compare-modal" style="background: none; border: none; color: #a1a1aa; font-size: 1.2rem; cursor: pointer; transition: color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#a1a1aa'">✕</button>
-            </div>
+                
+                <div style="display:flex; gap:6px; margin-bottom: 16px;">
+                    <input id="preset-name-input" type="text" placeholder="세팅 이름 (예: 깨달음 딜러)" style="flex:1; padding: 7px 10px; background:#0f1015; border:1px solid #333745; color:#fff; border-radius:6px; font-size:0.85rem; outline:none;" />
+                    <button id="preset-save-btn" style="padding: 7px 14px; background:#22c55e; border:none; color:#fff; font-weight:bold; font-size:0.8rem; border-radius:6px; cursor:pointer;">저장</button>
+                </div>
 
-            <!-- 커스텀 스타일 정의 -->
-            <style>
-                .compare-table-wrapper {
-                    border: 1px solid #282237;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    background-color: #13111c;
-                }
-                .tm-compare-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    text-align: center;
-                    font-size: 0.88rem; /* 화면이 넓어졌으므로 글자 크기도 살짝 키워 가독성을 높였습니다 */
-                }
-                .tm-compare-table th {
-                    background: #1a1625;
-                    color: #d8b4fe;
-                    padding: 10px 6px;
-                    border: 1px solid #282237;
-                    font-weight: 600;
-                }
-                .tm-compare-table th.header-group {
-                    color: #c084fc;
-                    font-size: 0.92rem;
-                    background: #1f1a2e;
-                }
-                .tm-compare-table th.header-skill {
-                    color: #e879f9;
-                    font-size: 0.92rem;
-                    vertical-align: middle;
-                }
-                .tm-compare-table td {
-                    padding: 11px 8px;
-                    border: 1px solid #231e30;
-                    color: #e4e4e7;
-                }
-                .tm-compare-table tr:nth-child(even) {
-                    background-color: #110f19;
-                }
-                .tm-compare-table tr:hover {
-                    background-color: #1e192c;
-                }
-                .tm-compare-table .skill-name {
-                    font-weight: bold;
-                    color: #ffffff;
-                    text-align: center;
-                }
-                .tm-compare-table .pos { color: #38bdf8 !important; font-weight: bold; }
-                .tm-compare-table .neg { color: #f87171 !important; font-weight: bold; }
-                .tm-compare-table .zero { color: #71717a; }
-            </style>
-
-            <!-- 2단 구조 비교 테이블 -->
-            <div class="compare-table-wrapper">
-                <table class="tm-compare-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" class="header-skill" style="width: 16%;">스킬명</th>
-                            <th colspan="2" class="header-group" style="width: 28%;">비교군</th>
-                            <th colspan="2" class="header-group" style="width: 28%;">지금 세팅</th>
-                            <th colspan="3" class="header-group" style="width: 28%;">변화율</th>
-                        </tr>
-                        <tr>
-                            <th>기대값</th>
-                            <th>쿨타임</th>
-                            <th>기대값</th>
-                            <th>쿨타임</th>
-                            <th>데미지증감</th>
-                            <th>쿨타임증감</th>
-                            <th>DPS증감</th>
-                        </tr>
-                    </thead>
-                    <tbody id="compareTableBody">
-                        <tr><td colspan="8" style="padding: 30px; color: #71717a;">데이터를 연산하는 중입니다...</td></tr>
-                    </tbody>
-                </table>
+                <div id="preset-list-container" style="max-height: 220px; overflow-y: auto; display:flex; flex-direction:column; gap:6px; padding-right:2px;">
+                    <!-- 세팅 목록이 동적으로 들어가는 위치 -->
+                </div>
             </div>
         `;
 
         document.body.appendChild(modal);
 
-        document.getElementById('close-compare-modal').onclick = () => modal.style.display = 'none';
-    }
-
-    modal.style.display = 'block';
-    renderCompareTable();
-}
-
-/**
- * 2. 아크 패시브 세팅 관리 모달 팝업 생성 및 오픈
- */
-function openPresetModal() {
-    let modal = document.getElementById('preset-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        window.renderPresetList();
-        return;
-    }
-
-    modal = document.createElement('div');
-    modal.id = 'preset-modal';
-    modal.style.cssText = `
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.7); z-index: 1000000;
-        display: flex; align-items: center; justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    modal.innerHTML = `
-        <div style="background: #1e2029; border: 1px solid #333745; width: 380px; padding: 20px; border-radius: 12px; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
-                <h3 style="margin:0; font-size: 1.05rem; color: #60a5fa; display:flex; align-items:center; gap:6px;">
-                    ⚡ 아크 패시브 세팅 관리
-                </h3>
-                <button id="modal-close-btn" style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1.2rem; line-height:1;">✕</button>
-            </div>
-            
-            <div style="display:flex; gap:6px; margin-bottom: 16px;">
-                <input id="preset-name-input" type="text" placeholder="세팅 이름 (예: 깨달음 딜러)" style="flex:1; padding: 7px 10px; background:#0f1015; border:1px solid #333745; color:#fff; border-radius:6px; font-size:0.85rem; outline:none;" />
-                <button id="preset-save-btn" style="padding: 7px 14px; background:#22c55e; border:none; color:#fff; font-weight:bold; font-size:0.8rem; border-radius:6px; cursor:pointer;">저장</button>
-            </div>
-
-            <div id="preset-list-container" style="max-height: 220px; overflow-y: auto; display:flex; flex-direction:column; gap:6px; padding-right:2px;">
-                <!-- 세팅 목록이 동적으로 들어가는 위치 -->
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // X 닫기 버튼 이벤트
-    document.getElementById('modal-close-btn').onclick = () => {
-        modal.style.display = 'none';
-    };
-
-    // 저장 버튼 클릭 이벤트
-    document.getElementById('preset-save-btn').onclick = () => {
-        const input = document.getElementById('preset-name-input');
-        const val = input.value.trim();
-        if (typeof window.savePreset === 'function') {
-            window.savePreset(val);
-        }
-        input.value = '';
-        window.renderPresetList();
-    };
-
-    window.renderPresetList();
-}
-
-/**
- * 3. 프리셋 목록 리플레이서 (이벤트 직접 바인딩으로 안전성 확보)
- */
-window.renderPresetList = function() {
-    const container = document.getElementById('preset-list-container');
-    if (!container) return;
-
-    const presets = getPresetList();
-    const keys = Object.keys(presets);
-
-    container.innerHTML = ''; // 초기화
-
-    if (keys.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color:#6b7280; font-size:0.8rem; padding:16px;">저장된 아크 패시브 세팅이 없습니다.</div>`;
-        return;
-    }
-
-    keys.forEach(name => {
-        const itemEl = document.createElement('div');
-        itemEl.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:#111217; padding: 8px 12px; border-radius:6px; border:1px solid #222530;';
-
-        const infoBox = document.createElement('div');
-        infoBox.innerHTML = `
-            <div style="font-size:0.85rem; font-weight:bold; color:#f3f4f6;">${name}</div>
-            <div style="font-size:0.7rem; color:#6b7280;">${presets[name].savedAt || ''}</div>
-        `;
-
-        const btnGroup = document.createElement('div');
-        btnGroup.style.cssText = 'display:flex; gap:6px;';
-
-        // 불러오기 버튼
-        const loadBtn = document.createElement('button');
-        loadBtn.innerText = '불러오기';
-        loadBtn.style.cssText = 'padding:4px 10px; background:#3b82f6; border:none; color:#fff; font-size:0.75rem; font-weight:bold; border-radius:4px; cursor:pointer;';
-        loadBtn.onclick = function() {
-            if (typeof window.applyPreset === 'function') {
-                window.applyPreset(name);
-            }
-            const modal = document.getElementById('preset-modal');
-            if (modal) modal.style.display = 'none';
+        // X 닫기 버튼 이벤트
+        document.getElementById('modal-close-btn').onclick = () => {
+            modal.style.display = 'none';
         };
 
-        // 삭제 버튼
-        const delBtn = document.createElement('button');
-        delBtn.innerText = '삭제';
-        delBtn.style.cssText = 'padding:4px 8px; background:#ef4444; border:none; color:#fff; font-size:0.75rem; border-radius:4px; cursor:pointer;';
-        delBtn.onclick = function() {
-            if (typeof window.deletePreset === 'function') {
-                window.deletePreset(name);
+        // 저장 버튼 클릭 이벤트
+        document.getElementById('preset-save-btn').onclick = () => {
+            const input = document.getElementById('preset-name-input');
+            const val = input.value.trim();
+            if (typeof window.savePreset === 'function') {
+                window.savePreset(val);
             }
+            input.value = '';
             window.renderPresetList();
         };
 
-        btnGroup.appendChild(loadBtn);
-        btnGroup.appendChild(delBtn);
+        window.renderPresetList();
+    }
 
-        itemEl.appendChild(infoBox);
-        itemEl.appendChild(btnGroup);
+    /**
+     * 3. 프리셋 목록 리플레이서 (이벤트 직접 바인딩으로 안전성 확보)
+     */
+    window.renderPresetList = function() {
+        const container = document.getElementById('preset-list-container');
+        if (!container) return;
 
-        container.appendChild(itemEl);
-    });
-};
+        const presets = getPresetList();
+        const keys = Object.keys(presets);
+
+        container.innerHTML = ''; // 초기화
+
+        if (keys.length === 0) {
+            container.innerHTML = `<div style="text-align:center; color:#6b7280; font-size:0.8rem; padding:16px;">저장된 아크 패시브 세팅이 없습니다.</div>`;
+            return;
+        }
+
+        keys.forEach(name => {
+            const itemEl = document.createElement('div');
+            itemEl.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:#111217; padding: 8px 12px; border-radius:6px; border:1px solid #222530;';
+
+            const infoBox = document.createElement('div');
+            infoBox.innerHTML = `
+                <div style="font-size:0.85rem; font-weight:bold; color:#f3f4f6;">${name}</div>
+                <div style="font-size:0.7rem; color:#6b7280;">${presets[name].savedAt || ''}</div>
+            `;
+
+            const btnGroup = document.createElement('div');
+            btnGroup.style.cssText = 'display:flex; gap:6px;';
+
+            // 불러오기 버튼
+            const loadBtn = document.createElement('button');
+            loadBtn.innerText = '불러오기';
+            loadBtn.style.cssText = 'padding:4px 10px; background:#3b82f6; border:none; color:#fff; font-size:0.75rem; font-weight:bold; border-radius:4px; cursor:pointer;';
+            loadBtn.onclick = function() {
+                if (typeof window.applyPreset === 'function') {
+                    window.applyPreset(name);
+                }
+                const modal = document.getElementById('preset-modal');
+                if (modal) modal.style.display = 'none';
+            };
+
+            // 삭제 버튼
+            const delBtn = document.createElement('button');
+            delBtn.innerText = '삭제';
+            delBtn.style.cssText = 'padding:4px 8px; background:#ef4444; border:none; color:#fff; font-size:0.75rem; border-radius:4px; cursor:pointer;';
+            delBtn.onclick = function() {
+                if (typeof window.deletePreset === 'function') {
+                    window.deletePreset(name);
+                }
+                window.renderPresetList();
+            };
+
+            btnGroup.appendChild(loadBtn);
+            btnGroup.appendChild(delBtn);
+
+            itemEl.appendChild(infoBox);
+            itemEl.appendChild(btnGroup);
+
+            container.appendChild(itemEl);
+        });
+    };
 
     // =============================================================================
     // 7. 메인 실행 핸들러 및 트리거 버튼 생성
     // =============================================================================
     function handleCalculate() {
-    try {
-        const rawData = extractFullSimulatorData(document);
+        try {
+            const rawData = extractFullSimulatorData(document);
 
-        // 🔍 [1단계] DOM 파싱(불러오기) 확인
+            // 🔍 [1단계] DOM 파싱(불러오기) 확인
 
-        const mappedInputs = mapExtractedDataToInputs(rawData);
-        const finalInputs = transformToInputs(mappedInputs);
-        const results = calculateSkillStats(finalInputs);
+            const mappedInputs = mapExtractedDataToInputs(rawData);
+            const finalInputs = transformToInputs(mappedInputs);
+            const results = calculateSkillStats(finalInputs);
 
-        lastCalculatedResults = results;
+            lastCalculatedResults = results;
 
 
-        renderResultsHTML(results);
-    } catch (err) {
-        console.error("연산 처리 중 오류 발생:", err);
-        showAlert("연산 도중 오류가 발생했습니다. 콘솔 창(F12)을 확인해주세요.");
-    }
-}
-
-const PRESET_STORAGE_KEY = 'ARK_CALC_PASSIVE_PRESETS';
-
-/**
- * 1. 현재 화면의 아크 패시브 설정만 수집
- */
-function getPassiveState() {
-    const container = document.getElementById('arkEvolutionContainer');
-    
-    if (!container) {
-        console.error("아크 패시브 영역(#arkEvolutionContainer)을 찾을 수 없습니다.");
-        return { timestamp: new Date().toLocaleString(), nodes: {} };
-    }
-
-    const nodesData = {};
-    const nodes = container.querySelectorAll('.ark-node');
-
-    nodes.forEach(node => {
-        // 노드 이름 추출 (span 태그의 텍스트)
-        const nameSpan = node.querySelector('span');
-        if (!nameSpan) return;
-        
-        const nodeName = nameSpan.textContent.trim();
-
-        // 수치 추출 ("15/30" 형식의 span 태그)
-        const pointSpan = node.querySelector('.node-controls span');
-        if (pointSpan) {
-            const [current, max] = pointSpan.textContent.split('/').map(v => parseInt(v.trim(), 10));
-            nodesData[nodeName] = {
-                current: isNaN(current) ? 0 : current,
-                max: isNaN(max) ? 0 : max
-            };
+            renderResultsHTML(results);
+        } catch (err) {
+            console.error("연산 처리 중 오류 발생:", err);
+            showAlert("연산 도중 오류가 발생했습니다. 콘솔 창(F12)을 확인해주세요.");
         }
-    });
-
-    return {
-        timestamp: new Date().toLocaleString(),
-        nodes: nodesData
-    };
-}
-
-/**
- * 2. 아크 패시브 프리셋 저장
- */
-window.savePreset = function(presetName) {
-    if (!presetName) return showAlert('프리셋 이름을 입력해 주세요!');
-
-    const presets = getPresetList();
-    const currentState = getPassiveState();
-
-    presets[presetName] = {
-        name: presetName,
-        data: currentState, // nodes 데이터를 포함한 전체 객체 저장
-        savedAt: new Date().toLocaleDateString()
-    };
-
-    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
-    showAlert(`'${presetName}' 아크 패시브 세팅이 저장되었습니다!`);
-};
-
-/**
- * 3. 아크 패시브 프리셋 불러오기 (UI 복원)
- */
-/**
- * 3. 아크 패시브 프리셋 불러오기 (전체 초기화 후 티어 순서대로 복원)
- */
-window.applyPreset = function(presetName) {
-    const presets = getPresetList();
-    const target = presets[presetName];
-    if (!target) return showAlert('존재하지 않는 프리셋입니다.');
-
-    const nodesData = target.data?.nodes || target.data || {};
-    const container = document.getElementById('arkEvolutionContainer');
-
-    if (!container) {
-        return showAlert(`아크 패시브 영역(#arkEvolutionContainer)을 화면에서 찾을 수 없습니다.`);
     }
 
-    // [STEP 1] 아크 패시브 전체 초기화 수행
-    // 1-1. 화면 내 '초기화' 버튼이 있는지 찾고 클릭
-    const allButtons = Array.from(container.querySelectorAll('button'));
-    const resetButton = allButtons.find(btn => 
-        btn.textContent.includes('초기화') || 
-        btn.classList.contains('btn-reset') ||
-        btn.getAttribute('title')?.includes('초기화')
-    );
+    const PRESET_STORAGE_KEY = 'ARK_CALC_PASSIVE_PRESETS';
 
-    if (resetButton) {
-        resetButton.click();
-    } else {
-        // 1-2. 초기화 버튼이 없을 경우: 아래->위 순서로 minus 버튼을 연속 클릭하여 0으로 리셋
-        const nodesArray = Array.from(container.querySelectorAll('.ark-node')).reverse();
-        nodesArray.forEach(node => {
-            const minusBtn = node.querySelector('.btn-minus, [data-action="minus"], .node-controls button:first-child');
-            if (minusBtn) {
-                for (let i = 0; i < 30; i++) {
-                    minusBtn.click();
-                }
+    /**
+     * 1. 현재 화면의 아크 패시브 설정만 수집
+     */
+    function getPassiveState() {
+        const container = document.getElementById('arkEvolutionContainer');
+        
+        if (!container) {
+            console.error("아크 패시브 영역(#arkEvolutionContainer)을 찾을 수 없습니다.");
+            return { timestamp: new Date().toLocaleString(), nodes: {} };
+        }
+
+        const nodesData = {};
+        const nodes = container.querySelectorAll('.ark-node');
+
+        nodes.forEach(node => {
+            // 노드 이름 추출 (span 태그의 텍스트)
+            const nameSpan = node.querySelector('span');
+            if (!nameSpan) return;
+            
+            const nodeName = nameSpan.textContent.trim();
+
+            // 수치 추출 ("15/30" 형식의 span 태그)
+            const pointSpan = node.querySelector('.node-controls span');
+            if (pointSpan) {
+                const [current, max] = pointSpan.textContent.split('/').map(v => parseInt(v.trim(), 10));
+                nodesData[nodeName] = {
+                    current: isNaN(current) ? 0 : current,
+                    max: isNaN(max) ? 0 : max
+                };
             }
         });
-    }
 
-    // [STEP 2] 1티어 -> 2티어 -> 3티어 순서(DOM 순서)대로 포인트 투자
-    const nodes = container.querySelectorAll('.ark-node');
-
-    nodes.forEach(node => {
-        const nameSpan = node.querySelector('span');
-        if (!nameSpan) return;
-
-        const nodeName = nameSpan.textContent.trim();
-        const targetData = nodesData[nodeName];
-
-        if (targetData && targetData.current > 0) {
-            const plusBtn = node.querySelector('.btn-plus, [data-action="plus"], .node-controls button:last-child');
-            if (plusBtn) {
-                // 목표 포인트 수치만큼 + 버튼 클릭
-                for (let i = 0; i < targetData.current; i++) {
-                    plusBtn.click();
-                }
-            }
-        }
-    });
-
-    // [STEP 3] 최종 계산 재트리거
-    setTimeout(() => {
-        if (typeof window.triggerCalculation === 'function') {
-            window.triggerCalculation();
-        }
-    }, 100);
-
-    showAlert(`'${presetName}' 아크 패시브 세팅을 불러왔습니다!`);
-};
-
-// React Native 값 세터 (기존 코드 유지)
-function setNativeValue(element, value) {
-    const valueSetter = Object.getOwnPropertyDescriptor(element, 'value');
-    const prototype = Object.getPrototypeOf(element);
-    const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value');
-
-    if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
-        prototypeValueSetter.set.call(element, value);
-    } else if (valueSetter && valueSetter.set) {
-        valueSetter.set.call(element, value);
-    } else {
-        element.value = value;
-    }
-}
-
-/**
- * 4. 유틸리티 함수들 (목록 조회/삭제)
- */
-function getPresetList() {
-    try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || {}; } 
-    catch (e) { return {}; }
-}
-
-window.deletePreset = function(presetName) {
-    const presets = getPresetList();
-    delete presets[presetName];
-    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
-};
-
-    // 기존 createTriggerButton()을 대체하는 실시간 계산 및 초기화 함수
-function initRealtimeCalculator() {
-    // 1. 하단 아크패시브 패널 생성
-    initArkPassivePanel();
-
-    let calcTimer = null;
-
-    // 실시간 계산 실행 함수 (디바운스 & requestAnimationFrame 적용)
-    window.triggerCalculation = function() {
-        if (window.isCalcPaused) return;
-        clearTimeout(calcTimer);
-        calcTimer = setTimeout(() => {
-            if (typeof handleCalculate === 'function') {
-                requestAnimationFrame(() => {
-                    handleCalculate();
-                });
-            }
-        }, 500); // 반응성을 위해 100ms -> 80ms로 살짝 단축
-    };
-
-    // 2. [핵심 수정 1] 특정 모달이 아닌 document 전역(body)에 이벤트 바인딩
-    const eventTypes = ['input', 'change', 'click', 'keyup'];
-    
-    eventTypes.forEach(eventType => {
-        document.body.addEventListener(eventType, (e) => {
-            const target = e.target;
-            // input, select, textarea, checkbox, radio, button 및 클릭 가능한 요소 감지
-            if (
-                target.matches('input, select, textarea, [type="checkbox"], [type="radio"], button, .btn-node, .ark-icon') ||
-                target.closest('.sim-skill-row')
-            ) {
-                window.triggerCalculation();
-            }
-        }, true); // 캡처링 모드(true)로 event.stopPropagation() 이벤트 차단 방지
-    });
-
-    // 3. [핵심 수정 2] React 등 프레임워크에 의해 DOM 상태/클래스/속성이 변경될 때도 감지 (MutationObserver)
-    const observer = new MutationObserver((mutations) => {
-        let shouldRecalc = false;
-        for (const mutation of mutations) {
-            // 결과창 내부 변화는 무시 (무한 루프 방지)
-            if (mutation.target.closest && mutation.target.closest('#sim-result-section')) {
-                continue;
-            }
-            shouldRecalc = true;
-            break;
-        }
-        if (shouldRecalc) {
-            window.triggerCalculation();
-        }
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['value', 'checked', 'selected', 'class'] // 스탯/노드 변경 관련 속성 감시
-    });
-
-    // 4. 최초 1회 즉시 실행
-    window.triggerCalculation();
-}
-    // createTriggerButton 호출부 또는 load 이벤트 바인딩 부분 수정
-    window.addEventListener('load', () => {
-        // React 하이드레이션 처리가 끝날 시간을 벌어줌 (100~300ms)
-        setTimeout(() => {
-            initRealtimeCalculator();
-        }, 300);
-
-    })
-
-
-/**
- * 메인 결과창이 화면에 안 보일 때 [캐릭터 공통 세팅 지표]만 플로팅으로 보여주는 함수
- */
-function updateMiniResultModal(commonMetricsHtml) {
-    let miniModal = document.getElementById('sim-mini-modal');
-
-    // 1. 미니 모달 프레임이 없으면 새로 생성
-    if (!miniModal) {
-        miniModal = document.createElement('div');
-        miniModal.id = 'sim-mini-modal';
-        miniModal.style.cssText = `
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 99999;
-            background: rgba(15, 16, 21, 0.92);
-            backdrop-filter: blur(10px);
-            border: 1px solid #3b4252;
-            border-radius: 12px;
-            padding: 14px 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            color: #e2e8f0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-            max-width: 90vw;
-        `;
-        document.body.appendChild(miniModal);
-
-        setupResultObserver();
-    }
-
-    // 2. 미니 모달 내부 HTML 업데이트
-    miniModal.innerHTML = `
-        <div style="font-size: 11px; font-weight: bold; color: #c084fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-            <span>⚡ 캐릭터 공통 세팅 지표 (실시간)</span>
-        </div>
-        <div class="mini-metrics-wrapper">
-            ${commonMetricsHtml}
-        </div>
-        <style>
-            /* 미니 모달 내부에서는 Grid를 Flex로 변경하여 조그맣고 가로로 콤팩트하게 표시 */
-            #sim-mini-modal .mini-metrics-wrapper > div {
-                display: flex !important;
-                flex-wrap: wrap !important;
-                gap: 8px !important;
-                margin-bottom: 0 !important;
-            }
-            #sim-mini-modal .mini-metrics-wrapper > div > div {
-                padding: 6px 10px !important;
-                background: #181920 !important;
-                border: 1px solid #2e323d !important;
-                border-radius: 6px !important;
-                min-width: fit-content !important;
-            }
-            #sim-mini-modal .mini-metrics-wrapper div {
-                font-size: 0.75rem !important;
-            }
-        </style>
-    `;
-}
-/**
- * 하단 메인 결과창이 화면 보기에 들어왔는지/나갔는지 감지하는 Observer
- */
-function setupResultObserver() {
-    const resultSection = document.getElementById('sim-result-section');
-    const miniModal = document.getElementById('sim-mini-modal');
-    if (!resultSection || !miniModal) return;
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            // 메인 결과 섹션이 화면에서 벗어났을 때만 미니 모달 표시
-            if (!entry.isIntersecting) {
-                miniModal.style.opacity = '1';
-                miniModal.style.transform = 'translateY(0)';
-                miniModal.style.pointerEvents = 'auto';
-            } else {
-                // 메인 결과 섹션이 화면에 보이면 미니 모달 숨김
-                miniModal.style.opacity = '0';
-                miniModal.style.transform = 'translateY(20px)';
-                miniModal.style.pointerEvents = 'none';
-            }
-        });
-    }, { threshold: 0.1 }); // 메인 결과창이 10% 이상 보이면 작동
-
-    observer.observe(resultSection);
-}
-
-/**
- * 커스텀 알림창 UI 자동 생성 및 표시 함수
- */
-function showAlert(msg, icon = '🔔') {
-    let overlay = document.getElementById('customAlertOverlay');
-
-    // 1. 알림창 DOM 요소가 없으면 동적으로 자동 생성
-    if (!overlay) {
-        // Style 태그 주입
-        const style = document.createElement('style');
-        style.innerText = `
-            .custom-alert-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background-color: rgba(0, 0, 0, 0.75);
-                backdrop-filter: blur(5px);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 1000000;
-                opacity: 0;
-                visibility: hidden;
-                transition: all 0.2s ease-in-out;
-            }
-            .custom-alert-overlay.active {
-                opacity: 1;
-                visibility: visible;
-            }
-            .custom-alert-box {
-                background-color: #121318;
-                color: #ffffff;
-                width: 320px;
-                padding: 24px 20px 20px 20px;
-                border-radius: 16px;
-                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
-                text-align: center;
-                border: 1px solid #2e323d;
-                transform: scale(0.9);
-                transition: transform 0.2s ease-in-out;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            }
-            .custom-alert-overlay.active .custom-alert-box {
-                transform: scale(1);
-            }
-            .custom-alert-icon {
-                font-size: 32px;
-                margin-bottom: 12px;
-                line-height: 1;
-            }
-            .custom-alert-message {
-                font-size: 14px;
-                font-weight: 500;
-                color: #e2e8f0;
-                margin-bottom: 20px;
-                word-break: keep-all;
-                line-height: 1.5;
-            }
-            .custom-alert-btn {
-                width: 100%;
-                padding: 10px 0;
-                background-color: #8b5cf6;
-                color: #ffffff;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 700;
-                cursor: pointer;
-                transition: background-color 0.15s ease;
-                box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
-            }
-            .custom-alert-btn:hover {
-                background-color: #7c3aed;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Overlay & Box HTML 구성
-        overlay = document.createElement('div');
-        overlay.id = 'customAlertOverlay';
-        overlay.className = 'custom-alert-overlay';
-        overlay.innerHTML = `
-            <div class="custom-alert-box">
-                <div class="custom-alert-icon" id="customAlertIcon">${icon}</div>
-                <div class="custom-alert-message" id="customAlertMsg"></div>
-                <button class="custom-alert-btn" id="customAlertBtn">확인</button>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-
-        // 확인 버튼 클릭 시 닫기
-        document.getElementById('customAlertBtn').onclick = closeAlert;
-        
-        // 배경 클릭 시 닫기
-        overlay.onclick = (e) => {
-            if (e.target === overlay) closeAlert();
+        return {
+            timestamp: new Date().toLocaleString(),
+            nodes: nodesData
         };
     }
 
-    // 2. 메시지 및 아이콘 설정 후 팝업 출력
-    document.getElementById('customAlertIcon').innerText = icon;
-    document.getElementById('customAlertMsg').innerText = msg;
-    overlay.classList.add('active');
-}
+    /**
+     * 2. 아크 패시브 프리셋 저장
+     */
+    window.savePreset = function(presetName) {
+        if (!presetName) return showAlert('프리셋 이름을 입력해 주세요!');
 
-/**
- * 커스텀 알림창 닫기
- */
-function closeAlert() {
-    const overlay = document.getElementById('customAlertOverlay');
-    if (overlay) {
-        overlay.classList.remove('active');
+        const presets = getPresetList();
+        const currentState = getPassiveState();
+
+        presets[presetName] = {
+            name: presetName,
+            data: currentState, // nodes 데이터를 포함한 전체 객체 저장
+            savedAt: new Date().toLocaleDateString()
+        };
+
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+        showAlert(`'${presetName}' 아크 패시브 세팅이 저장되었습니다!`);
+    };
+
+    /**
+     * 3. 아크 패시브 프리셋 불러오기 (UI 복원)
+     */
+    /**
+     * 3. 아크 패시브 프리셋 불러오기 (전체 초기화 후 티어 순서대로 복원)
+     */
+    window.applyPreset = function(presetName) {
+        const presets = getPresetList();
+        const target = presets[presetName];
+        if (!target) return showAlert('존재하지 않는 프리셋입니다.');
+
+        const nodesData = target.data?.nodes || target.data || {};
+        const container = document.getElementById('arkEvolutionContainer');
+
+        if (!container) {
+            return showAlert(`아크 패시브 영역(#arkEvolutionContainer)을 화면에서 찾을 수 없습니다.`);
+        }
+
+        // [STEP 1] 아크 패시브 전체 초기화 수행
+        // 1-1. 화면 내 '초기화' 버튼이 있는지 찾고 클릭
+        const allButtons = Array.from(container.querySelectorAll('button'));
+        const resetButton = allButtons.find(btn => 
+            btn.textContent.includes('초기화') || 
+            btn.classList.contains('btn-reset') ||
+            btn.getAttribute('title')?.includes('초기화')
+        );
+
+        if (resetButton) {
+            resetButton.click();
+        } else {
+            // 1-2. 초기화 버튼이 없을 경우: 아래->위 순서로 minus 버튼을 연속 클릭하여 0으로 리셋
+            const nodesArray = Array.from(container.querySelectorAll('.ark-node')).reverse();
+            nodesArray.forEach(node => {
+                const minusBtn = node.querySelector('.btn-minus, [data-action="minus"], .node-controls button:first-child');
+                if (minusBtn) {
+                    for (let i = 0; i < 30; i++) {
+                        minusBtn.click();
+                    }
+                }
+            });
+        }
+
+        // [STEP 2] 1티어 -> 2티어 -> 3티어 순서(DOM 순서)대로 포인트 투자
+        const nodes = container.querySelectorAll('.ark-node');
+
+        nodes.forEach(node => {
+            const nameSpan = node.querySelector('span');
+            if (!nameSpan) return;
+
+            const nodeName = nameSpan.textContent.trim();
+            const targetData = nodesData[nodeName];
+
+            if (targetData && targetData.current > 0) {
+                const plusBtn = node.querySelector('.btn-plus, [data-action="plus"], .node-controls button:last-child');
+                if (plusBtn) {
+                    // 목표 포인트 수치만큼 + 버튼 클릭
+                    for (let i = 0; i < targetData.current; i++) {
+                        plusBtn.click();
+                    }
+                }
+            }
+        });
+
+        // [STEP 3] 최종 계산 재트리거
+        setTimeout(() => {
+            if (typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            }
+        }, 100);
+
+        showAlert(`'${presetName}' 아크 패시브 세팅을 불러왔습니다!`);
+    };
+
+    // React Native 값 세터 (기존 코드 유지)
+    function setNativeValue(element, value) {
+        const valueSetter = Object.getOwnPropertyDescriptor(element, 'value');
+        const prototype = Object.getPrototypeOf(element);
+        const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value');
+
+        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+            prototypeValueSetter.set.call(element, value);
+        } else if (valueSetter && valueSetter.set) {
+            valueSetter.set.call(element, value);
+        } else {
+            element.value = value;
+        }
     }
-}
-})();
+
+    /**
+     * 4. 유틸리티 함수들 (목록 조회/삭제)
+     */
+    function getPresetList() {
+        try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || {}; } 
+        catch (e) { return {}; }
+    }
+
+    window.deletePreset = function(presetName) {
+        const presets = getPresetList();
+        delete presets[presetName];
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+    };
+
+        // 기존 createTriggerButton()을 대체하는 실시간 계산 및 초기화 함수
+    function initRealtimeCalculator() {
+        // 1. 하단 아크패시브 패널 생성
+        initArkPassivePanel();
+
+        let calcTimer = null;
+
+        // 실시간 계산 실행 함수 (디바운스 & requestAnimationFrame 적용)
+        window.triggerCalculation = function() {
+            if (window.isCalcPaused) return;
+            clearTimeout(calcTimer);
+            calcTimer = setTimeout(() => {
+                if (typeof handleCalculate === 'function') {
+                    requestAnimationFrame(() => {
+                        handleCalculate();
+                    });
+                }
+            }, 500); // 반응성을 위해 100ms -> 80ms로 살짝 단축
+        };
+
+        // 2. [핵심 수정 1] 특정 모달이 아닌 document 전역(body)에 이벤트 바인딩
+        const eventTypes = ['input', 'change', 'click', 'keyup'];
+        
+        eventTypes.forEach(eventType => {
+            document.body.addEventListener(eventType, (e) => {
+                const target = e.target;
+                // input, select, textarea, checkbox, radio, button 및 클릭 가능한 요소 감지
+                if (
+                    target.matches('input, select, textarea, [type="checkbox"], [type="radio"], button, .btn-node, .ark-icon') ||
+                    target.closest('.sim-skill-row')
+                ) {
+                    window.triggerCalculation();
+                }
+            }, true); // 캡처링 모드(true)로 event.stopPropagation() 이벤트 차단 방지
+        });
+
+        // 3. [핵심 수정 2] React 등 프레임워크에 의해 DOM 상태/클래스/속성이 변경될 때도 감지 (MutationObserver)
+        const observer = new MutationObserver((mutations) => {
+            let shouldRecalc = false;
+            for (const mutation of mutations) {
+                // 결과창 내부 변화는 무시 (무한 루프 방지)
+                if (mutation.target.closest && mutation.target.closest('#sim-result-section')) {
+                    continue;
+                }
+                shouldRecalc = true;
+                break;
+            }
+            if (shouldRecalc) {
+                window.triggerCalculation();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['value', 'checked', 'selected', 'class'] // 스탯/노드 변경 관련 속성 감시
+        });
+
+        // 4. 최초 1회 즉시 실행
+        window.triggerCalculation();
+        }
+        // createTriggerButton 호출부 또는 load 이벤트 바인딩 부분 수정
+        window.addEventListener('load', () => {
+            // React 하이드레이션 처리가 끝날 시간을 벌어줌 (100~300ms)
+            setTimeout(() => {
+                initRealtimeCalculator();
+            }, 300);
+
+        }
+    )
+
+
+    /**
+     * 메인 결과창이 화면에 안 보일 때 [캐릭터 공통 세팅 지표]만 플로팅으로 보여주는 함수
+     */
+    function updateMiniResultModal(commonMetricsHtml) {
+        let miniModal = document.getElementById('sim-mini-modal');
+
+        // 1. 미니 모달 프레임이 없으면 새로 생성
+        if (!miniModal) {
+            miniModal = document.createElement('div');
+            miniModal.id = 'sim-mini-modal';
+            miniModal.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 99999;
+                background: rgba(15, 16, 21, 0.92);
+                backdrop-filter: blur(10px);
+                border: 1px solid #3b4252;
+                border-radius: 12px;
+                padding: 14px 18px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+                color: #e2e8f0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                transition: opacity 0.25s ease, transform 0.25s ease;
+                opacity: 0;
+                transform: translateY(20px);
+                pointer-events: none;
+                max-width: 90vw;
+            `;
+            document.body.appendChild(miniModal);
+
+            setupResultObserver();
+        }
+
+        // 2. 미니 모달 내부 HTML 업데이트
+        miniModal.innerHTML = `
+            <div style="font-size: 11px; font-weight: bold; color: #c084fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <span>⚡ 캐릭터 공통 세팅 지표 (실시간)</span>
+            </div>
+            <div class="mini-metrics-wrapper">
+                ${commonMetricsHtml}
+            </div>
+            <style>
+                /* 미니 모달 내부에서는 Grid를 Flex로 변경하여 조그맣고 가로로 콤팩트하게 표시 */
+                #sim-mini-modal .mini-metrics-wrapper > div {
+                    display: flex !important;
+                    flex-wrap: wrap !important;
+                    gap: 8px !important;
+                    margin-bottom: 0 !important;
+                }
+                #sim-mini-modal .mini-metrics-wrapper > div > div {
+                    padding: 6px 10px !important;
+                    background: #181920 !important;
+                    border: 1px solid #2e323d !important;
+                    border-radius: 6px !important;
+                    min-width: fit-content !important;
+                }
+                #sim-mini-modal .mini-metrics-wrapper div {
+                    font-size: 0.75rem !important;
+                }
+            </style>
+        `;
+    }
+    /**
+     * 하단 메인 결과창이 화면 보기에 들어왔는지/나갔는지 감지하는 Observer
+     */
+    function setupResultObserver() {
+        const resultSection = document.getElementById('sim-result-section');
+        const miniModal = document.getElementById('sim-mini-modal');
+        if (!resultSection || !miniModal) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                // 메인 결과 섹션이 화면에서 벗어났을 때만 미니 모달 표시
+                if (!entry.isIntersecting) {
+                    miniModal.style.opacity = '1';
+                    miniModal.style.transform = 'translateY(0)';
+                    miniModal.style.pointerEvents = 'auto';
+                } else {
+                    // 메인 결과 섹션이 화면에 보이면 미니 모달 숨김
+                    miniModal.style.opacity = '0';
+                    miniModal.style.transform = 'translateY(20px)';
+                    miniModal.style.pointerEvents = 'none';
+                }
+            });
+        }, { threshold: 0.1 }); // 메인 결과창이 10% 이상 보이면 작동
+
+        observer.observe(resultSection);
+    }
+
+    /**
+     * 커스텀 알림창 UI 자동 생성 및 표시 함수
+     */
+    function showAlert(msg, icon = '🔔') {
+        let overlay = document.getElementById('customAlertOverlay');
+
+        // 1. 알림창 DOM 요소가 없으면 동적으로 자동 생성
+        if (!overlay) {
+            // Style 태그 주입
+            const style = document.createElement('style');
+            style.innerText = `
+                .custom-alert-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background-color: rgba(0, 0, 0, 0.75);
+                    backdrop-filter: blur(5px);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000000;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease-in-out;
+                }
+                .custom-alert-overlay.active {
+                    opacity: 1;
+                    visibility: visible;
+                }
+                .custom-alert-box {
+                    background-color: #121318;
+                    color: #ffffff;
+                    width: 320px;
+                    padding: 24px 20px 20px 20px;
+                    border-radius: 16px;
+                    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+                    text-align: center;
+                    border: 1px solid #2e323d;
+                    transform: scale(0.9);
+                    transition: transform 0.2s ease-in-out;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+                .custom-alert-overlay.active .custom-alert-box {
+                    transform: scale(1);
+                }
+                .custom-alert-icon {
+                    font-size: 32px;
+                    margin-bottom: 12px;
+                    line-height: 1;
+                }
+                .custom-alert-message {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #e2e8f0;
+                    margin-bottom: 20px;
+                    word-break: keep-all;
+                    line-height: 1.5;
+                }
+                .custom-alert-btn {
+                    width: 100%;
+                    padding: 10px 0;
+                    background-color: #8b5cf6;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: background-color 0.15s ease;
+                    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+                }
+                .custom-alert-btn:hover {
+                    background-color: #7c3aed;
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Overlay & Box HTML 구성
+            overlay = document.createElement('div');
+            overlay.id = 'customAlertOverlay';
+            overlay.className = 'custom-alert-overlay';
+            overlay.innerHTML = `
+                <div class="custom-alert-box">
+                    <div class="custom-alert-icon" id="customAlertIcon">${icon}</div>
+                    <div class="custom-alert-message" id="customAlertMsg"></div>
+                    <button class="custom-alert-btn" id="customAlertBtn">확인</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // 확인 버튼 클릭 시 닫기
+            document.getElementById('customAlertBtn').onclick = closeAlert;
+            
+            // 배경 클릭 시 닫기
+            overlay.onclick = (e) => {
+                if (e.target === overlay) closeAlert();
+            };
+        }
+
+        // 2. 메시지 및 아이콘 설정 후 팝업 출력
+        document.getElementById('customAlertIcon').innerText = icon;
+        document.getElementById('customAlertMsg').innerText = msg;
+        overlay.classList.add('active');
+    }
+
+    /**
+     * 커스텀 알림창 닫기
+     */
+    function closeAlert() {
+        const overlay = document.getElementById('customAlertOverlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+    }
+    })();
