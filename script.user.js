@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         로스트아크 시뮬레이터 연산 헬퍼
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
 // @version      2026-08-10
 // @description  시뮬레이터 DOM 파싱 및 실시간 데미지/스탯 연산
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=lopec.kr
 // @grant        GM_addStyle
+// @updateURL    https://raw.githubusercontent.com/N84jld3qhj/Lostark_WindWielder_Simulator/main/script.user.js
+// @downloadURL  https://raw.githubusercontent.com/N84jld3qhj/Lostark_WindWielder_Simulator/main/script.user.js
 // ==/UserScript==
 
 (function () {
