@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.0.1
+// @version      1.0.2
 // @description  시뮬레이터 DOM 파싱 및 실시간 데미지/스탯 연산
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -113,10 +113,23 @@
 }
     `);
 
+    // baselineResults 변수 선언 시 로컬 스토리지 데이터 복원
+    let baselineResults = null;
+
+    try {
+        const savedData = localStorage.getItem('savedBaselineResults');
+        if (savedData) {
+            baselineResults = JSON.parse(savedData);
+        }
+    } catch (e) {
+        console.error('로컬스토리지 불러오기 실패:', e);
+        baselineResults = null;
+    }
+
     // 전역 변수 선언
     let lastCalculatedResults = null; // 최근 계산 결과
-    let baselineResults = null;       // 비교 대상 기준 결과
     window.isGiRyuSet = false;
+    window.isCalcPaused = true;
     // =============================================================================
     // 1. 아크 패시브 진화 노드 데이터셋 및 라인별 제한
     // =============================================================================
@@ -2621,8 +2634,16 @@ function loadArkPassive() {
             showAlert('비교군으로 설정할 계산 결과가 없습니다.');
             return;
         }
-        // 깊은 복사를 통해 현재 결과를 기준점으로 완전 고정
+        // 1) 메모리 상의 변수에 저장
         baselineResults = JSON.parse(JSON.stringify(lastCalculatedResults));
+        
+        // 2) 로컬 스토리지에 JSON 문자열 형태로 영구 저장
+        try {
+            localStorage.setItem('savedBaselineResults', JSON.stringify(baselineResults));
+        } catch (e) {
+            console.error('로컬스토리지 저장 실패:', e);
+        }
+
         renderCompareTable();
         showAlert('현재 세팅 결과가 비교군으로 설정되었습니다!');
     };
@@ -2741,7 +2762,15 @@ function loadArkPassive() {
             estherBox.style.pointerEvents = 'none';
         }
     };
-
+    // 💡 스크립트 로드 즉시 (또는 DOM 준비 후) 플로팅 패널을 먼저 그려줍니다!
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof injectPauseButton === 'function') injectPauseButton();
+        });
+    } else {
+        if (typeof injectPauseButton === 'function') injectPauseButton();
+    }
+    
     function injectPauseButton() {
         if (document.getElementById('calc-floating-panel')) return;
 
@@ -2765,9 +2794,7 @@ function loadArkPassive() {
             width: 175px;
         `;
 
-        // -------------------------------------------------------------------------
         // 🌟 현재 코어 세팅 표시 뱃지
-        // -------------------------------------------------------------------------
         const coreBadge = document.createElement('div');
         coreBadge.id = 'core-set-badge';
         coreBadge.style.cssText = `
@@ -2823,7 +2850,8 @@ function loadArkPassive() {
         });
 
         const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
-            if (typeof openCompareModal === 'function') openCompareModal();
+            if (typeof window.openCompareModal === 'function') window.openCompareModal();
+            else if (typeof openCompareModal === 'function') openCompareModal();
         });
 
         // 3) 🎯 치적 시너지 입력 박스
@@ -2886,9 +2914,7 @@ function loadArkPassive() {
         synergyBox.appendChild(label);
         synergyBox.appendChild(select);
 
-        // -------------------------------------------------------------------------
-        // ★ 4) [수정] 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
-        // -------------------------------------------------------------------------
+        // 4) 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
         const estherBox = document.createElement('div');
         estherBox.id = 'esther-bonding-box';
         estherBox.style.cssText = `
@@ -2910,11 +2936,9 @@ function loadArkPassive() {
         `;
         estherBox.appendChild(estherLabel);
 
-        // 글로벌 상태 기본값 설정 (Boolean)
         window.estherBonding1 = Boolean(window.estherBonding1);
         window.estherBonding2 = Boolean(window.estherBonding2);
 
-        // 결속 버튼 UI 갱신 함수
         const updateBondingBtnStyle = (btn, isOn, label) => {
             if (isOn) {
                 btn.innerText = `⚡ ${label} : ON`;
@@ -2929,7 +2953,6 @@ function loadArkPassive() {
             }
         };
 
-        // 토글 버튼 생성 공통 함수
         const createBondingToggleBtn = (id, globalVarName, label) => {
             const btn = document.createElement('button');
             btn.id = id;
@@ -2969,15 +2992,70 @@ function loadArkPassive() {
         estherBox.appendChild(btn1);
         estherBox.appendChild(btn2);
 
-        // 5) ⏸️ 실시간 연산 토글 버튼
-        const pauseBg = window.isCalcPaused ? '#991b1b' : '#166534';
-        const pauseBorder = window.isCalcPaused ? '#dc2626' : '#22c55e';
-        const pauseText = window.isCalcPaused ? '⏸️ 실시간 계산 : OFF' : '▶️ 실시간 계산 : ON';
-        
-        const pauseBtn = createButton(pauseText, pauseBg, pauseBorder, window.toggleCalcPause, 'calc-pause-btn');
+        // -------------------------------------------------------------------------
+        // ★ 5) 스마트 토글 버튼 UI 갱신 함수
+        // -------------------------------------------------------------------------
+        const updatePauseBtnUI = (btn) => {
+            if (!window.hasCalculatedOnce) {
+                // 최초 상태: 계산 시작 버튼 (초록색)
+                btn.innerText = '🚀 계산 시작';
+                btn.style.backgroundColor = '#059669';
+                btn.style.borderColor = '#10b981';
+            } else if (window.isCalcPaused) {
+                // 이후 상태 (OFF)
+                btn.innerText = '⏸️ 실시간 계산 : OFF';
+                btn.style.backgroundColor = '#991b1b';
+                btn.style.borderColor = '#dc2626';
+            } else {
+                // 이후 상태 (ON)
+                btn.innerText = '▶️ 실시간 계산 : ON';
+                btn.style.backgroundColor = '#166534';
+                btn.style.borderColor = '#22c55e';
+            }
+        };
+
+        const handlePauseBtnClick = () => {
+            const btn = document.getElementById('calc-pause-btn');
+
+            if (!window.hasCalculatedOnce) {
+                // 최초 클릭 시: 실시간 계산 ON으로 전환 및 첫 계산 실행
+                window.hasCalculatedOnce = true;
+                window.isCalcPaused = false;
+                
+                if (typeof window.triggerCalculation === 'function') {
+                    window.triggerCalculation();
+                } else if (typeof window.handleCalculate === 'function') {
+                    window.handleCalculate();
+                }
+            } else {
+                // 두 번째 클릭부터: 기존 ON / OFF 토글 동작
+                window.isCalcPaused = !window.isCalcPaused;
+                if (!window.isCalcPaused && typeof window.triggerCalculation === 'function') {
+                    window.triggerCalculation();
+                }
+            }
+
+            if (btn) updatePauseBtnUI(btn);
+        };
+
+        // 토글 버튼 생성
+        const pauseBtn = createButton('', '', '', handlePauseBtnClick, 'calc-pause-btn');
+        updatePauseBtnUI(pauseBtn);
 
         // 6) 📁 아크패시브 세팅 관리 버튼
-        const presetBtn = createButton('📁 아크패시브 세팅 관리', '#1d4ed8', '#60a5fa', typeof openPresetModal === 'function' ? openPresetModal : () => {}, 'calc-preset-btn');
+        const presetBtn = createButton(
+            '📁 아크패시브 세팅 관리', 
+            '#1d4ed8', 
+            '#60a5fa', 
+            () => {
+                if (typeof window.openPresetModal === 'function') {
+                    window.openPresetModal();
+                } else if (typeof openPresetModal === 'function') {
+                    openPresetModal();
+                }
+            }, 
+            'calc-preset-btn'
+        );
 
         // 패널 조립
         panel.appendChild(setBaseBtn);
@@ -2989,9 +3067,13 @@ function loadArkPassive() {
 
         document.body.appendChild(panel);
 
-        // 패널 생성 직후 UI 업데이트
-        window.updateCoreSetUI();
+        if (typeof window.updateCoreSetUI === 'function') {
+            window.updateCoreSetUI();
+        }
     }
+
+    // 💡 스크립트 맨 하단에서 즉시 버튼 패널 생성
+    injectPauseButton();
 
     /**
     비교표 모달창 생성 및 출력 함수
