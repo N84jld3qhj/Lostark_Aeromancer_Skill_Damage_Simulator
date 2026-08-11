@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      2026-08-10
+// @version      1.0.1
 // @description  시뮬레이터 DOM 파싱 및 실시간 데미지/스탯 연산
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -156,7 +156,7 @@
             { name: "기원", id: 45, max: 1, current: 0, effects: [] }
         ],
         [
-            { name: "뭉툭한 가시", id: 20, max: 2, current: 0, effects: [] },
+            { name: "뭉툭한 가시", id: 20, max: 2, current: 0, isBluntThorn:true, effects: [] },
             { name: "음속 돌파", id: 21, max: 2, current: 0, isSonics: true, effects: [] },
             { name: "인파이팅", id: 38, max: 2, current: 0, effects: [] },
             { name: "입식 타격가", id: 18, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 10.5 }] },
@@ -238,6 +238,12 @@ function loadArkPassive() {
     }
 
     const equipmentDataset = {
+        "에스더":{
+            "엘라 3": {"0": 27284, "1": 34723, "2": 42165, "3": 52087, "4": 57048, "5": 85727, "6": 119295, "7": 183427, "8": 214400, "9": 242574, "10": 259554},
+            "엘라 2": {"0": 27284, "1": 34723, "2": 42165, "3": 52087, "4": 57048, "5": 85727, "6": 119295, "7": 132468, "8": 147585, "9": 174542},
+            "엘라 1": {"0": 22621, "1": 28789, "2": 34959, "3": 43185, "4": 47298, "5": 74494, "6": 105185, "7": 111799, "8": 117030},
+            "엘라 0": {"0": 17958, "1": 22855, "2": 27753, "3": 34283, "4": 37548, "5": 63261, "6": 91800, "7": 96013, "8": 100514}
+        },
         "무기": { "0": 124793, "1": 128059, "2": 131439, "3": 134936, "4": 138556, "5": 142303, "6": 146182, "7": 150196, "8": 154350, "9": 158649, "10": 163099, "11": 167706, "12": 172473, "13": 177406, "14": 182514, "15": 187799, "16": 193270, "17": 198101, "18": 203054, "19": 208130, "20": 213333, "21": 218667, "22": 224133, "23": 229737, "24": 235480, "25": 241367 },
         "머리": { "0": 72017, "1": 73903, "2": 75855, "3": 77875, "4": 79965, "5": 82129, "6": 84369, "7": 86688, "8": 89087, "9": 91570, "10": 94140, "11": 96801, "12": 99554, "13": 102404, "14": 105353, "15": 108406, "16": 111565, "17": 114358, "18": 117218, "19": 120150, "20": 123155, "21": 126236, "22": 129393, "23": 132629, "24": 135946, "25": 139346 },
         "상의": { "0": 57614, "1": 59123, "2": 60684, "3": 62300, "4": 63973, "5": 65704, "6": 67497, "7": 69351, "8": 71270, "9": 73257, "10": 75313, "11": 77441, "12": 79644, "13": 81924, "14": 84283, "15": 86725, "16": 89253, "17": 91486, "18": 93775, "19": 96120, "20": 98524, "21": 100989, "22": 103514, "23": 106103, "24": 108757, "25": 111477 },
@@ -1357,22 +1363,45 @@ function loadArkPassive() {
                 const normalSelect = box.querySelector('select[id*="-normal"]');
                 if (!normalSelect) return;
 
-                // part: 'helmet', 'shoulder', 'armor', 'pants', 'gloves', 'weapon', 'vambrace' 등
                 const part = normalSelect.id.replace('armory-', '').replace('-normal', '');
                 const labelSpan = normalSelect.parentElement.querySelector('span[class*="BaseSelect_labelText"]');
                 
                 if (labelSpan) {
                     const level = parseInt(labelSpan.textContent.trim().replace(/[^0-9]/g, ''), 10) || 0;
                     
-                    // 완갑(vambrace)인 경우 품질바/등급 요소에서 등급(영웅, 전설, 유물, 고대 등) 파싱
+                    // 1. 완갑(vambrace)
                     if (part === 'vambrace') {
                         const gradeEl = box.querySelector('div[data-testid="quality-bar"]') || box.querySelector('div[class*="QualityBar_qualityBar"]');
-                        const grade = gradeEl ? gradeEl.textContent.trim() : '일반';
-                        
-                        // 완갑 수치와 등급을 함께 저장
                         equipment[part] = level;
-                        equipment.vambraceGrade = grade; // 예: '영웅', '전설', '유물', '고대'
-                    } else {
+                        equipment.vambraceGrade = gradeEl ? gradeEl.textContent.trim() : '일반';
+                    } 
+                    // 2. 무기(weapon)
+                    else if (part === 'weapon') {
+                        const tierSelect = box.querySelector('select[id*="-tier"]');
+                        const tierSpan = tierSelect?.parentElement?.querySelector('span[class*="BaseSelect_labelText"]');
+                        
+                        // span 표시 텍스트 우선 (없으면 select value 사용) -> '에스더', 'T4 전율' 등
+                        const weaponTier = tierSpan?.textContent.trim() || tierSelect?.value || '';
+                        const isEsther = weaponTier.includes('에스더');
+                        updateEstherUI(isEsther)
+                        // ★ 에스더 엘라 단계 파싱 로직 추가
+                        let estherElla = 0;
+                        if (isEsther) {
+                            const ellaSelect = box.querySelector('select[id*="-esther-ella"]');
+                            const ellaSpan = ellaSelect?.parentElement?.querySelector('span[class*="BaseSelect_labelText"]');
+                            
+                            // "엘라 3" 또는 value "3" 에서 숫자만 추출
+                            const rawElla = ellaSpan?.textContent || ellaSelect?.value || '0';
+                            estherElla = parseInt(rawElla.replace(/[^0-9]/g, ''), 10) || 0;
+                        }
+
+                        equipment[part] = level;
+                        equipment.weaponTier = weaponTier;
+                        equipment.isEsther = isEsther;
+                        equipment.estherElla = estherElla; // 예: 0, 1, 2, 3
+                    } 
+                    // 3. 기타 방어구
+                    else {
                         equipment[part] = level;
                     }
                 }
@@ -1423,37 +1452,57 @@ function loadArkPassive() {
     function mapExtractedDataToInputs(extracted) {
         const eq = extracted.equipment || {};
 
+        // 영문/한글 키 대응
+        const headLvl     = eq.helmet    ?? eq.head    ?? eq["머리"]        ?? 0;
+        const topLvl      = eq.armor     ?? eq.top     ?? eq["상의"]        ?? 0;
+        const bottomLvl   = eq.pants     ?? eq.bottom  ?? eq["하의"]        ?? 0;
+        const gloveLvl    = eq.gloves    ?? eq.glove   ?? eq["장갑"]        ?? 0;
+        const shoulderLvl = eq.shoulder  ?? eq["어깨"] ?? eq["어깨 방어구"] ?? 0;
+        const weaponLvl   = eq.weapon    ?? eq["무기"]                    ?? 0;
+        const vambraceLvl = eq.vambrace  ?? eq['완갑']                    ?? 0;
         
-        // 영문 키(helmet, armor, pants, gloves, shoulder)와 한글 키 모두 안전하게 대응
-        const headLvl     = eq.helmet   ?? eq.head   ?? eq["머리"]       ?? 0;
-        const topLvl      = eq.armor    ?? eq.top    ?? eq["상의"]       ?? 0;
-        const bottomLvl   = eq.pants    ?? eq.bottom ?? eq["하의"]       ?? 0;
-        const gloveLvl    = eq.gloves   ?? eq.glove  ?? eq["장갑"]       ?? 0;
-        const shoulderLvl = eq.shoulder ?? eq["어깨"] ?? eq["어깨 방어구"] ?? 0;
-        const weaponLvl   = eq.weapon   ?? eq["무기"]                   ?? 0;
-        const vambraceLvl = eq.vambrace ?? eq['완갑'] ?? 0;
-        
-        // 1. 각 부위별 스탯 값 추출
+        // 에스더 정보 파싱 확인
+        const isEsther   = Boolean(eq.isEsther || (typeof eq.weaponTier === 'string' && eq.weaponTier.includes('에스더')));
+        const estherElla = eq.estherElla ?? 0; // 숫자 0, 1, 2, 3
+
+        // 1. 방어구 스탯 추출
         const headStat     = equipmentDataset["머리"]?.[headLvl] || 0;
         const topStat      = equipmentDataset["상의"]?.[topLvl] || 0;
         const bottomStat   = equipmentDataset["하의"]?.[bottomLvl] || 0;
         const gloveStat    = equipmentDataset["장갑"]?.[gloveLvl] || 0;
         const shoulderStat = equipmentDataset["어깨 방어구"]?.[shoulderLvl] || equipmentDataset["어깨"]?.[shoulderLvl] || 0;
-        const weaponStat = equipmentDataset["무기"]?.[weaponLvl] || 0;
-        const vambraceData = equipmentDataset["완갑"][vambraceLvl] || { 무기공격력: 0, 주스탯: 0, 기본공격력: 0 };
+        
+        // 2. ★ [핵심] 무기 스탯 계산 (에스더 데이터셋 구조 적용)
+        let weaponStat = 0;
+        if (isEsther) {
+            const ellaKey = `엘라 ${estherElla}`; // 예: "엘라 3", "엘라 2"
+            weaponStat = equipmentDataset["에스더"]?.[ellaKey]?.[weaponLvl] || 0;
+        } else {
+            weaponStat = equipmentDataset["무기"]?.[weaponLvl] || 0;
+        }
+
+        // 3. 완갑 및 악세서리 계산
+        const vambraceData = equipmentDataset["완갑"]?.[vambraceLvl] || { 무기공격력: 0, 주스탯: 0, 기본공격력: 0 };
         const accessoryBaseStat = (extracted.accessories || []).reduce((acc, currentAcc) => acc + (currentAcc.statValue || 0), 0);
         
-        // 3. 총합 계산
+        // 4. 스탯 총합
         const armorBaseStat = headStat + topStat + bottomStat + gloveStat + shoulderStat;
-        const totalBaseStat = armorBaseStat + vambraceData.지능 + accessoryBaseStat;
+        const totalBaseStat = armorBaseStat + (vambraceData.지능 || vambraceData.주스탯 || 0) + accessoryBaseStat;
+
         return {
             baseStat: totalBaseStat,
             headStat: headStat,
-            topStat:topStat,
-            bottomStat:bottomStat,
-            gloveStat:gloveStat,
-            shoulderStat:shoulderStat,
-            weaponAtk: (equipmentDataset["무기"][weaponLvl] || 0),
+            topStat: topStat,
+            bottomStat: bottomStat,
+            gloveStat: gloveStat,
+            shoulderStat: shoulderStat,
+            
+            // 무기 관련
+            weaponAtk: weaponStat,
+            isEsther: isEsther,
+            estherElla: estherElla,
+            weaponTier: eq.weaponTier || '',
+
             vambraceGrade: eq.vambraceGrade ?? '영웅',
             vambraceData: vambraceData,
             baseCrit: STAT_CONSTANTS.BASE_CRIT,
@@ -1465,7 +1514,7 @@ function loadArkPassive() {
             skillGems: extracted.jewels || [],
             chaosCores: extracted.chaosCores || {},
             orderCores: extracted.orderCores || {},
-            bracelet: extracted.bracelet || { crit: 0, swift: 0,mainStat:0, options: [] },
+            bracelet: extracted.bracelet || { crit: 0, swift: 0, mainStat: 0, options: [] },
             arkPassive: extracted.arkPassive
         };
     }
@@ -1518,63 +1567,79 @@ function loadArkPassive() {
             "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소": []
         };
 
-
         Object.values(ADD_STAT_BASE).forEach(stat => {
             addStat(commonStats, stat.category, stat.name, stat.value, stat.unit);
         });
-
 
         if (partyCritBonus > 0) {
             addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
         }
 
-
+        // 방어구 주스탯 합산
         addStat(commonStats, "주스탯", "투구", inputs.headStat, "");
         addStat(commonStats, "주스탯", "견갑", inputs.shoulderStat, "");
         addStat(commonStats, "주스탯", "상의", inputs.topStat, "");
         addStat(commonStats, "주스탯", "하의", inputs.bottomStat, "");
         addStat(commonStats, "주스탯", "장갑", inputs.gloveStat, "");
 
-        // 1. 완갑 등급별 기본 공격력 % 매핑 테이블
-        const vambraceGradeAtkMap = {
-            "영웅": 0,
-            "전설": 1,
-            "유물": 2,
-            "고대": 3
-        };
+        // ★ 무기 공격력 합산
+        // inputs.weaponAtk에 이미 에스더/엘라 스탯이 모두 포함되어 있으므로 그대로 등록합니다.
+        const weaponLabel = inputs.isEsther ? `에스더 무기 (엘라 ${inputs.estherElla ?? 0})` : "무기";
+        addStat(commonStats, "무기 공격력", weaponLabel, inputs.weaponAtk, "");
+
+        // 에스더 결속 데이터 정의
+        const estherBonding1Data = [145983, 153282, 257503, 453359];
+        const estherBonding2Data = [3946, 4305, 7250, 16450];
+
+        if (inputs.isEsther) {
+            // 1) 엘라 단계 안전 추출 (기본값 0)
+            const ellaLvl = inputs.estherElla ?? 0;
+
+            // 2) 1차 결속 ON 시에만 변수 선언 및 스탯 추가
+            if (window.estherBonding1) {
+                const bonding1Stat = estherBonding1Data[ellaLvl] || 0;
+                if (bonding1Stat > 0) {
+                    addStat(commonStats, "주스탯", `에스더 결속 1단계 (엘라 ${ellaLvl})`, bonding1Stat, "");
+                }
+            }
+
+            // 3) 2차 결속 ON 시에만 변수 선언 및 스탯 추가
+            if (window.estherBonding2) {
+                const bonding2Stat = estherBonding2Data[ellaLvl] || 0;
+                if (bonding2Stat > 0) {
+                    addStat(commonStats, "공격력", `에스더 결속 2단계 (엘라 ${ellaLvl})`, bonding2Stat, "");
+                }
+            }
+        }
 
 
-        addStat(commonStats, "무기 공격력", "무기", inputs.weaponAtk, "");
-        
-
+        // 완갑 데이터 처리
         if (inputs.vambraceData) {
-            // 1. 완갑 무기공격력
             const weaponAtk = inputs.vambraceData.무기공격력 || 0;
             if (weaponAtk > 0) {
                 addStat(commonStats, "무기 공격력", "완갑", weaponAtk, "");
             }
 
-            // 2. 완갑 주스탯 (주스탯 키 또는 지능/힘/민첩 대응)
             const mainStat = inputs.vambraceData.주스탯 || 0;
             if (mainStat > 0) {
                 addStat(commonStats, "주스탯", "완갑", mainStat, "");
             }
 
-            // 3. 완갑 기본공격력
             const baseAtk = inputs.vambraceData.기본공격력 || 0;
             if (baseAtk > 0) {
                 addStat(commonStats, "기본 공격력", "완갑", baseAtk, "");
             }
         }
-        // 2. 등급에 따른 % 수치 추출 (예외 시 기본값 0%)
+
+        // 완갑 등급별 기본 공격력 %
+        const vambraceGradeAtkMap = { "영웅": 0, "전설": 1, "유물": 2, "고대": 3 };
         const vambraceGrade = inputs.vambraceGrade || "영웅";
         const vambraceNormalAtkPercent = vambraceGradeAtkMap[vambraceGrade] ?? 0;
 
         if (vambraceNormalAtkPercent > 0) {
             addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", vambraceNormalAtkPercent, "%");
         }
-
-        
+      
         addStat(commonStats, "기본 공격력", "완갑 기본 공격력", inputs.vambraceNomalAtk, "");
         addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", inputs.vambraceNormalAtkPercent, "%");
 
@@ -1803,7 +1868,7 @@ function loadArkPassive() {
         }
 
 
-
+        const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
         const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
 
         let allSkillResults = [];
@@ -1954,6 +2019,30 @@ function loadArkPassive() {
             addStat(stats, "치명타 적중률", "깨달음 - 기민함", Math.min(finalMoveSpeed, STAT_CONSTANTS.SPEED_CAP) * STAT_CONSTANTS.SPEED_TO_CRIT_RATE_COEFF, "%");
             addStat(stats, "치명타 피해", "깨달음 - 기민함", Math.min(finalAtkSpeed, STAT_CONSTANTS.SPEED_CAP) * STAT_CONSTANTS.SPEED_TO_CRIT_DMG_COEFF, "%");
 
+
+            const totalCritStat = getStatSum(stats, "치명");
+            const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + getStatSum(stats, "치명타 적중률");
+            let critRate = Math.min(totalCritRatePercent / 100, 1.0);
+            
+            let totalBluntDmg = 0;
+            if(bluntThornNode && bluntThornNode.current >0){
+                const excessCrit = Math.max(0, (totalCritRatePercent/100 - 0.8)*100);
+                // 레벨별(1LV / 2LV) 기준값 설정
+                const baseDmg = bluntThornNode.current === 1 ? 7.5 : 15.0;
+                const ratio   = bluntThornNode.current === 1 ? 1.25 : 1.5;
+                const maxDmg  = bluntThornNode.current === 1 ? 52.5 : 75.0;
+                
+                // 최종 진화형 피해 계산 (최대치 제한 적용)
+                totalBluntDmg = Math.min(maxDmg, baseDmg + (excessCrit * ratio));
+                critRate = Math.min(critRate, 0.8);
+                
+                // 스탯 합산
+                addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 뭉툭한 가시 [${bluntThornNode.current}/${bluntThornNode.max}LV]`, parseFloat(totalBluntDmg.toFixed(2)));
+            }
+
+
+
+
             if (stats["_돌격대장계수"]) {
                 addStat(stats, "적에게 주는 피해", `${stats["_돌격대장정보"]} (이속 +${moveSpeedBonus.toFixed(2)}% 적용)`, parseFloat((moveSpeedBonus * stats["_돌격대장계수"]).toFixed(2)));
             }
@@ -1991,9 +2080,7 @@ function loadArkPassive() {
             const nonCritBaseDamage = baseDamage * totalDamageMultiplier * evolutionDamageMultiplier * totalAdditionalDamageMuntiplier;
             const CritBaseDamage = nonCritBaseDamage * (totalCritDamagePercent / 100) * critHitDamageMultiplier;
 
-            const totalCritStat = getStatSum(stats, "치명");
-            const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + getStatSum(stats, "치명타 적중률");
-            const critRate = Math.min(totalCritRatePercent / 100, 1.0);
+            
             const expDmg = CritBaseDamage * critRate + nonCritBaseDamage * (1 - critRate);
 
             const swiftMultiplier = 1 - ((totalSwift * STAT_CONSTANTS.SWIFT_TO_CDR) / 100);
@@ -2030,6 +2117,7 @@ function loadArkPassive() {
                 totalEvolutionDamage,
                 finalAtkSpeed,
                 finalMoveSpeed,
+                totalBluntDmg,
                 totalSonicDmg,
                 expDmg,
                 finalCooldown,
@@ -2088,6 +2176,10 @@ function loadArkPassive() {
                     <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalAtkSpeed || 0).toFixed(1)}% / ${(commonRes.finalMoveSpeed || 0).toFixed(1)}%</div>
                 </div>
                 <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">뭉툭한 가시 효율</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalBluntDmg || commonRes.totalBluntThornDmg || 0).toFixed(2)}%</div>
+                </div>
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
                     <div style="font-size: 0.8rem; color: #94a3b8;">음속 돌파 효율</div>
                     <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalSonicDmg || 0).toFixed(2)}%</div>
                 </div>
@@ -2136,138 +2228,177 @@ function loadArkPassive() {
             <hr style="border: 0; border-top: 1px dashed #2e323d; margin: 25px 0;">
         `;
 
-        // 3. 공격력 산출 상세 정보 계산
-        const inputs = commonRes.inputs || { baseStat: 0, weaponAtk: 0 };
-        const weaponAtkPercent = commonRes.weaponAtkPercent || 0;
-        const finalWeaponAtk = commonRes.finalWeaponAtk || 0;
-        const carveAtkBonusPercent = commonRes.carveAtkBonusPercent || 0;
-        const totalStoneLevel = commonRes.totalStoneLevel || 0;
-        const calculatedBaseAtk = commonRes.calculatedBaseAtk || 0;
-        const finalAtk = commonRes.finalAtk || 0;
+        // 3. 공격력 산출 상세 정보 계산 및 헬퍼 함수 (1열 전용 표)
+        const formatItemListToTable = (flatItems, percentItems, categoryNames = { flat: "[세부 항목]", percent: "[계수]" }) => {
+            const hasFlat = Array.isArray(flatItems) && flatItems.length > 0;
+            const hasPercent = Array.isArray(percentItems) && percentItems.length > 0;
+
+            if (!hasFlat && !hasPercent) {
+                return `<div style="color: #64748b; font-size: 0.8rem; padding: 6px 0;">내역 없음</div>`;
+            }
+
+            let html = `<table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 4px;"><tbody>`;
+
+            // 1. 고정 수치 파트 (1열 세로 정렬)
+            if (hasFlat) {
+                html += `
+                    <tr>
+                        <td colspan="2" style="padding: 6px 0 4px 0; color: #94a3b8; font-weight: bold; font-size: 0.8rem; border-bottom: 1px solid #2e323d;">
+                            ${categoryNames.flat}
+                        </td>
+                    </tr>
+                `;
+
+                flatItems.forEach(item => {
+                    const val = typeof item.val === 'number' ? item.val.toLocaleString() : item.val;
+                    const src = item.source || '기본';
+
+                    html += `
+                        <tr>
+                            <td style="padding: 5px 8px; color: #94a3b8; text-align: left; border-bottom: 1px solid #232733;">${src}</td>
+                            <td style="padding: 5px 8px; color: #e2e8f0; font-weight: 500; text-align: right; border-bottom: 1px solid #232733;">+${val}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // 2. 퍼센트 수치 파트 (1열 세로 정렬)
+            if (hasPercent) {
+                if (hasFlat) {
+                    html += `<tr><td colspan="2" style="padding: 6px 0;"></td></tr>`;
+                }
+
+                html += `
+                    <tr>
+                        <td colspan="2" style="padding: 6px 0 4px 0; color: #38bdf8; font-weight: bold; font-size: 0.8rem; border-bottom: 1px solid #2e323d;">
+                            ${categoryNames.percent}
+                        </td>
+                    </tr>
+                `;
+
+                percentItems.forEach(item => {
+                    const val = (Number(item.val) || 0).toFixed(2);
+                    const src = item.source || '옵션';
+
+                    html += `
+                        <tr>
+                            <td style="padding: 5px 8px; color: #94a3b8; text-align: left; border-bottom: 1px solid #232733;">${src}</td>
+                            <td style="padding: 5px 8px; color: #38bdf8; font-weight: 600; text-align: right; border-bottom: 1px solid #232733;">+${val}%</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            html += `</tbody></table>`;
+            return html;
+        };
 
         const stats = commonRes.stats || {};
         const finalStat = commonRes.finalStat || 0;
-        const baseStat = stats["주스탯"];
-        let statDetailStr = Array.isArray(baseStat) && baseStat.length > 0
-            ? baseStat.map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
+        const finalWeaponAtk = commonRes.finalWeaponAtk || 0;
+        const calculatedBaseAtk = commonRes.calculatedBaseAtk || 0;
+        const finalAtk = commonRes.finalAtk || 0;
+        const carveAtkBonusPercent = commonRes.carveAtkBonusPercent || 0;
+        const totalStoneLevel = commonRes.totalStoneLevel || 0;
 
-        const statPercentArr = stats["주스탯 %"] || [];
-        let statPercentDetailStr = Array.isArray(statPercentArr) && statPercentArr.length > 0
-            ? statPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : `${statPercentArr.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
-
-        const weaponAtkObj = stats["무기 공격력"];
-        let weaponAtkDetailStr = Array.isArray(weaponAtkObj) && weaponAtkObj.length > 0
-            ? weaponAtkObj.map(item => `${(Number(item.val) || 0).toLocaleString()} [${item.source || '무기'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : `${(inputs.weaponAtk || 0).toLocaleString()} [무기]`;
-
-        const weaponAtkPercentArr = stats["무기 공격력 %"] || stats["무기 공격력%"] || [];
-        let weaponAtkPercentDetailStr = Array.isArray(weaponAtkPercentArr) && weaponAtkPercentArr.length > 0
-            ? weaponAtkPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : `${weaponAtkPercent.toFixed(2)}% [연마/옵션] + 3.00% [카르마]`;
-
-        const AtkArr = stats["공격력"] || [];
-        const AtkPercentArr = stats["공격력 %"] || [];
-        let AtkDetailStr = Array.isArray(AtkArr) && AtkArr.length > 0
-            ? AtkArr.map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : "";
-        let AtkPercentDetailStr = Array.isArray(AtkPercentArr) && AtkPercentArr.length > 0
-            ? AtkPercentArr.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : "";
-
-        const VambraceNormalAtk = stats["기본 공격력"] || [];
-        const VambraceNormalAtkPercent = stats["기본 공격력 %"] || [];
-        let VambraceNormalAtkDetailStr = Array.isArray(VambraceNormalAtk) && VambraceNormalAtk.length > 0
-            ? VambraceNormalAtk.map(item => `${(Number(item.val) || 0).toFixed(0)} [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : "";
-        let VambraceNormalAtkPercentDetailStr = Array.isArray(VambraceNormalAtkPercent) && VambraceNormalAtkPercent.length > 0
-            ? VambraceNormalAtkPercent.map(item => `${(Number(item.val) || 0).toFixed(2)}% [${item.source || '옵션'}]`).join("<br>&nbsp;&nbsp;+ ")
-            : "";
-
-        const carveText = carveAtkBonusPercent > 0
-            ? ` + ${carveAtkBonusPercent}% [세공 ${totalStoneLevel}LV]`
-            : ``;
+        let vambracePercentList = [...(stats["기본 공격력 %"] || [])];
+        if (carveAtkBonusPercent > 0) {
+            vambracePercentList.push({ source: `세공 (${totalStoneLevel}LV)`, val: carveAtkBonusPercent });
+        }
 
         bodyContent += `
-            <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">📊 [공격력 산출 과정]</h3>
-            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; line-height: 1.6;">
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px;">0. 주스탯</div>
-                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; line-height: 1.8;">
-                        <strong>[주스탯 합산]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${statDetailStr}<br><br>
-                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${statPercentDetailStr}
-                    </code>
-                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                        = <span style="color: #38bdf8;">${Math.floor(finalStat).toLocaleString()}</span>
-                    </div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px;">1. 최종 무기 공격력</div>
-                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; line-height: 1.8;">
-                        <strong>[무기 공격력 합산]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkDetailStr}<br><br>
-                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${weaponAtkPercentDetailStr}
-                    </code>
-                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                        = <span style="color: #38bdf8;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
+            <h3 style="border:none; margin:0 0 12px 0; color: #c084fc; font-size: 1.1rem;">📊 [공격력 산출 과정]</h3>
+            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.9rem;">
+                
+                <!-- 0. 주스탯 -->
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">0. 주스탯</div>
+                    ${formatItemListToTable(stats["주스탯"], stats["주스탯 %"], { flat: "[주스탯 합산]", percent: "[주스탯 % 계수]" })}
+                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                        합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(finalStat).toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 6px;">2. 기본 공격력</div>
-                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; word-break: break-all;">
-                        <strong>[기본 공격력 합산]</strong><br>
-                        (√( ${finalStat.toLocaleString(0)} [주스탯] + × ${Math.floor(finalWeaponAtk).toLocaleString()} [최종무공]) / 6) + ${VambraceNormalAtkDetailStr}<br><br>
-                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${VambraceNormalAtkPercentDetailStr}<br>&nbsp;${carveText}
-                    </code>
-                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 8px; font-size: 1rem;">
-                        = <span style="color: #38bdf8;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
+                <!-- 1. 최종 무기 공격력 -->
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">1. 최종 무기 공격력</div>
+                    ${formatItemListToTable(stats["무기 공격력"], stats["무기 공격력 %"] || stats["무기 공격력%"], { flat: "[무기 공격력 합산]", percent: "[무기 공격력 % 계수]" })}
+                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                        합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 6px;">3. 최종 공격력</div>
-                    <code style="font-size: 0.85rem; color: #94a3b8; font-family: monospace; display: block; word-break: break-all;">
-                        <strong>[공격력 합산]</strong><br>
-                        &nbsp;&nbsp;&nbsp;${Math.floor(calculatedBaseAtk).toLocaleString()} [기본 공격력] <br>&nbsp;&nbsp;+ ${AtkDetailStr}<br><br>
-                        <strong>[계수]</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${AtkPercentDetailStr}
-                    </code>
-                    <div style="text-align: right; font-weight: bold; font-size: 1.1rem; color: #facc15; margin-top: 8px;">
-                        = ${Math.floor(finalAtk).toLocaleString()}
+                <!-- 2. 기본 공격력 -->
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">2. 기본 공격력</div>
+                    <div style="background: #0f1015; padding: 8px 12px; border-radius: 6px; border: 1px solid #222634; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                        💡 <strong>공식:</strong> ( √(주스탯 ${Math.floor(finalStat).toLocaleString()} × 최종무공 ${Math.floor(finalWeaponAtk).toLocaleString()}) / 6 )*계수
+                    </div>
+                    ${formatItemListToTable(stats["기본 공격력"], vambracePercentList, { flat: "[기본 공격력 합산]", percent: "[기본 공격력 % 계수]" })}
+                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                        합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
                     </div>
                 </div>
+
+                <!-- 3. 최종 공격력 -->
+                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">3. 최종 공격력</div>
+                    ${formatItemListToTable(stats["공격력"], stats["공격력 %"], { flat: "[공격력 합산]", percent: "[공격력 % 계수]" })}
+                    <div style="text-align: right; font-weight: bold; color: #facc15; margin-top: 10px; font-size: 1.1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                        최종 공격력 = ${Math.floor(finalAtk).toLocaleString()}
+                    </div>
+                </div>
+
             </div>
         `;
 
-        // 4. 선택한 스킬 상세 적용 내역 (currentIdx 기반)
+        // 4. 선택한 스킬 상세 적용 내역 (currentIdx 기반 - 1열 방식)
         const selectedResult = allSkillResults[currentIdx] || allSkillResults[0];
         bodyContent += `<div style="margin-top: 20px;">`;
         bodyContent += `<div style="background: #181920; border: 1px solid #2e323d; padding: 16px; border-radius: 8px;">`;
-        bodyContent += `<div style="font-size: 1.05rem; font-weight: bold; color: #facc15; margin-bottom: 15px;">▶ [선택 스킬] ${selectedResult.skillName} 상세 세팅 적용 내역</div>`;
+        bodyContent += `<div style="font-size: 1.05rem; font-weight: bold; color: #facc15; margin-bottom: 12px;">▶ [선택 스킬] ${selectedResult.skillName} 상세 세팅 적용 내역</div>`;
 
         if (selectedResult.stats) {
             Object.keys(selectedResult.stats).forEach(cat => {
                 if (cat.startsWith('_')) return;
 
                 let items = selectedResult.stats[cat];
-                if (items && items.length > 0) {
+                
+                bodyContent += `
+                    <div style="margin-top: 14px;">
+                        <div style="font-weight: bold; color: #c084fc; font-size: 0.85rem; border-bottom: 1px solid #2e323d; padding-bottom: 4px; margin-bottom: 4px;">
+                            ■ ${cat}
+                        </div>
+                `;
+
+                if (!items || items.length === 0) {
+                    bodyContent += `<div style="font-size: 0.8rem; color: #64748b; padding: 4px 6px;">적용된 옵션 없음</div>`;
+                } else {
                     items.sort((a, b) => {
                         const aSrc = String(a?.source || "");
                         const bSrc = String(b?.source || "");
                         return (aSrc.startsWith("각인:") ? 0 : 1) - (bSrc.startsWith("각인:") ? 0 : 1);
                     });
-                }
 
-                bodyContent += `<div style="font-weight: bold; color: #c084fc; margin-top: 12px; margin-bottom: 4px; font-size: 0.9rem;">■ ${cat}</div>`;
+                    bodyContent += `<table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;"><tbody>`;
 
-                if (!items || items.length === 0) {
-                    bodyContent += `<div style="font-size: 0.85rem; color: #666; margin-left: 8px;">  - 입력된 데이터 없음</div>`;
-                } else {
                     items.forEach(item => {
-                        let prefix = (typeof item.val === 'number' && item.val > 0) ? "+" : "";
-                        bodyContent += `<div style="font-size: 0.85rem; color: #94a3b8; margin-left: 8px; line-height: 1.5;">  - ${item.source}: ${prefix}${item.val}${item.unit || ''}</div>`;
+                        const prefix = (typeof item.val === 'number' && item.val > 0) ? "+" : "";
+                        const valStr = `${prefix}${item.val}${item.unit || ''}`;
+                        const src = item.source || '옵션';
+
+                        bodyContent += `
+                            <tr>
+                                <td style="padding: 5px 8px; color: #94a3b8; text-align: left; border-bottom: 1px solid #232733;">${src}</td>
+                                <td style="padding: 5px 8px; color: #38bdf8; font-weight: 500; text-align: right; border-bottom: 1px solid #232733;">${valStr}</td>
+                            </tr>
+                        `;
                     });
+
+                    bodyContent += `</tbody></table>`;
                 }
+
+                bodyContent += `</div>`;
             });
         }
 
@@ -2574,6 +2705,43 @@ function loadArkPassive() {
         badge.style.color = isGiRyu ? '#bfdbfe' : '#fbcfe8';
     };
 
+
+    window.updateEstherUI = function(isEsther) {
+        const estherBox = document.getElementById('esther-bonding-box');
+        const btn1 = document.getElementById('esther-bonding-btn-1');
+        const btn2 = document.getElementById('esther-bonding-btn-2');
+        
+        if (!estherBox || !btn1 || !btn2) return;
+
+        if (isEsther) {
+            // 에스더 무기 장착 시
+            btn1.disabled = false;
+            btn2.disabled = false;
+            estherBox.style.opacity = '1';
+            estherBox.style.pointerEvents = 'auto';
+        } else {
+            // 일반 무기 장착 시 OFF 초기화 및 disabled
+            window.estherBonding1 = false;
+            window.estherBonding2 = false;
+
+            // 버튼 텍스트 및 스타일 OFF로 강제 변경
+            btn1.innerText = '💤 결속 1단계 : OFF';
+            btn1.style.backgroundColor = '#0f172a';
+            btn1.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            btn1.style.color = '#94a3b8';
+
+            btn2.innerText = '💤 결속 2단계 : OFF';
+            btn2.style.backgroundColor = '#0f172a';
+            btn2.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            btn2.style.color = '#94a3b8';
+
+            btn1.disabled = true;
+            btn2.disabled = true;
+            estherBox.style.opacity = '0.4';
+            estherBox.style.pointerEvents = 'none';
+        }
+    };
+
     function injectPauseButton() {
         if (document.getElementById('calc-floating-panel')) return;
 
@@ -2598,7 +2766,7 @@ function loadArkPassive() {
         `;
 
         // -------------------------------------------------------------------------
-        // 🌟 현재 코어 세팅 표시 뱃지 (다른 버튼들과 규격 완벽 통일)
+        // 🌟 현재 코어 세팅 표시 뱃지
         // -------------------------------------------------------------------------
         const coreBadge = document.createElement('div');
         coreBadge.id = 'core-set-badge';
@@ -2718,20 +2886,104 @@ function loadArkPassive() {
         synergyBox.appendChild(label);
         synergyBox.appendChild(select);
 
-        // 4) ⏸️ 실시간 연산 토글 버튼
+        // -------------------------------------------------------------------------
+        // ★ 4) [수정] 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
+        // -------------------------------------------------------------------------
+        const estherBox = document.createElement('div');
+        estherBox.id = 'esther-bonding-box';
+        estherBox.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        `;
+
+        const estherLabel = document.createElement('span');
+        estherLabel.innerText = '에스더 결속 효과';
+        estherLabel.style.cssText = `
+            color: #fcd34d;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 2px;
+        `;
+        estherBox.appendChild(estherLabel);
+
+        // 글로벌 상태 기본값 설정 (Boolean)
+        window.estherBonding1 = Boolean(window.estherBonding1);
+        window.estherBonding2 = Boolean(window.estherBonding2);
+
+        // 결속 버튼 UI 갱신 함수
+        const updateBondingBtnStyle = (btn, isOn, label) => {
+            if (isOn) {
+                btn.innerText = `⚡ ${label} : ON`;
+                btn.style.backgroundColor = '#78350f';
+                btn.style.borderColor = '#f59e0b';
+                btn.style.color = '#fef3c7';
+            } else {
+                btn.innerText = `💤 ${label} : OFF`;
+                btn.style.backgroundColor = '#0f172a';
+                btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                btn.style.color = '#94a3b8';
+            }
+        };
+
+        // 토글 버튼 생성 공통 함수
+        const createBondingToggleBtn = (id, globalVarName, label) => {
+            const btn = document.createElement('button');
+            btn.id = id;
+            btn.type = 'button';
+            btn.style.cssText = `
+                width: 100%;
+                padding: 6px 0;
+                font-size: 0.75rem;
+                font-weight: bold;
+                border-radius: 6px;
+                border: 1px solid;
+                cursor: pointer;
+                outline: none;
+                box-sizing: border-box;
+                transition: all 0.15s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            updateBondingBtnStyle(btn, window[globalVarName], label);
+
+            btn.onclick = function() {
+                window[globalVarName] = !window[globalVarName];
+                updateBondingBtnStyle(btn, window[globalVarName], label);
+                if (typeof window.triggerCalculation === 'function') {
+                    window.triggerCalculation();
+                }
+            };
+
+            return btn;
+        };
+
+        const btn1 = createBondingToggleBtn('esther-bonding-btn-1', 'estherBonding1', '결속 1단계');
+        const btn2 = createBondingToggleBtn('esther-bonding-btn-2', 'estherBonding2', '결속 2단계');
+
+        estherBox.appendChild(btn1);
+        estherBox.appendChild(btn2);
+
+        // 5) ⏸️ 실시간 연산 토글 버튼
         const pauseBg = window.isCalcPaused ? '#991b1b' : '#166534';
         const pauseBorder = window.isCalcPaused ? '#dc2626' : '#22c55e';
         const pauseText = window.isCalcPaused ? '⏸️ 실시간 계산 : OFF' : '▶️ 실시간 계산 : ON';
         
         const pauseBtn = createButton(pauseText, pauseBg, pauseBorder, window.toggleCalcPause, 'calc-pause-btn');
 
-        // 5) 📁 아크패시브 세팅 관리 버튼
+        // 6) 📁 아크패시브 세팅 관리 버튼
         const presetBtn = createButton('📁 아크패시브 세팅 관리', '#1d4ed8', '#60a5fa', typeof openPresetModal === 'function' ? openPresetModal : () => {}, 'calc-preset-btn');
 
         // 패널 조립
         panel.appendChild(setBaseBtn);
         panel.appendChild(toggleViewBtn);
         panel.appendChild(synergyBox);
+        panel.appendChild(estherBox);
         panel.appendChild(pauseBtn);
         panel.appendChild(presetBtn);
 
@@ -3018,6 +3270,7 @@ function loadArkPassive() {
         } catch (err) {
             console.error("연산 처리 중 오류 발생:", err);
             showAlert("연산 도중 오류가 발생했습니다. 콘솔 창(F12)을 확인해주세요.");
+            toggleCalcPause()
         }
     }
 
