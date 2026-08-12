@@ -40,7 +40,7 @@
 
 * 탭 메뉴: `☀️🌙⭐ 질서 코어 생성기`
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0000.png" >
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0000.png" style="border: 1px solid #cccccc;">
 각 질서 코어(해/달/별) 노드의 단계별 효과를 입력합니다.
 
 1. **코어 종류 선택**: `해`, `달`, `별` 중 선택합니다.
@@ -70,7 +70,7 @@
 
 ### 2️⃣ 직업 특화 설정
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0002.png" >
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0002.png" style="border: 1px solid #cccccc;">
 
 * 탭 메뉴: `🎨 직업 특화 설정`
 
@@ -84,7 +84,7 @@
 
 ### 3️⃣ 고유 버프 / 스탯 작성
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png" >
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png" style="border: 1px solid #cccccc;">
 
 * 탭 메뉴: `🛡️ 고유 버프 / 스탯 생성기`
 
@@ -102,7 +102,7 @@
 
 ### 4️⃣ 스킬 데이터 작성
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0004.png" >
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0004.png" style="border: 1px solid #cccccc;">
 
 * 탭 메뉴: `⚡ 스킬 데이터 생성기`
 
