@@ -39,7 +39,8 @@
 질풍 기상술사 비연참 세팅을 예시로 사용했습니다. 
 
 * 탭 메뉴: `☀️🌙⭐ 질서 코어 생성기`
-이미지0
+
+![질서 코어 생성기](https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0000.png)
 
 각 질서 코어(해/달/별) 노드의 단계별 효과를 입력합니다.
 
@@ -49,7 +50,7 @@
 
 그룹 아이디는 코어 내에서 '합연산'이 필요한 데이터가 있을 때 사용합니다.  
 
-이미지1
+![바람의 칼날 코어](https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0001.png)
 
 예를들어 '바람의 칼날' 코어는 14P와 17P가 합연산으로 계산됩니다.  
 이러한 경우 그룹 아이디에 같은 아이디를 입력해야 합연산으로 계산됩니다.  
@@ -70,7 +71,7 @@
 
 ### 2️⃣ 직업 특화 설정
 
-이미지2
+![직업 특화 설정](https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0002.png)
 
 * 탭 메뉴: `🎨 직업 특화 설정`
 
@@ -84,7 +85,7 @@
 
 ### 3️⃣ 고유 버프 / 스탯 작성
 
-이미지3
+![고유 버프/스탯 작성](https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png)
 
 * 탭 메뉴: `🛡️ 고유 버프 / 스탯 생성기`
 
@@ -102,7 +103,7 @@
 
 ### 4️⃣ 스킬 데이터 작성
 
-이미지4
+![스킬 데이터 작성](https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0004.png)
 
 * 탭 메뉴: `⚡ 스킬 데이터 생성기`
 
