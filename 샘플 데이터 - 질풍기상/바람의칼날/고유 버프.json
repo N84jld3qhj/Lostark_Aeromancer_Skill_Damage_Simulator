@@ -1,0 +1,72 @@
+[
+    {
+        "name": "깨달음 - 바람의 길",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 2.4,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "질풍노도",
+        "effects": [
+            {
+                "category": "이동 속도",
+                "val": 12,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "질풍노도",
+        "effects": [
+            {
+                "category": "공격 속도",
+                "val": 12,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "시너지",
+        "effects": [
+            {
+                "category": "치명타 적중률",
+                "val": 10,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "깨달음 치적",
+        "effects": [
+            {
+                "category": "치명타 적중률",
+                "val": 12,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "깨달음 치피",
+        "effects": [
+            {
+                "category": "치명타 피해",
+                "val": 48,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "펫 신속",
+        "effects": [
+            {
+                "category": "신속",
+                "val": 160,
+                "unit": ""
+            }
+        ]
+    }
+]
