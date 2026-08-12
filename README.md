@@ -50,7 +50,7 @@
 
 그룹 아이디는 코어 내에서 '합연산'이 필요한 데이터가 있을 때 사용합니다.  
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0001.png" width=50%>
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0005.png" width=50%>
 
 예를들어 '바람의 칼날' 코어는 14P와 17P가 합연산으로 계산됩니다.  
 이러한 경우 그룹 아이디에 같은 아이디를 입력해야 합연산으로 계산됩니다.  
