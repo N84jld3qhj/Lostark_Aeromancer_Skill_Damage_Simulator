@@ -36,7 +36,6 @@
 
 ### 1️⃣ 질서 코어 (아크그리드) 데이터 작성
 
-질풍 기상술사 비연참 세팅을 예시로 사용했습니다. 
 
 * 탭 메뉴: `☀️🌙⭐ 질서 코어 생성기`
 
@@ -70,9 +69,9 @@
 
 ### 2️⃣ 직업 특화 설정
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0002.png" style="border: 1px solid #cccccc;">
-
 * 탭 메뉴: `🎨 직업 특화 설정`
+
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0002.png" style="border: 1px solid #cccccc;">
 
 직업의 특화 스탯이 특정 스킬 계수에 주는 영향을 설정합니다.
 
@@ -84,9 +83,9 @@
 
 ### 3️⃣ 고유 버프 / 스탯 작성
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png" style="border: 1px solid #cccccc;">
-
 * 탭 메뉴: `🛡️ 고유 버프 / 스탯 생성기`
+
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png" style="border: 1px solid #cccccc;">
 
 기본 스탯, 아크 패시브 깨달음 등 캐릭터에 적용되는 고유 버프 정보를 입력합니다.
 
@@ -102,9 +101,9 @@
 
 ### 4️⃣ 스킬 데이터 작성
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0004.png" style="border: 1px solid #cccccc;">
-
 * 탭 메뉴: `⚡ 스킬 데이터 생성기`
+
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0004.png" style="border: 1px solid #cccccc;">
 
 앞서 작성한 **질서 코어, 특화, 버프에서 사용했던 태그들을 포함**하여 최종 스킬 데이터를 구성합니다.
 
@@ -137,7 +136,6 @@
 * 모든 데이터 작성이 완료되면 각 탭 우측 하단의 **`💾 파일 저장`** 버튼을 통해 JSON 파일로 추출할 수 있습니다.
 * 기존 작업 파일을 불러올 때는 **반드시 해당 데이터의 탭으로 이동**한 후 **`📂 파일 불러오기`**를 진행해야 합니다.
 
-
 ---
 # ✨ 주요 기능 (Features)
 
@@ -167,6 +165,18 @@
 
 ---
 
+## ⚠️ 사용 시 유의사항 (Important Notes)
+
+1. **입력된 데이터만을 사용해서 계산합니다.**
+   * 스킬 트라이포드를 바꾸거나 코어를 바꾸기 위해서는 데이터를 직접 수정해서 다시 로드해야합니다.
+2. **기본 적인 세팅은 고정으로 입력된 값을 사용합니다.**
+   * 능력치 증가 물약, 원정대 레벨, 전투 레벨, 카드 도감, 만찬, 펫목장, 전설 아바타 등 공통으로 들어가는 요소들은 최대치를 기준으로 계산합니다.
+3. 특별한 계산식이 필요한 경우는 아직 계산식을 지원하지 않습니다.  
+   예를들어 '기상술사 깨달음 기민함'이나 '워로드 깨달음 건랜스 수련' 처럼 특별한 계수(이동 속도, 공격 속도, 치명타 적중률 등)가 필요한 계산식은 아직 지원하지 않습니다.  \
+   고유 버프/스탯 입력 시 고정된 값을 입력해서 사용해주세요.
+
+---
+
 ## 🔄 자동 업데이트 안내
 
 * 본 스크립트는 새로운 버그 수정이나 기능 추가 시 **자동으로 최신 버전으로 업데이트**됩니다.
@@ -178,14 +188,5 @@
 ## 🐞 오류 제보 및 문의
 
 버그 제보나 기능 제안은 GitHub 저장소의 **[Issues]** 탭에 남겨주시면 빠르게 반영하겠습니다!
-
----
-
-## ⚠️ 사용 시 유의사항 (Important Notes)
-
-1. **입력된 데이터만을 사용해서 계산합니다.**
-   * 스킬 트라이포드를 바꾸거나 코어를 바꾸기 위해서는 데이터를 직접 수정해서 다시 로드해야합니다.
-2. **기본 적인 세팅은 고정으로 입력된 값을 사용합니다.**
-   * 능력치 증가 물약, 원정대 레벨, 전투 레벨, 카드 도감, 만찬, 펫목장, 전설 아바타 등 공통으로 들어가는 요소들은 최대치를 기준으로 계산합니다.
 
 ---
