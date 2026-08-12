@@ -1977,12 +1977,13 @@
 
                 // 3. 특화 피해가 존재할 경우 stats["적에게 주는 피해"]에 반영
                 if (totalSpecCoeff > 0) {
-                    const specDamageValue = specStatValue * totalSpecCoeff/699;
+                    const specDamageValue = specStatValue * totalSpecCoeff/699*100;
 
-                    stats["적에게 주는 피해"].push({
-                        val: parseFloat(specDamageValue.toFixed(2)),
-                        source: "특화"
-                    });
+                    addStat(stats,"적에게 주는 피해","특화",specDamageValue.toFixed(2),"%")
+                    // stats["적에게 주는 피해"].push({
+                    //     val: parseFloat(specDamageValue.toFixed(2)),
+                    //     source: "특화"
+                    // });
                 }
             }
             
@@ -2034,6 +2035,7 @@
                 finalAtk,
                 totalCritStat,
                 totalSwiftStat: totalSwift,
+                specStatValue,
                 totalCritRatePercent,
                 totalEvolutionDamage,
                 finalAtkSpeed,
@@ -2081,8 +2083,8 @@
                     <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${Math.floor(commonRes.finalAtk || 0).toLocaleString()}</div>
                 </div>
                 <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">치명 / 신속</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalCritStat || 0} / ${commonRes.totalSwiftStat || 0}</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">치명 / 신속 / 특화</div>
+                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalCritStat || 0} / ${commonRes.totalSwiftStat || 0} / ${commonRes.specStatValue || 0} </div>
                 </div>
                 <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
                     <div style="font-size: 0.8rem; color: #94a3b8;">치명타 적중률</div>
