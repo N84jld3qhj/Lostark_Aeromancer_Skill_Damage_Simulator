@@ -7,6 +7,8 @@
 // @match        https://lopec.kr/character/simulator/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=lopec.kr
 // @grant        GM_addStyle
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @updateURL    https://raw.githubusercontent.com/N84jld3qhj/Lostark_WindWielder_Simulator/main/script.user.js
 // @downloadURL  https://raw.githubusercontent.com/N84jld3qhj/Lostark_WindWielder_Simulator/main/script.user.js
 // ==/UserScript==
@@ -103,18 +105,86 @@
             gap: 8px !important;
         }
             table {
-    table-layout: fixed;
-    width: 100%;
-}
-    td, th {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-    `);
+            table-layout: fixed;
+            width: 100%;
+        }
+            td, th {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        `);
 
     // baselineResults 변수 선언 시 로컬 스토리지 데이터 복원
     let baselineResults = null;
+
+
+
+    const DEFAULT_ADD_STAT_BASE = [
+        { name: "치명", effects: [{ category: "치명", val: 79, unit: "" }] },
+        { name: "신속", effects: [{ category: "신속", val: 77, unit: "" }] },
+        { name: "특화", effects: [{ category: "특화", val: 75, unit: "" }] },
+
+        { name: "원정대 레벨(400 기준)", effects: [{ category: "주스탯", val: 1000, unit: "" }] },
+        { name: "전투 레벨 70", effects: [{ category: "주스탯", val: 477, unit: "" }] },
+        { name: "능력치 증가 물약", effects: [{ category: "주스탯", val: 850, unit: "" }] },
+        { name: "카드 도감", effects: [{ category: "주스탯", val: 240, unit: "" }] },
+        { name: "펫 목장 주스탯", effects: [{ category: "주스탯 %", val: 1, unit: "%" }] },
+        { name: "전설 아바타", effects: [{ category: "주스탯 %", val: 8, unit: "%" }] },
+
+        { name: "축복의 여신", effects: [{ category: "공격 속도", val: 9, unit: "%" }] },
+        { name: "축복의 여신", effects: [{ category: "이동 속도", val: 9, unit: "%" }] },
+        { name: "공이속 만찬", effects: [{ category: "공격 속도", val: 5, unit: "%" }] },
+        { name: "공이속 만찬", effects: [{ category: "이동 속도", val: 5, unit: "%" }] },
+
+        { name: "만찬 무기 공격력", effects: [{ category: "무기 공격력", val: 1800, unit: "" }] },
+        { name: "기본 치명타 피해", effects: [{ category: "치명타 피해", val: 200, unit: "%" }] },
+
+        { name: "무기 추가 피해", effects: [{ category: "추가 피해", val: 30, unit: "%" }] },
+        { name: "펫 목장 추가 피해", effects: [{ category: "추가 피해", val: 1, unit: "%" }] },
+
+        { name: "카드 세트", effects: [{ category: "적에게 주는 피해", val: 15, unit: "%" }] }
+    ];
+
+   // 저장소에서 불러온 '추가 스탯 데이터' 가져오기
+    let customStatData = GM_getValue('ADD_STAT_BASE_CUSTOM', []);
+    // 🌟 [핵심 수정] 배열이 아니라 객체 형태라면, 데이터를 날리지 않고 배열로 변환해줍니다!
+    if (!Array.isArray(customStatData)) {
+        if (customStatData && typeof customStatData === 'object') {
+            customStatData = Object.values(customStatData);
+        } else {
+            customStatData = [];
+        }
+    }
+
+    // 🌟 스크립트 최상단 변수 선언
+    let skillDatabase = GM_getValue('skillDatabase', {});
+    let orderDataSets = GM_getValue('orderDataSets', {});
+    let specializationDatabase = GM_getValue('specializationDatabase', {}); // 👈 특화 데이터 로드 추가
+
+
+    // DEFAULT_ADD_STAT_BASE 객체/배열 자동 변환 병합
+    let baseArray = [];
+    if (Array.isArray(DEFAULT_ADD_STAT_BASE)) {
+        baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+    } else if (DEFAULT_ADD_STAT_BASE && typeof DEFAULT_ADD_STAT_BASE === 'object') {
+        baseArray = Object.values(DEFAULT_ADD_STAT_BASE).map(item => ({
+            name: item.name || '',
+            effects: [{
+                category: item.category || '',
+                val: item.value !== undefined ? item.value : (item.val || 0),
+                unit: item.unit || ''
+            }]
+        }));
+    }
+
+    let ADD_STAT_BASE = baseArray.concat(customStatData);
+
+    // window 전역 객체와도 동기화
+    window.skillDatabase = skillDatabase;
+    window.orderDataSets = orderDataSets;
+    window.specializationDatabase = specializationDatabase; // 👈 전역 동기화 추가
+    window.ADD_STAT_BASE = ADD_STAT_BASE;
 
     try {
         const savedData = localStorage.getItem('savedBaselineResults');
@@ -128,7 +198,7 @@
 
     // 전역 변수 선언
     let lastCalculatedResults = null; // 최근 계산 결과
-    window.isGiRyuSet = false;
+
     window.isCalcPaused = true;
     // =============================================================================
     // 1. 아크 패시브 진화 노드 데이터셋 및 라인별 제한
@@ -138,7 +208,7 @@
     const evolutionNodes = [
         [
             { name: "치명", id: 1, max: 30, current: 0, effects: [{ type: "치명", valuePerLevel: 50 }] },
-            { name: "특화", id: 2, max: 30, current: 0, effects: [] },
+            { name: "특화", id: 2, max: 30, current: 0, effects: [{type:"특화",valuePerLevel:50}] },
             { name: "제압", id: 3, max: 30, current: 0, effects: [] },
             { name: "신속", id: 4, max: 30, current: 0, effects: [{ type: "신속", valuePerLevel: 50 }] },
             { name: "인내", id: 5, max: 30, current: 0, effects: [] },
@@ -146,7 +216,11 @@
         ],
         [
             { name: "끝없는 마나", id: 16, max: 2, current: 0, effects: [{ type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] },
-            { name: "금단의 주문", id: 12, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 10 }] },
+            { name: "금단의 주문", id: 12, max: 2, current: 0, effects:
+                [
+                { type: "진화형 피해", valuePerLevel: 5, requireTags: [] },
+                { type: "진화형 피해", valuePerLevel: 5, requireTags: ["마나"] }
+            ] },
             { name: "예리한 감각", id: 29, max: 2, current: 2, effects: [{ type: "치명타 적중률", valuePerLevel: 4 }, { type: "진화형 피해", valuePerLevel: 5 }] },
             { name: "한계 돌파", id: 34, max: 3, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 10 }] },
             { name: "최적화 훈련", id: 22, max: 2, current: 0, effects: [{ type: "쿨타임 감소", valuePerLevel: 4 }, { type: "진화형 피해", valuePerLevel: 5 }] },
@@ -155,7 +229,13 @@
         [
             { name: "무한한 마력", id: 14, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 8 }, { type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] },
             { name: "혼신의 강타", id: 27, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 2 }, { type: "치명타 적중률", valuePerLevel: 12 }] },
-            { name: "일격", id: 32, max: 2, current: 0, effects: [] },
+            { name: "일격", id: 32, max: 2, current: 0, effects: [
+                
+                    { type:"치명타 적중률",valuePerLevel:10},
+                    { type: "치명타 피해", valuePerLevel: 16, requireTags: ["백어택","헤드어택"] }
+                 
+                ]
+            },
             { name: "파괴 전차", id: 35, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 12 }, { type: "공격 속도", valuePerLevel: 4 }] },
             { name: "타이밍 지배", id: 23, max: 2, current: 0, effects: [{ type: "쿨타임 감소", valuePerLevel: 5 }, { type: "진화형 피해", valuePerLevel: 8 }] },
             { name: "정열의 춤사위", id: 33, max: 2, current: 0, effects: [] }
@@ -171,36 +251,36 @@
         [
             { name: "뭉툭한 가시", id: 20, max: 2, current: 0, isBluntThorn:true, effects: [] },
             { name: "음속 돌파", id: 21, max: 2, current: 0, isSonics: true, effects: [] },
-            { name: "인파이팅", id: 38, max: 2, current: 0, effects: [] },
+            { name: "인파이팅", id: 38, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 9 }] },
             { name: "입식 타격가", id: 18, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 10.5 }] },
-            { name: "마나 용광로", id: 24, max: 2, current: 0, effects: [] },
+            { name: "마나 용광로", id: 24, max: 2, current: 0, isMPFurnace :true, effects: [] },
             { name: "안정된 관리자", id: 25, max: 2, current: 0, effects: [] }
         ]
     ];
     const SAVE_KEY = "arkPassiveSetting_v1";
     loadArkPassive();
 
-function saveArkPassive() {
-    const data = evolutionNodes.map(row =>
-        row.map(node => node.current)
-    );
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-}
+    function saveArkPassive() {
+        const data = evolutionNodes.map(row =>
+            row.map(node => node.current)
+        );
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    }
 
-function loadArkPassive() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (!saved) return;
+    function loadArkPassive() {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (!saved) return;
 
-    const data = JSON.parse(saved);
+        const data = JSON.parse(saved);
 
-    evolutionNodes.forEach((row, i) => {
-        row.forEach((node, j) => {
-            if (data[i] && data[i][j] !== undefined) {
-                node.current = data[i][j];
-            }
+        evolutionNodes.forEach((row, i) => {
+            row.forEach((node, j) => {
+                if (data[i] && data[i][j] !== undefined) {
+                    node.current = data[i][j];
+                }
+            });
         });
-    });
-}
+    }
     // =============================================================================
     // 2. 상수 및 테이블 정의
     // =============================================================================
@@ -209,46 +289,16 @@ function loadArkPassive() {
         CRIT_TO_RATE: 0.0357142857142857,        // 치명 1당 치적 %
         SWIFT_TO_SPEED: 0.0171743929359823,      // 신속 1당 공이속 %
         SWIFT_TO_CDR: 0.0215,                    // 신속 1당 쿨감 %
-             
+
         // 시너지 & 패시브 계수
         PARTY_CRIT_SYNERGY_PER_PLAYER: 10,       // 파티 치적 시너지 (1인당 %)
-        SPEED_TO_CRIT_RATE_COEFF: 0.3,           // 이동속도 비례 치적 환산 계수
-        SPEED_TO_CRIT_DMG_COEFF: 1.2,            // 공격속도 비례 치피 환산 계수
+        // SPEED_TO_CRIT_RATE_COEFF: 0.3,           // 이동속도 비례 치적 환산 계수
+        // SPEED_TO_CRIT_DMG_COEFF: 1.2,            // 공격속도 비례 치피 환산 계수
         SPEED_CAP: 40,                           // 공이속 한계치 (%)
         SONICS_MAX_DMG: 24
     };
 
-    const ADD_STAT_BASE = {
-        BASE_CRIT:{category:"치명",name:"치명",value:79,unit:""},
-        BASE_SWIFT:{category:"신속",name:"신속", value:237, unit:""},
 
-        BASE_CRIT_SYNERGY:{category:"치명타 적중률",name:"자체 시너지",value:10,unit:"%"},
-
-        EXPEDITION_STAT:{category:"주스탯",name:"원정대 레벨(400 기준)",value:1000,unit:""},
-        COMBAT_LEVER_STAT:{category:"주스탯",name:"전투 레벨 70",value:477,unit:""}, 
-        POTION_LEVER_STAT:{category:"주스탯",name:"능력치 증가 물약",value:850,unit:""}, 
-        COLLECTION_STAT:{category:"주스탯",name:"카드 도감",value:240,unit:""},
-        BASE_PET_STAT: {category:"주스탯 %",name:"펫 목장 주스탯",value:1,unit:"%"},
-        BASE_AVATAR_STAT: {category:"주스탯 %",name:"전설 아바타",value:8,unit:"%"},
-
-        SUP_ATK_SPEED:{category:"공격 속도",name:"축복의 여신",value:9,unit:"%"},
-        SUP_MOVE_SPEED:{category:"이동 속도",name:"축복의 여신",value:9,unit:"%"},
-        ARK_PASSIVE_ATK_SPEED:{category:"공격 속도",name:"질풍노도",value:12,unit:"%"},
-        ARK_PASSIVE_MOVE_SPEED:{category:"이동 속도",name:"질풍노도",value:12,unit:"%"},
-        DINNER_ATK_SPEED:{category:"공격 속도",name:"공이속 만찬",value:5,unit:"%"},
-        DINNER_MOVE_SPEED:{category:"이동 속도",name:"공이속 만찬",value:5,unit:"%"},
-
-        DINNER_WEAPON_ATK:{category:"무기 공격력",name:"만찬 무기 공격력",value:1800,unit:""},
-
-        BASE_CRIT_DAMAGE: {category:"치명타 피해",name:"기본 치명타 피해",value:200,unit:"%"},
-
-        WEAPON_ADDITIONAL_DAMAGE: {category:"추가 피해",name:"무기 추가 피해",value:30,unit:"%"},
-        PET_ADDITIONAL_DAMAGE: {category:"추가 피해",name:"펫 목장 추가 피해",value:1,unit:"%"},
-
-        BASE_CARD_DAMAGE: {category:"적에게 주는 피해",name:"카드 세트",value:15,unit:"%"},
-        BASE_PASSIVE_DAMAGE: {category:"적에게 주는 피해",name:"깨달음 - 바람의 길",value:2.4,unit:"%"},
-
-    }
 
     const equipmentDataset = {
         "에스더":{
@@ -293,162 +343,6 @@ function loadArkPassive() {
         }
     };
 
-    const skillDatabase = [
-
-        {
-            name: "몰아치기",
-            constant: 5550.0,
-            coefficient: 29.47,
-            baseCooldown: 18,
-            tripods: {
-                "비연참":[
-                    { tier: 1, name: "역류", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-                    { tier: 2, name: "우레", category: "치명타 피해", val: 180.0, unit: "%" },
-                    { tier: 3, name: "공간베기", category: "적에게 주는 피해", val: 94.8, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 1, name: "재빠른 손놀림", category: "고정 쿨타임 감소", val: 5, unit: "" },
-                    { tier: 2, name: "우레", category: "치명타 피해", val: 180.0, unit: "%" },
-                    { tier: 3, name: "공간베기", category: "적에게 주는 피해", val: 94.8, unit: "%" }
-                ]
-            }
-        },
-        {
-            name: "회오리 걸음",
-            constant: 5594.0,
-            coefficient: 29.59,
-            baseCooldown: 20,
-            tripods: {
-                "비연참":[
-                    { tier: 2, name: "역류", category: "적에게 주는 피해", val: 95.0, unit: "%" },
-                    { tier: 3, name: "초고속 회전", category: "적에게 주는 피해", val: 105.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 2, name: "예리한 일격", category: "치명타 피해", val: 160.0, unit: "%" },
-                    { tier: 3, name: "초고속 회전", category: "적에게 주는 피해", val: 105.0, unit: "%" }
-                ]
-            }
-        
-        },
-        {
-            name: "공간 가르기",
-            constant: 31143.0,
-            coefficient: 165.52,
-            baseCooldown: 22,
-            tripods: {
-                "비연참":[ 
-                    {tier: 1, name: "깨달음 - 공간 가르기", category: "적에게 주는 피해", val: 200.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 1, name: "깨달음 - 공간 가르기", category: "적에게 주는 피해", val: 200.0, unit: "%"} 
-                ]
-            }
-        },
-        {
-            name: "우레바람",
-            constant: 85689.0,
-            coefficient: 455.58,
-            baseCooldown: 50,
-            tripods: {
-                "비연참":[
-                    { tier: 1, name: "도약 - 풀려난 힘", category: "적에게 주는 피해", val: 15.0, unit: "%" },
-                    { tier: 1, name: "도약 - 잠재력 해방", category: "쿨타임 감소", val: 8.0, unit: "%" },
-                    { tier: 2, name: "도약 - 단련된 가르기", category: "적에게 주는 피해", val: 70.0, unit: "%" }
-                ],
-                "기류 조절":[
-                                        { tier: 1, name: "도약 - 풀려난 힘", category: "적에게 주는 피해", val: 15.0, unit: "%" },
-                    { tier: 1, name: "도약 - 잠재력 해방", category: "쿨타임 감소", val: 8.0, unit: "%" },
-                    { tier: 2, name: "도약 - 단련된 가르기", category: "적에게 주는 피해", val: 70.0, unit: "%" }
-                ]
-            }
-        },
-        {
-            name: "바람송곳",
-            constant: 8918.0,
-            coefficient: 47.42,
-            baseCooldown: 27,
-            tripods: {
-                "비연참":[
-                    { tier: 1, name: "역류", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-                    { tier: 2, name: "큰 센바람", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-                    { tier: 3, name: "집중공격", category: "적에게 주는 피해", val: 95.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 1, name: "관통", category: "방어력 무시", val: 52.0, unit: "%" },
-                    { tier: 2, name: "큰 센바람", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-                    { tier: 3, name: "집중공격", category: "적에게 주는 피해", val: 95.0, unit: "%" }
-                ]
-            }
-        },
-        {
-            name: "칼바람",
-            constant: 8395.0,
-            coefficient: 44.59,
-            baseCooldown: 27,
-            tripods: {
-                "비연참":[
-                    { tier: 1, name: "거대 돌풍", category: "적에게 주는 피해", val: 45.0, unit: "%" },
-                    { tier: 2, name: "역류", category: "적에게 주는 피해", val: 95.0, unit: "%" },
-                    { tier: 3, name: "벼락", category: "치명타 피해", val: 210.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 1, name: "거대 돌풍", category: "적에게 주는 피해", val: 45.0, unit: "%" },
-                    { tier: 2, name: "절단", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-                    { tier: 3, name: "벼락", category: "치명타 피해", val: 210.0, unit: "%" }
-                ]
-            }
-        },
-        {
-            name: "싹쓸바람",
-            constant: 3844.0,
-            coefficient: 20.32202,
-            baseCooldown: 30,
-            tripods: {
-                "비연참":[
-                    { tier: 1, name: "빠른 준비", category: "고정 쿨타임 감소", val: 11.0, unit: "초" },
-                    { tier: 2, name: "소멸", category: "적에게 주는 피해", val: 70.8, unit: "%" },
-                    { tier: 3, name: "증기 조절", category: "적에게 주는 피해", val: 80.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 1, name: "빠른 준비", category: "고정 쿨타임 감소", val: 11.0, unit: "초" },
-                    { tier: 2, name: "소멸", category: "적에게 주는 피해", val: 70.8, unit: "%" },
-                    { tier: 3, name: "증기 조절", category: "적에게 주는 피해", val: 80.0, unit: "%" }
-                ]
-            }
-        },
-        {
-            name: "소용돌이",
-            constant: 3515.0,
-            coefficient: 18.68,
-            baseCooldown: 16,
-            tripods: {
-                "비연참":[
-                    { tier: 2, name: "바람 기둥", category: "적에게 주는 피해", val: 58.6, unit: "%" },
-                    { tier: 3, name: "증기 조절", category: "적에게 주는 피해", val: 80.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 2, name: "바람 기둥", category: "적에게 주는 피해", val: 58.6, unit: "%" },
-                    { tier: 3, name: "증기 조절", category: "적에게 주는 피해", val: 80.0, unit: "%" }
-                ]
-            }
-        },
-        {
-            name: "마주바람",
-            constant: 10701.0,
-            coefficient: 56.85,
-            baseCooldown: 20,
-            tripods: {
-                "비연참":[
-                    { tier: 1, name: "빠른 준비", category: "고정 쿨타임 감소", val: 6.0, unit: "초" },
-                    { tier: 2, name: "마주바람 강화", category: "적에게 주는 피해", val: 45.0, unit: "%" }
-                ],
-                "기류 조절":[
-                    { tier: 1, name: "빠른 준비", category: "고정 쿨타임 감소", val: 6.0, unit: "초" },
-                    { tier: 2, name: "마주바람 강화", category: "적에게 주는 피해", val: 45.0, unit: "%" }
-                ]
-            }
-        }
-    ];
 
     const gemDataTable = {
         "겁화": { "없음": 1.00, "6": 1.28, "7": 1.32, "8": 1.36, "9": 1.40, "10": 1.44 },
@@ -457,477 +351,353 @@ function loadArkPassive() {
     };
 
     const engravingTable = {
-        columns: ["원한", "아드레날린 (공격력)", "아드레날린 (치명타)", "돌격대장", "질량 증가", "타격의 대가", "저주받은 인형"],
-        levels: {
-            "미사용": [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
-            "0LV": [18.00, 5.40, 14.00, 40.00, 16.00, 14.00, 14.00],
-            "1LV": [18.75, 5.40, 15.50, 42.00, 16.75, 14.75, 14.75],
-            "2LV": [19.50, 5.40, 17.00, 44.00, 17.50, 15.50, 15.50],
-            "3LV": [20.25, 5.40, 18.50, 46.00, 18.25, 16.25, 16.25],
-            "4LV": [21.00, 5.40, 20.00, 48.00, 19.00, 17.00, 17.00]
+        "원한": {
+            name: "원한",
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 18.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 18.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 19.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 20.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 21.00, unit: "%" }]
+            },
+            stone: { // 선공/유물각인 등 추가 옵션
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
         },
-        seongong: {
-            "0LV": [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
-            "1LV": [3.00, 8.28, 0.00, 8.00, 3.00, 3.00, 3.00],
-            "2LV": [3.75, 9.00, 0.00, 9.40, 3.75, 3.75, 3.75],
-            "3LV": [5.25, 10.38, 0.00, 13.00, 5.25, 5.25, 5.25],
-            "4LV": [6.00, 11.10, 0.00, 15.00, 6.00, 6.00, 6.00]
-        }
+        "돌격대장": {
+            name: "돌격대장",
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 40.00, unit: "%" }], // (이동속도 비례 계산용 기준값)
+                "1LV":   [{ type: "적에게 주는 피해", val: 42.00, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 44.00, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 46.00, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 48.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 8.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 9.40, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 13.00, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 15.00, unit: "%" }]
+            }
+        },
+        "예리한 둔기": {
+            name: "예리한 둔기",
+            levels: {
+                "0LV": [
+                    { type: "치명타 피해", val: 44.00, unit: "%" },
+                    { type: "적에게 주는 피해", val: -2.00, unit: "%" } // 페널티 기대값 (-2%)
+                ],
+                "1LV": [
+                    { type: "치명타 피해", val: 46.00, unit: "%" },
+                    { type: "적에게 주는 피해", val: -2.00, unit: "%" }
+                ],
+                "2LV": [
+                    { type: "치명타 피해", val: 48.00, unit: "%" },
+                    { type: "적에게 주는 피해", val: -2.00, unit: "%" }
+                ],
+                "3LV": [
+                    { type: "치명타 피해", val: 50.00, unit: "%" },
+                    { type: "적에게 주는 피해", val: -2.00, unit: "%" }
+                ],
+                "4LV": [
+                    { type: "치명타 피해", val: 52.00, unit: "%" },
+                    { type: "적에게 주는 피해", val: -2.00, unit: "%" }
+                ]
+            },
+            stone: {
+                "0LV": [{ type: "치명타 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "치명타 피해", val: 7.50, unit: "%" }],
+                "2LV": [{ type: "치명타 피해", val: 9.40, unit: "%" }],
+                "3LV": [{ type: "치명타 피해", val: 13.20, unit: "%" }],
+                "4LV": [{ type: "치명타 피해", val: 15.00, unit: "%" }]
+            }
+        },
+
+        "아드레날린": { // 🌟 하나로 통합! (복합 옵션 처리)
+            name: "아드레날린",
+            levels: {
+                "0LV": [
+                    { type: "공격력 %", val: 5.40, unit: "%" },
+                    { type: "치명타 적중률", val: 14.00, unit: "%" }
+                ],
+                "1LV": [
+                    { type: "공격력 %", val: 5.40, unit: "%" },
+                    { type: "치명타 적중률", val: 15.50, unit: "%" }
+                ],
+                "2LV": [
+                    { type: "공격력 %", val: 5.40, unit: "%" },
+                    { type: "치명타 적중률", val: 17.00, unit: "%" }
+                ],
+                "3LV": [
+                    { type: "공격력 %", val: 5.40, unit: "%" },
+                    { type: "치명타 적중률", val: 18.50, unit: "%" }
+                ],
+                "4LV": [
+                    { type: "공격력 %", val: 5.40, unit: "%" },
+                    { type: "치명타 적중률", val: 20.00, unit: "%" }
+                ]
+            },
+            stone: {
+                "0LV": [{ type: "공격력 %", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "공격력 %", val: 2.88, unit: "%" }],
+                "2LV": [{ type: "공격력 %", val: 3.6, unit: "%" }],
+                "3LV": [{ type: "공격력 %", val: 4.98, unit: "%" }],
+                "4LV": [{ type: "공격력 %", val: 5.7, unit: "%" }]
+            }
+        },
+
+        "질량 증가": {
+            name: "질량 증가",
+            levels: {
+                "0LV":   [
+                    { type: "적에게 주는 피해", val: 16.00, unit: "%" },
+                    { type: "공격 속도", val: -10, unit:""}
+                ],
+                "1LV":   [
+                    { type: "적에게 주는 피해", val: 16.75, unit: "%" },
+                    { type: "공격 속도", val: -10, unit:""}
+                ],
+                "2LV":   [
+                    { type: "적에게 주는 피해", val: 17.50, unit: "%" },
+                    { type: "공격 속도", val: -10, unit:""}
+                ],
+                "3LV":   [
+                    { type: "적에게 주는 피해", val: 18.25, unit: "%" },
+                    { type: "공격 속도", val: -10, unit:""}
+                ],
+                "4LV":   [
+                    { type: "적에게 주는 피해", val: 19.00, unit: "%" },
+                    { type: "공격 속도", val: -10, unit:""}
+                ]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "저주받은 인형": {
+            name: "저주받은 인형",
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+
+        "타격의 대가": {
+            name: "타격의 대가",
+            requireTags: ["타대"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "기습의 대가": {
+            name: "기습의 대가",
+            requireTags: ["백어택"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 19.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 19.70, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 20.40, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 21.10, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 21.80, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 2.70, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.40, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 4.70, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 5.4, unit: "%" }]
+            }
+        },
+        "달인의 저력": {
+            name: "달인의 저력",
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "마나 효율 증가": {
+            name: "마나 효율 증가",
+            requireTags: ["마나"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 13.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 13.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 14.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 15.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 16.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "바리케이드": {
+            name: "바리케이드",
+            requireTags: ["실드"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "속전속결": {
+            name: "속전속결",
+            requireTags: ["홀딩"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 18.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 18.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 19.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 20.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 21.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "슈퍼 차지": {
+            name: "슈퍼 차지",
+            requireTags: ["차지"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 18.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 18.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 19.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 20.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 21.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "안정된 상태": {
+            name: "안정된 상태",
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "저주받은 인형": {
+            name: "저주받은 인형",
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
+            }
+        },
+        "정밀 단도": {
+            name: "정밀 단도",
+            levels: {
+                "0LV": [
+                    { type: "치명타 피해", val: -6.00, unit: "%" },
+                    { type: "치명타 적중률", val: 18.00, unit: "%" }
+                ],
+                "1LV": [
+                    { type: "치명타 피해", val: -6.00, unit: "%" },
+                    { type: "치명타 적중률", val: 18.75, unit: "%" }
+                ],
+                "2LV": [
+                    { type: "치명타 피해", val: -6.00, unit: "%" },
+                    { type: "치명타 적중률", val: 19.50, unit: "%" }
+                ],
+                "3LV": [
+                    { type: "치명타 피해", val: -6.00, unit: "%" },
+                    { type: "치명타 적중률", val: 20.25, unit: "%" }
+                ],
+                "4LV": [
+                    { type: "치명타 피해", val: -6.00, unit: "%" },
+                    { type: "치명타 적중률", val: 21.00, unit: "%" }
+                ]
+            },
+            stone: {
+                "0LV": [{ type: "치명타 적중률", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "치명타 적중률", val: 3.00, unit: "%" }],
+                "2LV": [{ type: "치명타 적중률", val: 3.75, unit: "%" }],
+                "3LV": [{ type: "치명타 적중률", val: 5.25, unit: "%" }],
+                "4LV": [{ type: "치명타 적중률", val: 6.00, unit: "%" }]
+            }
+        },
+
+
     };
+
 
     const coreLevels = [10, 14, 17, 18, 19, 20];
-    const skillNames = ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"];
-
-    const tripodDataSets = {
-        "마주바람": [
-            { tier: 1, name: "빠른 준비", category: "고정 쿨타임 감소", val: 6.0, unit: "초" },
-            { tier: 2, name: "마주바람 강화", category: "적에게 주는 피해", val: 45.0, unit: "%" }
-        ],
-        "몰아치기": [
-            { tier: 1, name: "역류", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-            { tier: 2, name: "우레", category: "치명타 피해", val: 180.0, unit: "%" },
-            { tier: 3, name: "공간베기", category: "적에게 주는 피해", val: 94.8, unit: "%" }
-        ],
-        "회오리 걸음": [
-            { tier: 2, name: "역류", category: "적에게 주는 피해", val: 95.0, unit: "%" },
-            { tier: 3, name: "초고속 회전", category: "적에게 주는 피해", val: 105.0, unit: "%" }
-        ],
-        "공간 가르기": [{ tier: 1, name: "깨달음 - 공간 가르기", category: "적에게 주는 피해", val: 200.0, unit: "%" }],
-        "우레바람": [
-            { tier: 1, name: "도약 - 풀려난 힘", category: "적에게 주는 피해", val: 15.0, unit: "%" },
-            { tier: 1, name: "도약 - 잠재력 해방", category: "쿨타임 감소", val: 8.0, unit: "%" },
-            { tier: 2, name: "도약 - 단련된 가르기", category: "적에게 주는 피해", val: 70.0, unit: "%" }
-        ],
-        "바람송곳": [
-            { tier: 1, name: "관통", category: "방어력 무시", val: 52.0, unit: "%" },
-            // { tier: 1, name: "역류", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-            { tier: 2, name: "큰 센바람", category: "적에게 주는 피해", val: 60.0, unit: "%" },
-            { tier: 3, name: "집중공격", category: "적에게 주는 피해", val: 95.0, unit: "%" }
-        ],
-        "칼바람": [
-            { tier: 1, name: "거대 돌풍", category: "적에게 주는 피해", val: 45.0, unit: "%" },
-            { tier: 2, name: "역류", category: "적에게 주는 피해", val: 95.0, unit: "%" },
-            { tier: 3, name: "벼락", category: "치명타 피해", val: 210.0, unit: "%" }
-        ],
-        "싹쓸바람": [
-            { tier: 1, name: "빠른 준비", category: "고정 쿨타임 감소", val: 11.0, unit: "초" },
-            { tier: 2, name: "소멸", category: "적에게 주는 피해", val: 70.8, unit: "%" },
-            { tier: 3, name: "증기 조절", category: "적에게 주는 피해", val: 80.0, unit: "%" }
-        ],
-        "소용돌이": [
-            { tier: 2, name: "바람 기둥", category: "적에게 주는 피해", val: 58.6, unit: "%" },
-            { tier: 3, name: "증기 조절", category: "적에게 주는 피해", val: 80.0, unit: "%" }
-        ]
-    };
-
-
-    const orderDataSets = {
-        "비연참": {
-            고대: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.02,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                14: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.05,
-                        skills: ["몰아치기", "회오리 걸음", "바람송곳", "칼바람"]
-                    }
-                ],
-                17: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.01,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ]
-            },
-            유물: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.02,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                14: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.05,
-                        skills: ["몰아치기", "회오리 걸음", "바람송곳", "칼바람"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ]
-            }
-        },
-        "기류 조절":{
-            고대: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                14: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.1,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.06,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ]
-            },
-            유물: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                14: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.1,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.05,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ]
-            }
-        },
-        "우산의 춤":{
-            고대: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.02,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.12,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-            },
-            유물: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.02,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.08,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.002,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람"]
-                    }
-                ],
-            },
-        },
-        "상승기류":{
-            고대: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"치명타 시 적에게 주는 피해",
-                        val: 1.06,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-            },
-            유물: {
-                10: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"치명타 시 적에게 주는 피해",
-                        val: 1.05,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.0015,
-                        skills: ["몰아치기", "회오리 걸음", "공간 가르기", "우레바람", "바람송곳", "칼바람", "마주바람", "싹쓸바람", "소용돌이"]
-                    }
-                ],
-            },
-        },
-        "휘몰아치기":{
-            고대: {
-                14: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.55,
-                        skills: ["회오리 걸음"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.18,
-                        skills: ["몰아치기"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.007,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.007,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.007,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-            },
-            유물: {
-                14: [
-                    {
-                        category: "적에게 주는 피해",
-                        val: 1.55,
-                        skills: ["회오리 걸음"]
-                    }
-                ],
-                17: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.12,
-                        skills: ["몰아치기"]
-                    }
-                ],
-                18: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.007,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-                19: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.007,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-                20: [
-                    {
-                        category:"적에게 주는 피해",
-                        val: 1.007,
-                        skills: ["몰아치기", "회오리 걸음"]
-                    }
-                ],
-            },
-        }
-    };
-
-
-
-
 
 
     const chaosDataSets = {
@@ -944,98 +714,98 @@ function loadArkPassive() {
     };
 
     const braceletTable = {
-    // 1. 공이속
-    "공이속": {
-        "공격 속도": { 상: 6, 중: 5, 하: 4 },
-        "이동 속도": { 상: 6, 중: 5, 하: 4 }
-    },
+        // 1. 공이속
+        "공이속": {
+            "공격 속도": { 상: 6, 중: 5, 하: 4 },
+            "이동 속도": { 상: 6, 중: 5, 하: 4 }
+        },
 
-    // 2. 치적 + 치명타 주는 피해
-    "치적|치명타주는피해": {
-        "치명타 적중률": { 상: 5.0, 중: 4.2, 하: 3.4 },
-        "치명타 시 적에게 주는 피해": { 상: 1.5, 중: 1.5, 하: 1.5 }
-    },
+        // 2. 치적 + 치명타 주는 피해
+        "치적|치명타주는피해": {
+            "치명타 적중률": { 상: 5.0, 중: 4.2, 하: 3.4 },
+            "치명타 시 적에게 주는 피해": { 상: 1.5, 중: 1.5, 하: 1.5 }
+        },
 
-    // 3. 치피 + 치명타 주는 피해
-    "치피|치명타주는피해": {
-        "치명타 피해": { 상: 10.0, 중: 8.4, 하: 6.8 },
-        "치명타 시 적에게 주는 피해": { 상: 1.5, 중: 1.5, 하: 1.5 }
-    },
+        // 3. 치피 + 치명타 주는 피해
+        "치피|치명타주는피해": {
+            "치명타 피해": { 상: 10.0, 중: 8.4, 하: 6.8 },
+            "치명타 시 적에게 주는 피해": { 상: 1.5, 중: 1.5, 하: 1.5 }
+        },
 
-    // 4. 적에게 주는 피해 (단독)
-    "적에게주는피해": {
-        "적에게 주는 피해": { 상: 3.0, 중: 2.5, 하: 2.0 }
-    },
+        // 4. 적에게 주는 피해 (단독)
+        "적에게주는피해": {
+            "적에게 주는 피해": { 상: 3.0, 중: 2.5, 하: 2.0 }
+        },
 
-    // 5. 적주피 + 무력화 적 피해
-    "적주피|무력화적피해량": {
-        "적에게 주는 피해": { 상: 3.0, 중: 2.5, 하: 2.0 }
-    },
+        // 5. 적주피 + 무력화 적 피해
+        "적주피|무력화적피해량": {
+            "적에게 주는 피해": { 상: 3.0, 중: 2.5, 하: 2.0 }
+        },
 
-    // 6. 쿨 + 적주피
-    "쿨|적에게주는피해": {
-        "적에게 주는 피해": { 상: 5.5, 중: 5.0, 하: 4.5 },
-        "쿨타임 증가": { 상: 2.0, 중: 2.0, 하: 2.0 }
-    },
+        // 6. 쿨 + 적주피
+        "쿨|적에게주는피해": {
+            "적에게 주는 피해": { 상: 5.5, 중: 5.0, 하: 4.5 },
+            "쿨타임 증가": { 상: 2.0, 중: 2.0, 하: 2.0 }
+        },
 
-    // 7. 추피 + 악마&대악마 피해
-    "추피|악마&대악마피해량": {
-        "추가 피해": { 상: 3.5, 중: 3.0, 하: 2.5 },
-        "악마 및 대악마 피해": { 상: 2.5, 중: 2.5, 하: 2.5 }
-    },
+        // 7. 추피 + 악마&대악마 피해
+        "추피|악마&대악마피해량": {
+            "추가 피해": { 상: 3.5, 중: 3.0, 하: 2.5 },
+            "악마 및 대악마 피해": { 상: 2.5, 중: 2.5, 하: 2.5 }
+        },
 
-    // 8. 중첩 무공 + 공이속
-    "공격적중시무공": {
-        "무기 공격력": { 상: 1480, 중: 1320, 하: 1160 },
-        "공격 속도": { 상: 1, 중: 1, 하: 1 },
-        "이동 속도": { 상: 1, 중: 1, 하: 1 }
-    },
+        // 8. 중첩 무공 + 공이속
+        "공격적중시무공": {
+            "무기 공격력": { 상: 1480, 중: 1320, 하: 1160 },
+            "공격 속도": { 상: 1, 중: 1, 하: 1 },
+            "이동 속도": { 상: 1, 중: 1, 하: 1 }
+        },
 
-    // 9. 조건부 무공
-    "조건부무공": {
-        "무기 공격력": { 상: 11400, 중: 10300, 하: 9200 }
-    },
+        // 9. 조건부 무공
+        "조건부무공": {
+            "무기 공격력": { 상: 11400, 중: 10300, 하: 9200 }
+        },
 
-    // 10. 스택형 무공
-    "스택당무공": {
-        "무기 공격력": { 상: 13200, 중: 12000, 하: 10800 }
-    },
+        // 10. 스택형 무공
+        "스택당무공": {
+            "무기 공격력": { 상: 13200, 중: 12000, 하: 10800 }
+        },
 
-    // 11. 백어택 스킬 피해
-    "백어택스킬피해": {
-        "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
-    },
+        // 11. 백어택 스킬 피해
+        "백어택스킬피해": {
+            "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
+        },
 
-    // 12. 헤드어택 스킬 피해
-    "헤드어택스킬피해": {
-        "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
-    },
+        // 12. 헤드어택 스킬 피해
+        "헤드어택스킬피해": {
+            "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
+        },
 
-    // 13. 타대 스킬 피해 (방향성 X)
-    "타대스킬피해": {
-        "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
-    },
+        // 13. 타대 스킬 피해 (방향성 X)
+        "타대스킬피해": {
+            "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
+        },
 
-    // 14. 추가 피해 (단독)
-    "추가피해": {
-        "추가 피해": { 상: 4.0, 중: 3.5, 하: 3.0 }
-    },
+        // 14. 추가 피해 (단독)
+        "추가피해": {
+            "추가 피해": { 상: 4.0, 중: 3.5, 하: 3.0 }
+        },
 
-    // 15. 치명타 적중률 (단독)
-    "치명타적중률": {
-        "치명타 적중률": { 상: 5.0, 중: 4.2, 하: 3.4 }
-    },
+        // 15. 치명타 적중률 (단독)
+        "치명타적중률": {
+            "치명타 적중률": { 상: 5.0, 중: 4.2, 하: 3.4 }
+        },
 
-    // 16. 치명타 피해 (단독)
-    "치명타피해": {
-        "치명타 피해": { 상: 10.0, 중: 8.4, 하: 6.8 }
-    },
+        // 16. 치명타 피해 (단독)
+        "치명타피해": {
+            "치명타 피해": { 상: 10.0, 중: 8.4, 하: 6.8 }
+        },
 
-    // 17. 무기 공격력 (단독)
-    "무기공격력": {
-        "무기 공격력": { 상: 9000, 중: 8100, 하: 7200 }
-    }
-};
+        // 17. 무기 공격력 (단독)
+        "무기공격력": {
+            "무기 공격력": { 상: 9000, 중: 8100, 하: 7200 }
+        }
+    };
 
     const accessoryTable = {
         "추가 피해": { 상: 2.6, 중: 1.6, 하: 0.7 },
@@ -1052,29 +822,29 @@ function loadArkPassive() {
     // 3. 헬퍼 함수 정의
     // =============================================================================
     function getBraceletOptionData(rawOpt, grade) {
-    if (!rawOpt || rawOpt === '없음' || rawOpt === 'none') return null;
+        if (!rawOpt || rawOpt === '없음' || rawOpt === 'none') return null;
 
-    // 숫자, 마침표, +, %, 공백을 제거하여 순수 키워드만 추출
-    // 예: "타대 스킬 피해 +3.0%" -> "타대스킬피해"
-    // 예: "치피 +8.4% | 치명타 주는 피해 +1.5%" -> "치피|치명타주는피해"
-    const cleanTarget = rawOpt
-        .replace(/[\d\.\+%]+/g, '')
-        .replace(/\s+/g, '');
+        // 숫자, 마침표, +, %, 공백을 제거하여 순수 키워드만 추출
+        // 예: "타대 스킬 피해 +3.0%" -> "타대스킬피해"
+        // 예: "치피 +8.4% | 치명타 주는 피해 +1.5%" -> "치피|치명타주는피해"
+        const cleanTarget = rawOpt
+            .replace(/[\d\.\+%]+/g, '')
+            .replace(/\s+/g, '');
 
-    for (const [key, effects] of Object.entries(braceletTable)) {
-        const cleanKey = key.replace(/\s+/g, '');
+        for (const [key, effects] of Object.entries(braceletTable)) {
+            const cleanKey = key.replace(/\s+/g, '');
 
-        if (cleanTarget.includes(cleanKey) || cleanKey.includes(cleanTarget)) {
-            const result = {};
-            for (const [statName, gradeMap] of Object.entries(effects)) {
-                const val = gradeMap[grade] ?? gradeMap['중'] ?? 0;
-                if (val !== 0) result[statName] = val;
+            if (cleanTarget.includes(cleanKey) || cleanKey.includes(cleanTarget)) {
+                const result = {};
+                for (const [statName, gradeMap] of Object.entries(effects)) {
+                    const val = gradeMap[grade] ?? gradeMap['중'] ?? 0;
+                    if (val !== 0) result[statName] = val;
+                }
+                return result;
             }
-            return result;
         }
+        return null;
     }
-    return null;
-}
 
     function addStat(statsObj, category, source, val, unit = "%") {
         if (!statsObj[category]) statsObj[category] = [];
@@ -1087,18 +857,50 @@ function loadArkPassive() {
         if (!statsObj[category] || !Array.isArray(statsObj[category])) return 0;
         return statsObj[category].reduce((sum, item) => sum + (Number(item.val) || 0), 0);
     }
+    /**
+     * 특정 카테고리의 스탯들을 곱연산(곱적용)하여 최종 배율을 반환하는 함수
+     * @param {Object} statsObj - 스탯 객체 (예: stats)
+     * @param {string} category - 카테고리 이름 (예: "적에게 주는 피해")
+     * @param {boolean} isPercentage - val 값이 퍼센트 값(2.5 = 2.5%)이면 true, 이미 배율(1.025)이면 false (기본값: true)
+     * @returns {number} 최종 곱연산 배율 (데이터가 없거나 비어있으면 1.0 반환)
+     */
+    function getStatProduct(statsObj, category, isPercentage = true) {
+        if (!statsObj[category] || !Array.isArray(statsObj[category])) return 1.0;
 
-    function calculateDamageBase(atk, coefficient, constant,defPenSum) {       
-        const defenseRatio = 6500 / (6500 + 6500*(1-defPenSum/100));
+        return statsObj[category].reduce((acc, item) => {
+            const rawVal = Number(item.val) || 0;
+
+            // 퍼센트(%) 형태(예: 5 -> 1.05)인지, 이미 배율 형태(예: 1.05)인지 판별하여 곱함
+            const multiplier = isPercentage ? (1 + rawVal / 100) : rawVal;
+
+            return acc * multiplier;
+        }, 1.0);
+    }
+
+    function getDefPenMultiplier(statsObj) {
+        if (!statsObj["방어력 무시"] || !Array.isArray(statsObj["방어력 무시"])) return 0;
+
+        // 잔여 방어력 비율을 구한 뒤 (1 - 잔여 비율)로 총 관통률(0.0 ~ 1.0) 계산
+        const remainingRate = statsObj["방어력 무시"].reduce((acc, item) => {
+            const val = Number(item.val) || 0;
+            return acc * (1 - (val / 100));
+        }, 1.0);
+
+        return 1 - remainingRate;
+    }
+
+    function calculateDamageBase(atk, coefficient, constant,defPenMultiplier) {
+        const defenseRatio = 6500 / (6500 + 6500*(1-defPenMultiplier));
         return (coefficient * atk + constant) * 0.76 * defenseRatio;
     }
 
-    function getArkEvolutionStats() {
+    function getArkEvolutionStats(skillName, skillTags = []) {
         let arkStats = {};
         evolutionNodes.forEach((row, rowIndex) => {
             row.forEach((node) => {
                 if (node.current <= 0) return;
                 const tierName = `${rowIndex + 1}티어`;
+
                 if (node.effects && node.effects.length > 0) {
                     node.effects.forEach(eff => {
                         const catName = eff.type;
@@ -1110,7 +912,9 @@ function loadArkPassive() {
                         arkStats[catName].push({
                             source: `아크 패시브(진화 ${tierName}): ${node.name} [${node.current}/${node.max}LV]`,
                             val: parseFloat(calculatedVal.toFixed(2)),
-                            unit: unitStr
+                            unit: unitStr,
+                            // 🌟 태그 조건 정보도 함께 수집해서 전달!
+                            requireTags: eff.requireTags || [],
                         });
                     });
                 }
@@ -1246,70 +1050,39 @@ function loadArkPassive() {
         };
 
         const parseArkCores = () => {
-            const chaosCores = { 
-                Sun: { name: '', grade: '미장착', level: 0 }, 
-                Moon: { name: '', grade: '미장착', level: 0 }, 
-                Star: { name: '', grade: '미장착', level: 0 } 
+            const chaosCores = {
+                Sun: { name: '', grade: '미장착', level: 0 },
+                Moon: { name: '', grade: '미장착', level: 0 },
+                Star: { name: '', grade: '미장착', level: 0 }
             };
-            const orderCores = { 
-                Sun: { name: '', grade: '미장착', level: 0 }, 
-                Moon: { name: '', grade: '미장착', level: 0 }, 
-                Star: { name: '', grade: '미장착', level: 0 } 
+            const orderCores = {
+                Sun: { name: '', grade: '미장착', level: 0 },
+                Moon: { name: '', grade: '미장착', level: 0 },
+                Star: { name: '', grade: '미장착', level: 0 }
             };
 
             const items = doc.querySelectorAll('div[class*="SimGroupArkGrid_gridItem"]');
-            
-            window.isGiRyuSet = false;
-
-            // 1행(인덱스 0, 1, 2 - 질서 코어)에서 '기류 조절' 선택 여부 확인
-            items.forEach((item, index) => {
-                if (index < 3) {
-                    const bladeSelect = item.querySelector('select[id*="ark-blade"]');
-                    if (bladeSelect && bladeSelect.selectedIndex >= 0) {
-                        const selectedText = bladeSelect.options[bladeSelect.selectedIndex]?.textContent || '';
-                        if (selectedText.includes('기류 조절')) {
-                            window.isGiRyuSet = true;
-                        }
-                    }
-                }
-            });
-
-            if (typeof window.updateCoreSetUI === 'function') {
-                window.updateCoreSetUI();
-            }
 
             items.forEach((item, index) => {
+                // 1. 코어 등급 추출
                 const gradeSpan = item.querySelector('select[id*="ark-core"]')?.parentElement.querySelector('span[class*="BaseSelect_labelText"]');
                 const grade = gradeSpan ? gradeSpan.textContent.trim() : '미장착';
-                
+
+                // 2. 코어 포인트(레벨) 추출
                 const pointEl = item.querySelector('div[data-testid="quality-bar"]') || item.querySelector('div[class*="QualityBar_qualityBar"]');
                 const level = pointEl ? parseInt(pointEl.textContent.trim().replace(/[^0-9]/g, ''), 10) || 0 : 0;
 
-                // [수정] 0, 1, 2번 인덱스(1행) = 질서(Order) / 3, 4, 5번 인덱스(2행) = 혼돈(Chaos)
-                const isOrder = index < 3; 
-                const slotIdx = index % 3; // 0: Sun(해), 1: Moon(달), 2: Star(별)
-                const slotKey = slotIdx === 0 ? 'Sun' : slotIdx === 1 ? 'Moon' : 'Star';
-
+                // 3. 코어 이름 추출 (질서/혼돈 공통: 드롭다운에서 직접 파싱)
                 let coreName = '';
-
-                if (isOrder) { 
-                    // 1행: 질서 코어 영역
-                    if (window.isGiRyuSet) {
-                        if (slotKey === 'Sun') coreName = '기류 조절';
-                        else if (slotKey === 'Moon') coreName = '상승기류';
-                        else if (slotKey === 'Star') coreName = '휘몰아치기';
-                    } else {
-                        if (slotKey === 'Sun') coreName = '비연참';
-                        else if (slotKey === 'Moon') coreName = '우산의 춤';
-                        else if (slotKey === 'Star') coreName = '휘몰아치기';
-                    }
-                } else {
-                    // 2행: 혼돈 코어 영역 (선택된 드롭다운 명칭 가져오기)
-                    const bladeSelect = item.querySelector('select[id*="ark-blade"]');
-                    if (bladeSelect && bladeSelect.selectedIndex >= 0) {
-                        coreName = bladeSelect.options[bladeSelect.selectedIndex]?.textContent.trim() || '';
-                    }
+                const bladeSelect = item.querySelector('select[id*="ark-blade"]');
+                if (bladeSelect && bladeSelect.selectedIndex >= 0) {
+                    coreName = bladeSelect.options[bladeSelect.selectedIndex]?.textContent.trim() || '';
                 }
+
+                // 4. 슬롯 및 카테고리(질서/혼돈) 매핑
+                const isOrder = index < 3; // 0, 1, 2번 인덱스 = 질서(Order) / 3, 4, 5번 인덱스 = 혼돈(Chaos)
+                const slotIdx = index % 3; // 0: Sun, 1: Moon, 2: Star
+                const slotKey = slotIdx === 0 ? 'Sun' : slotIdx === 1 ? 'Moon' : 'Star';
 
                 const coreData = { name: coreName, grade, level };
 
@@ -1320,7 +1093,7 @@ function loadArkPassive() {
                 }
             });
 
-            return { chaosCores, orderCores};
+            return { chaosCores, orderCores };
         };
 
         // 팔찌 파싱 부분 수정
@@ -1329,9 +1102,9 @@ function loadArkPassive() {
             const bangleWrap = doc.querySelector('div[class*="SimGroupAccessory_bangleWrap"]');
             if (!bangleWrap) return bracelet;
 
-            const statKeyMap = { 
-                '치명': 'crit', 
-                '신속': 'swift', 
+            const statKeyMap = {
+                '치명': 'crit',
+                '신속': 'swift',
                 '특화': 'spec',
                 '힘': 'mainStat',    // 💡 필요시 '주스탯'으로 변경 가능
                 '민첩': 'mainStat',
@@ -1378,21 +1151,21 @@ function loadArkPassive() {
 
                 const part = normalSelect.id.replace('armory-', '').replace('-normal', '');
                 const labelSpan = normalSelect.parentElement.querySelector('span[class*="BaseSelect_labelText"]');
-                
+
                 if (labelSpan) {
                     const level = parseInt(labelSpan.textContent.trim().replace(/[^0-9]/g, ''), 10) || 0;
-                    
+
                     // 1. 완갑(vambrace)
                     if (part === 'vambrace') {
                         const gradeEl = box.querySelector('div[data-testid="quality-bar"]') || box.querySelector('div[class*="QualityBar_qualityBar"]');
                         equipment[part] = level;
                         equipment.vambraceGrade = gradeEl ? gradeEl.textContent.trim() : '일반';
-                    } 
+                    }
                     // 2. 무기(weapon)
                     else if (part === 'weapon') {
                         const tierSelect = box.querySelector('select[id*="-tier"]');
                         const tierSpan = tierSelect?.parentElement?.querySelector('span[class*="BaseSelect_labelText"]');
-                        
+
                         // span 표시 텍스트 우선 (없으면 select value 사용) -> '에스더', 'T4 전율' 등
                         const weaponTier = tierSpan?.textContent.trim() || tierSelect?.value || '';
                         const isEsther = weaponTier.includes('에스더');
@@ -1402,7 +1175,7 @@ function loadArkPassive() {
                         if (isEsther) {
                             const ellaSelect = box.querySelector('select[id*="-esther-ella"]');
                             const ellaSpan = ellaSelect?.parentElement?.querySelector('span[class*="BaseSelect_labelText"]');
-                            
+
                             // "엘라 3" 또는 value "3" 에서 숫자만 추출
                             const rawElla = ellaSpan?.textContent || ellaSelect?.value || '0';
                             estherElla = parseInt(rawElla.replace(/[^0-9]/g, ''), 10) || 0;
@@ -1412,7 +1185,7 @@ function loadArkPassive() {
                         equipment.weaponTier = weaponTier;
                         equipment.isEsther = isEsther;
                         equipment.estherElla = estherElla; // 예: 0, 1, 2, 3
-                    } 
+                    }
                     // 3. 기타 방어구
                     else {
                         equipment[part] = level;
@@ -1473,7 +1246,7 @@ function loadArkPassive() {
         const shoulderLvl = eq.shoulder  ?? eq["어깨"] ?? eq["어깨 방어구"] ?? 0;
         const weaponLvl   = eq.weapon    ?? eq["무기"]                    ?? 0;
         const vambraceLvl = eq.vambrace  ?? eq['완갑']                    ?? 0;
-        
+
         // 에스더 정보 파싱 확인
         const isEsther   = Boolean(eq.isEsther || (typeof eq.weaponTier === 'string' && eq.weaponTier.includes('에스더')));
         const estherElla = eq.estherElla ?? 0; // 숫자 0, 1, 2, 3
@@ -1484,7 +1257,7 @@ function loadArkPassive() {
         const bottomStat   = equipmentDataset["하의"]?.[bottomLvl] || 0;
         const gloveStat    = equipmentDataset["장갑"]?.[gloveLvl] || 0;
         const shoulderStat = equipmentDataset["어깨 방어구"]?.[shoulderLvl] || equipmentDataset["어깨"]?.[shoulderLvl] || 0;
-        
+
         // 2. ★ [핵심] 무기 스탯 계산 (에스더 데이터셋 구조 적용)
         let weaponStat = 0;
         if (isEsther) {
@@ -1497,7 +1270,7 @@ function loadArkPassive() {
         // 3. 완갑 및 악세서리 계산
         const vambraceData = equipmentDataset["완갑"]?.[vambraceLvl] || { 무기공격력: 0, 주스탯: 0, 기본공격력: 0 };
         const accessoryBaseStat = (extracted.accessories || []).reduce((acc, currentAcc) => acc + (currentAcc.statValue || 0), 0);
-        
+
         // 4. 스탯 총합
         const armorBaseStat = headStat + topStat + bottomStat + gloveStat + shoulderStat;
         const totalBaseStat = armorBaseStat + (vambraceData.지능 || vambraceData.주스탯 || 0) + accessoryBaseStat;
@@ -1509,7 +1282,7 @@ function loadArkPassive() {
             bottomStat: bottomStat,
             gloveStat: gloveStat,
             shoulderStat: shoulderStat,
-            
+
             // 무기 관련
             weaponAtk: weaponStat,
             isEsther: isEsther,
@@ -1569,19 +1342,37 @@ function loadArkPassive() {
     // 5. 핵심 스탯 및 데미지 연산 엔진
     // =============================================================================
     function calculateSkillStats(inputs) {
+
         const partyCritBonus = (window.partyCritCount || 0) * STAT_CONSTANTS.PARTY_CRIT_SYNERGY_PER_PLAYER;
         let commonStats = {
-            "주스탯":[], "주스탯 %":[],
+            "주스탯":[], "주스탯 %":[],"치명": [], "신속": [],"특화":[],
             "무기 공격력": [], "무기 공격력 %": [], "기본 공격력": [], "기본 공격력 %": [], "공격력": [], "공격력 %": [],
-            "치명": [], "신속": [], "진화형 피해": [], "추가 피해": [],
+            "진화형 피해": [], "추가 피해": [],
             "치명타 적중률": [], "치명타 피해": [], "치명타 시 적에게 주는 피해": [],
-            "적에게 주는 피해": [],"방어력 무시":[],
+            "적에게 주는 피해": [], "방어력 무시":[],
             "이동 속도": [], "공격 속도": [], "쿨타임 감소": [],
-            "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소": []
+            "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소": [],"고정 쿨타임 증가":[]
         };
 
-        Object.values(ADD_STAT_BASE).forEach(stat => {
-            addStat(commonStats, stat.category, stat.name, stat.value, stat.unit);
+        // 🌟 1. ADD_STAT_BASE가 배열이면 그대로 쓰고, 객체면 배열로 변환해서 안전하게 확보
+        const statList = Array.isArray(window.ADD_STAT_BASE)
+            ? window.ADD_STAT_BASE
+            : Object.values(window.ADD_STAT_BASE || {});
+
+        // 🌟 2. 안전하게 순회
+        statList.forEach(item => {
+            if (!item) return;
+
+            // A. 새로 변경된 구조: [{ name, effects: [{ category, val, unit }] }]
+            if (Array.isArray(item.effects)) {
+                item.effects.forEach(eff => {
+                    addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
+                });
+            }
+            // B. 기존 객체 구조 예외 처리: { category, name, value, unit }
+            else if (item.category) {
+                addStat(commonStats, item.category, item.name, item.value, item.unit);
+            }
         });
 
         if (partyCritBonus > 0) {
@@ -1595,8 +1386,7 @@ function loadArkPassive() {
         addStat(commonStats, "주스탯", "하의", inputs.bottomStat, "");
         addStat(commonStats, "주스탯", "장갑", inputs.gloveStat, "");
 
-        // ★ 무기 공격력 합산
-        // inputs.weaponAtk에 이미 에스더/엘라 스탯이 모두 포함되어 있으므로 그대로 등록합니다.
+        // 무기 공격력 합산
         const weaponLabel = inputs.isEsther ? `에스더 무기 (엘라 ${inputs.estherElla ?? 0})` : "무기";
         addStat(commonStats, "무기 공격력", weaponLabel, inputs.weaponAtk, "");
 
@@ -1605,10 +1395,8 @@ function loadArkPassive() {
         const estherBonding2Data = [3946, 4305, 7250, 16450];
 
         if (inputs.isEsther) {
-            // 1) 엘라 단계 안전 추출 (기본값 0)
             const ellaLvl = inputs.estherElla ?? 0;
 
-            // 2) 1차 결속 ON 시에만 변수 선언 및 스탯 추가
             if (window.estherBonding1) {
                 const bonding1Stat = estherBonding1Data[ellaLvl] || 0;
                 if (bonding1Stat > 0) {
@@ -1616,7 +1404,6 @@ function loadArkPassive() {
                 }
             }
 
-            // 3) 2차 결속 ON 시에만 변수 선언 및 스탯 추가
             if (window.estherBonding2) {
                 const bonding2Stat = estherBonding2Data[ellaLvl] || 0;
                 if (bonding2Stat > 0) {
@@ -1625,23 +1412,16 @@ function loadArkPassive() {
             }
         }
 
-
         // 완갑 데이터 처리
         if (inputs.vambraceData) {
             const weaponAtk = inputs.vambraceData.무기공격력 || 0;
-            if (weaponAtk > 0) {
-                addStat(commonStats, "무기 공격력", "완갑", weaponAtk, "");
-            }
+            if (weaponAtk > 0) addStat(commonStats, "무기 공격력", "완갑", weaponAtk, "");
 
             const mainStat = inputs.vambraceData.주스탯 || 0;
-            if (mainStat > 0) {
-                addStat(commonStats, "주스탯", "완갑", mainStat, "");
-            }
+            if (mainStat > 0) addStat(commonStats, "주스탯", "완갑", mainStat, "");
 
             const baseAtk = inputs.vambraceData.기본공격력 || 0;
-            if (baseAtk > 0) {
-                addStat(commonStats, "기본 공격력", "완갑", baseAtk, "");
-            }
+            if (baseAtk > 0) addStat(commonStats, "기본 공격력", "완갑", baseAtk, "");
         }
 
         // 완갑 등급별 기본 공격력 %
@@ -1652,19 +1432,9 @@ function loadArkPassive() {
         if (vambraceNormalAtkPercent > 0) {
             addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", vambraceNormalAtkPercent, "%");
         }
-      
-        addStat(commonStats, "기본 공격력", "완갑 기본 공격력", inputs.vambraceNomalAtk, "");
-        addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", inputs.vambraceNormalAtkPercent, "%");
 
-
-
-        // =============================================================================
-        // 아크 패시브 진화 (Rank 수치 기반 스탯 연산)
-        // =============================================================================
-        // 1. 객체 형태 ("진화": { rank: 6 }) 및 다양한 키(evolution, 진화) 대응
+        // 아크 패시브 진화
         const evolutionData = inputs?.arkPassive?.["진화"] || inputs?.arkPassive?.evolution;
-
-        // 2. Rank 수치 추출
         let evolutionRank = 0;
 
         if (typeof evolutionData === "object" && evolutionData !== null) {
@@ -1673,37 +1443,19 @@ function loadArkPassive() {
             evolutionRank = Number(inputs?.arkPassive?.evolutionRank) || 0;
         }
 
-        // 3. 스탯 추가 적용
         if (evolutionRank > 0) {
-            // TODO: Rank당 증가시킬 % 수치를 설정하세요. (예: Rank 1당 1%면 1, 1.5%면 1.5)
             const STAT_PER_RANK = 1;
-
-            // 부동소수점 오차 방지
             const statValue = Number((evolutionRank * STAT_PER_RANK).toFixed(2));
-
-            addStat(
-                commonStats,
-                "진화형 피해",
-                `아크 패시브 진화 (Rank.${evolutionRank})`,
-                statValue,
-                "%"
-            );
-
+            addStat(commonStats, "진화형 피해", `아크 패시브 진화 (Rank.${evolutionRank})`, statValue, "%");
         }
 
-        // 아크 패시브 깨달음 (무기 공격력 % 연산)
-        // =============================================================================
-        // 1. 객체 형태 ("깨달음": { level: 30 }) 및 다양한 키(enlighten, 깨달음) 대응
+        // 아크 패시브 깨달음
         const enlightenData = inputs?.arkPassive?.["깨달음"] || inputs?.arkPassive?.enlighten;
-
-        // 2. 수치 추출 (객체 안의 level 또는 배열/숫자 형태 fallback)
         let enlightenLevel = 0;
 
         if (typeof enlightenData === "object" && enlightenData !== null) {
-            // inputs.arkPassive["깨달음"].level 가져오기
             enlightenLevel = Number(enlightenData.level) || 0;
         } else if (Array.isArray(enlightenData)) {
-            // 만약 기존처럼 배열 구조일 경우 무기 공격력 노드 탐색
             const atkNode = enlightenData.find(node =>
                 node.name && (node.name.includes("무기 공격력") || node.name.includes("깨달음"))
             );
@@ -1712,83 +1464,30 @@ function loadArkPassive() {
             enlightenLevel = Number(inputs?.arkPassive?.enlightenLevel) || 0;
         }
 
-        // 3. 스탯 추가 적용
         if (enlightenLevel > 0) {
-            // 자바스크립트 부동소수점 오차 방지 (예: 30 * 0.1 = 3)
             const statValue = Number((enlightenLevel * 0.1).toFixed(2));
-
-            addStat(
-                commonStats,
-                "무기 공격력 %",
-                `아크 패시브 깨달음 (Lv.${enlightenLevel})`,
-                statValue,
-                "%"
-            );
-
+            addStat(commonStats, "무기 공격력 %", `아크 패시브 깨달음 (Lv.${enlightenLevel})`, statValue, "%");
         }
 
 
-        const engravingCategoryMap = [
-            "적에게 주는 피해", "공격력 %", "치명타 적중률",
-            "적에게 주는 피해", "적에게 주는 피해", "적에게 주는 피해", "공격력 %"
-        ];
-
-        inputs.engravings.forEach(eng => {
-            if (eng.name === "none" || eng.level === "미사용") return;
-            if (eng.name === "질량 증가")
-                addStat(commonStats,"공격 속도","질량 증가",-10,"%")
-
-
-            if (eng.name === "아드레날린") {
-                [1, 2].forEach(colIdx => {
-                    const baseVal = engravingTable.levels[eng.level][colIdx];
-                    const stoneVal = engravingTable.seongong[eng.stone][colIdx];
-                    addStat(commonStats, engravingCategoryMap[colIdx], `각인: 아드레날린 [${eng.level} + 세공 ${eng.stone}]`, parseFloat((baseVal + stoneVal).toFixed(2)));
-                });
-            } else if (eng.name === "돌격대장") {
-                const colIdx = engravingTable.columns.indexOf("돌격대장");
-                if (colIdx !== -1) {
-                    const raidFactor = engravingTable.levels[eng.level][colIdx] + engravingTable.seongong[eng.stone][colIdx];
-                    if (raidFactor > 0) {
-                        commonStats["_돌격대장계수"] = raidFactor / 100;
-                        commonStats["_돌격대장정보"] = `각인: 돌격대장 [${eng.level} + 세공 ${eng.stone}]`;
-                    }
-                }
-            } else {
-                const colIdx = engravingTable.columns.indexOf(eng.name);
-                if (colIdx !== -1) {
-                    const totalVal = parseFloat((engravingTable.levels[eng.level][colIdx] + engravingTable.seongong[eng.stone][colIdx]).toFixed(2));
-                    addStat(commonStats, engravingCategoryMap[colIdx], `각인: ${eng.name} [${eng.level} + 세공 ${eng.stone}]`, totalVal);
-                }
-            }
-        });
-
-        const percentStatList = ["공격력 %", "무기 공격력 %", "치명타 피해", "치명타 적중률", "피해 증가", "추가 피해","적에게 주는 피해"];
+        // 장신구
+        const percentStatList = ["공격력 %", "무기 공격력 %", "치명타 피해", "치명타 적중률", "피해 증가", "추가 피해", "적에게 주는 피해"];
         inputs.accessories.forEach(acc => {
-            addStat(commonStats,"주스탯", acc.name, acc.statValue,"")
+            addStat(commonStats, "주스탯", acc.name, acc.statValue, "");
             acc.slots.forEach((slot, idx) => {
                 if (!slot || !slot.opt || slot.opt === "none" || slot.opt === "없음") return;
-                
-                // 1. 공백 제거 및 옵션 키 매칭 유연화
-                let rawKey = slot.opt.trim();
 
-                // accessoryTable에서 정확히 일치하는 키 검색 (1순위)
+                let rawKey = slot.opt.trim();
                 let matchedKey = Object.keys(accessoryTable).find(k => k.trim() === rawKey);
 
-                // Exact match가 안 될 경우 유연 매칭 (2순위)
                 if (!matchedKey) {
-                    // [중요] '공격력' 포함 여부를 검사하기 전에, 더 길고 명확한 서포터 옵션들을 먼저 분기 처리합니다.
                     if (rawKey.includes("아군 공격력") || rawKey.includes("아공강")) {
                         matchedKey = Object.keys(accessoryTable).find(k => k.includes("아군 공격력")) || "아군 공격력 강화 효과 %";
-                    } 
-                    else if (rawKey.includes("아군 피해") || rawKey.includes("아피강")) {
+                    } else if (rawKey.includes("아군 피해") || rawKey.includes("아피강")) {
                         matchedKey = Object.keys(accessoryTable).find(k => k.includes("아군 피해")) || "아군 피해 강화 효과 %";
-                    } 
-                    else if (rawKey.includes("낙인력")) {
+                    } else if (rawKey.includes("낙인력")) {
                         matchedKey = Object.keys(accessoryTable).find(k => k.includes("낙인력")) || "낙인력 %";
-                    }
-                    // 일반 스탯 옵션 처리 (서포터 옵션이 모두 걸러진 후 실행)
-                    else if (rawKey.includes("무기 공격력") && rawKey.includes("%")) matchedKey = "무기 공격력 %";
+                    } else if (rawKey.includes("무기 공격력") && rawKey.includes("%")) matchedKey = "무기 공격력 %";
                     else if (rawKey.includes("무기 공격력")) matchedKey = "무기 공격력";
                     else if (rawKey.includes("공격력") && rawKey.includes("%")) matchedKey = "공격력 %";
                     else if (rawKey.includes("공격력")) matchedKey = "공격력";
@@ -1802,16 +1501,17 @@ function loadArkPassive() {
                     const val = accessoryTable[matchedKey][slot.grade];
                     const isPercent = matchedKey.includes("%") || percentStatList.includes(matchedKey);
                     const unit = isPercent ? "%" : "";
-
                     addStat(commonStats, matchedKey, `장신구: ${acc.name} (슬롯${idx + 1}) [${matchedKey} - ${slot.grade}]`, val, unit);
-                } 
+                }
             });
         });
 
+        // 젬
         addStat(commonStats, "공격력 %", "젬: 공격력", inputs.gems.atk);
         addStat(commonStats, "추가 피해", "젬: 추가 피해", inputs.gems.addDmg);
         addStat(commonStats, "적에게 주는 피해", "젬: 보스 피해", inputs.gems.bossDmg);
 
+        // 스킬 보석
         const skillGemMap = {};
         inputs.skillGems.forEach(gem => {
             const gemAtkVal = gemDataTable["공증"]?.[gem.level] || 0;
@@ -1824,17 +1524,15 @@ function loadArkPassive() {
             skillGemMap[gem.skillName].push({ type: gem.type, level: gem.level });
         });
 
+        // 혼돈 코어
         ['Sun', 'Moon', 'Star'].forEach(target => {
             const coresObj = inputs?.chaosCores || {};
-            // 대소문자 호환 탐색 (sun, Sun, SUN 등)
             const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
             const coreInfo = coresObj[targetKey];
 
             if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착') return;
 
             const { grade, level } = coreInfo;
-
-            // 등급 문자열 정규화 ("고대 1단계", "유물 코어" -> "고대", "유물")
             const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
             if (!matchedGrade) return;
 
@@ -1842,7 +1540,6 @@ function loadArkPassive() {
 
             if (data) {
                 coreLevels.forEach(lvl => {
-                    // Number(level)로 타입 변환하여 레벨 조건 판별
                     if (Number(level) >= lvl && Array.isArray(data[lvl])) {
                         data[lvl].forEach(opt => {
                             const unit = opt.type === "공격력" ? "" : "%";
@@ -1853,6 +1550,7 @@ function loadArkPassive() {
             }
         });
 
+        // 팔찌 스탯
         [
             ['crit', '치명'],
             ['swift', '신속'],
@@ -1875,51 +1573,95 @@ function loadArkPassive() {
             }
         });
 
-        const arkStats = getArkEvolutionStats();
-        for (let cat in arkStats) {
-            if (commonStats[cat]) commonStats[cat].push(...arkStats[cat]);
-        }
-
-
-        const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
-        const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
-
         let allSkillResults = [];
 
-
-        // 스킬별 작업 시작
-        // -----------------------------------------------------
-        // 현재 적용된 코어 세팅 키 판별 (parseArkCores에서 설정된 isGiRyuSet 활용)
-        // 만약 inputs 객체나 전역 변수에 저장되어 있다면 해당 값을 불러옵니다.
-        const activeCoreSet = window.isGiRyuSet ? "기류 조절" : "비연참";
-
-        skillDatabase.forEach((skillData, skillIndex) => {
-            // skillData 구조 분해 할당
-            const { name: skillName, tripods = {}, coefficient, constant, baseCooldown = 0 } = skillData;
+        // =============================================================================
+        // 스킬별 계산 루프
+        // =============================================================================
+        window.skillDatabase.forEach((skillData) => {
+            // ★ 1. 스킬 정보 및 트라이포드(tripods) 직접 추출
+            const {
+                name: skillName,
+                tags: skillTags = [],
+                coefficient,
+                constant,
+                baseCooldown = 0,
+                mana,
+                tripods: currentTripods = [] // skillData 내의 tripods를 바로 가져옴
+            } = skillData;
 
             let stats = {};
             for (let key in commonStats) {
                 stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
             }
 
-            // =============================================================================
-            // [수정된 부분] 1. 트라이포드 적용
-            // currentTripods: 현재 코어 세팅("기류 조절" 또는 "비연참")에 맞는 트라이포드 배열 추출
-            // =============================================================================
-            const currentTripods = Array.isArray(tripods) 
-                ? tripods 
-                : (tripods[activeCoreSet] || tripods["비연참"] || []);
-
+            // ★ 2. 트라이포드 적용 (신규/구버전 구조 완벽 호환 처리)
             if (Array.isArray(currentTripods)) {
                 currentTripods.forEach(tp => {
-                    let sourceType = (skillName === '공간 가르기' || skillName === '우레바람') 
-                        ? `${tp.name}` 
-                        : `트라이포드(${tp.tier}트포 - ${tp.name})`;
-                    addStat(stats, tp.category, sourceType, tp.val, tp.unit);
+                    // 트라이포드에 특정 태그 요구 조건(requiredTag)이 있는 경우 스킬 태그 검사
+                    if (tp.requiredTag && !skillTags.includes(tp.requiredTag)) {
+                        return;
+                    }
+
+                    const sourceType = `트라이포드(${tp.tier ? tp.tier + '트포 - ' : ''}${tp.name})`;
+
+                    // 🌟 신규 JSON 구조 (effects 배열 내부 순회)
+                    if (Array.isArray(tp.effects)) {
+                        tp.effects.forEach(eff => {
+                            addStat(stats, eff.category, sourceType, eff.val, eff.unit ?? "%");
+                        });
+                    }
+                    // 🌟 구버전 JSON 구조 (단일 category, val 보유 시 호환)
+                    else if (tp.category && tp.val !== undefined) {
+                        addStat(stats, tp.category, sourceType, tp.val, tp.unit ?? "%");
+                    }
                 });
             }
 
-            // 2. 보석 적용
+            inputs.engravings.forEach(eng => {
+                if (!eng || eng.name === "none" || eng.level === "미사용") return;
+
+                const engData = engravingTable[eng.name];
+
+                if (!engData) return;
+
+                // 1. 태그 조건 검사 (예: 기습의 대가 -> 백어택 전용)
+                const reqTags = engData.requireTags || [];
+                const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
+                if (engData) {
+                    // levelKey 형태로 데이터 조회가 잘 되는지 확인
+                    const levelKey = String(eng.level).includes("LV") ? eng.level : `${eng.level}LV`;
+                }
+                if (!isMatch) return;
+
+                // 2. 현재 레벨 및 세공 수치 가져오기
+                const levelEffects = engData.levels?.[eng.level] || [];
+                const stoneEffects = engData.stone?.[eng.stone] || [];
+
+                // 예외: 돌격대장은 이동속도 비례 계수 저장이 필요하므로 유일하게 분기 유지
+                if (eng.name === "돌격대장") {
+                    const raidFactor = (levelEffects[0]?.val || 0) + (stoneEffects[0]?.val || 0);
+                    if (raidFactor > 0) {
+                        stats["_돌격대장계수"] = raidFactor / 100;
+                        stats["_돌격대장정보"] = `각인: 돌격대장 [${eng.level} + 세공 ${eng.stone}]`;
+                    }
+                    return;
+                }
+
+                // ★ 3. 모든 각인 공통 완전 자동화 연산 (아드레날린, 질량증가, 원한, 기습 등 통일)
+                levelEffects.forEach(eff => {
+                    // 동일한 type(예: "공격력 %")을 가진 돌 세공 수치 찾기
+                    const matchingStone = stoneEffects.find(s => s.type === eff.type);
+                    const stoneVal = matchingStone ? (Number(matchingStone.val) || 0) : 0;
+
+                    // 기본 각인 수치 + 돌 세공 수치 합산 (음수 수치도 그대로 반영됨)
+                    const totalVal = parseFloat(((Number(eff.val) || 0) + stoneVal).toFixed(2));
+
+                    addStat(stats, eff.type, `각인: ${eng.name} [${eng.level} + 세공 ${eng.stone}]`, totalVal, eff.unit || "%");
+                });
+            });
+
+            // 보석 적용
             if (skillGemMap[skillName]) {
                 skillGemMap[skillName].forEach(({ type, level }) => {
                     if (type === "겁화") {
@@ -1930,62 +1672,140 @@ function loadArkPassive() {
                 });
             }
 
-            // =============================================================================
-            // 질서 코어 연산 로직
-            // =============================================================================
+            // ★ 4. 아크 패시브 진화 노드 적용 (태그 조건 판별)
+                const arkStats = getArkEvolutionStats();
+                if (arkStats && typeof arkStats === 'object') {
+                    for (let cat in arkStats) {
+                        if (Array.isArray(arkStats[cat])) {
+                            arkStats[cat].forEach(eff => {
+                                const reqTags = eff.requireTags || [];
+
+                                // [태그 검사 조건]
+                                // 1. requireTags가 비어있으면 (공통 노드) -> 무조건 적용
+                                // 2. requireTags가 존재하면 -> 스킬 태그(skillTags) 중 요구 태그를 모두/하나라도 만족해야 적용
+                                // (※ 아래는 요구 태그 중 1개 이상 만족 시 적용하는 some 조건 방식입니다)
+                                const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
+
+                                if (isMatch) {
+                                    if (!stats[cat]) stats[cat] = [];
+                                    stats[cat].push({
+                                        source: eff.source,
+                                        val: eff.val,
+                                        unit: eff.unit
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+
+            const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
+            const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
+            const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
+
+            // ★ 3. 질서 코어 연산
+            const slotToKoreanMap = {
+                'sun': '해',
+                'moon': '달',
+                'star': '별'
+            };
+
             ['Sun', 'Moon', 'Star'].forEach(target => {
                 const coresObj = inputs?.orderCores || {};
+
+                // 입력 객체에서 Sun, Moon, Star 키 찾기
                 const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
                 const coreInfo = coresObj[targetKey];
 
-                // 코어가 없거나, 미장착이거나, 레벨이 0이면 스킵
                 if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착' || !coreInfo.level) return;
 
-                const { name: coreName, grade, level } = coreInfo;
-
-                // 등급 판별 ("고대" 또는 "유물")
+                const { name: equippedCoreName, grade, level } = coreInfo;
                 const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
                 if (!matchedGrade) return;
 
-                // 파싱된 코어 이름으로 데이터셋 검색 (없으면 슬롯별 기본값 대체 가능)
-                const activeCoreName = coreName || (target === 'Sun' ? '비연참' : target === 'Moon' ? '우산의 춤' : '휘몰아치기');
-                const coreData = orderDataSets[activeCoreName]?.[matchedGrade];
+                // 🌟 1. 슬롯 타입('Sun' -> '해')에 맞춰 orderDataSets의 최상위 데이터 조회
+                const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
+                const coreData = window.orderDataSets[koreanSlotName]?.[matchedGrade];
 
                 if (!coreData) return;
 
                 const userLevel = Number(level) || 0;
 
-                // 해당 코어의 포인트 구간(10, 14, 17, 18, 19, 20) 순회
+                // -------------------------------------------------------------
+                // 🌟 [수정 포인트 1] 곱연산 그룹별 수치를 임시 집계할 객체 생성
+                // -------------------------------------------------------------
+                const pendingGroups = {};
+
                 Object.keys(coreData).forEach(reqPointStr => {
                     const reqPoint = Number(reqPointStr);
 
-                    // 유저의 코어 포인트가 요구 포인트 이상일 경우에만 활성화
                     if (userLevel >= reqPoint) {
-                        const effectList = coreData[reqPointStr];
+                        const rawEffectList = coreData[reqPointStr];
 
-                        if (Array.isArray(effectList)) {
-                            effectList.forEach(effect => {
-                                const { category, val, skills } = effect;
+                        if (Array.isArray(rawEffectList)) {
+                            rawEffectList.forEach(item => {
+                                const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
 
-                                // 현재 연산 중인 스킬(skillName)이 skills 배열에 들어있는지 검사
-                                if (Array.isArray(skills) && skills.includes(skillName)) {
-                                    if (!category || val === undefined) return;
+                                targetEffects.forEach(effect => {
+                                    const { category, val, skills, requireTags, tags: targetTags, groupId, op } = effect;
+                                    const effectiveTags = requireTags || targetTags;
 
-                                    // 배율 형태(예: 1.02)를 퍼센트 형태(2%)로 변환
-                                    const statValue = val > 1.0 ? parseFloat(((val - 1) * 100).toFixed(3)) : val;
+                                    // 매칭 검사
+                                    const isSkillMatch = Array.isArray(skills) && skills.includes(skillName);
+                                    const isTagMatch = Array.isArray(effectiveTags) && effectiveTags.some(t =>
+                                        (Array.isArray(skillTags) && skillTags.includes(t)) ||
+                                        t === skillName
+                                    );
+                                    const isGlobalMatch = !skills && !effectiveTags;
 
-                                    if (statValue > 0) {
-                                        addStat(
-                                            stats,
-                                            category,
-                                            `질서 코어(${target}:${activeCoreName}) Pt.${reqPoint} [${matchedGrade}]`,
-                                            statValue
-                                        );
+                                    if (isSkillMatch || isTagMatch || isGlobalMatch) {
+                                        if (!category || val === undefined) return;
+
+                                        const numVal = Number(val);
+
+                                        // 🌟 groupId가 있으면 지정된 ID, 없으면 포인트별 자동 독립 키
+                                        const groupKey = groupId || `point_${reqPoint}_${category}`;
+
+                                        if (!pendingGroups[groupKey]) {
+                                            pendingGroups[groupKey] = {
+                                                category: category,
+                                                val: numVal,
+                                                pointList: [reqPoint]
+                                            };
+                                        } else {
+                                            // 🌟 핵심: 동일한 groupId가 오면 더 큰 값(Math.max)으로 갱신!
+                                            if (groupId) {
+                                                pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
+                                            } else {
+                                                pendingGroups[groupKey].val += numVal;
+                                            }
+
+                                            if (!pendingGroups[groupKey].pointList.includes(reqPoint)) {
+                                                pendingGroups[groupKey].pointList.push(reqPoint);
+                                            }
+                                        }
                                     }
-                                }
+                                });
                             });
                         }
                     }
+                });
+
+                // -------------------------------------------------------------
+                // 🌟 [수정 포인트 4] 그룹별 최종 수치를 통계 시스템(addStat)에 적용
+                // 각 그룹들은 독립된 별개의 항목으로 등록되므로 서로 곱연산 처리됩니다.
+                // -------------------------------------------------------------
+                Object.entries(pendingGroups).forEach(([groupKey, groupData]) => {
+                    if (groupData.val === 0) return;
+
+                    const pointsStr = groupData.pointList.join(',');
+                    
+                    addStat(
+                        stats,
+                        groupData.category,
+                        `질서 코어(${koreanSlotName}:${equippedCoreName || '코어'}) Pt.${pointsStr} [${matchedGrade}]`,
+                        groupData.val
+                    );
                 });
             });
 
@@ -1995,14 +1815,13 @@ function loadArkPassive() {
             }
             const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
 
-            /*
-            --------------------계산 시작-----------------------------
-            */ 
+            // -------------------- 계산 시작 -----------------------------
             const normalStat = getStatSum(stats, "주스탯");
             const statPercent = getStatSum(stats, "주스탯 %");
             const finalStat = normalStat * (1 + statPercent / 100);
 
-            const defPenSum = getStatSum(stats, "방어력 무시");
+            const defPenMultiplier = getDefPenMultiplier(stats, "방어력 무시",true);
+
 
             const weaponAtkPercent = getStatSum(stats, "무기 공격력 %");
             const finalWeaponAtk = getStatSum(stats, "무기 공격력") * (1 + (weaponAtkPercent / 100));
@@ -2017,44 +1836,34 @@ function loadArkPassive() {
             const percentAtkBonus = getStatSum(stats, "공격력 %");
             const finalAtk = (calculatedBaseAtk + flatAtkBonus) * (1 + (percentAtkBonus / 100));
 
-            let baseDamage = calculateDamageBase(finalAtk, coefficient, constant, defPenSum);
+            let baseDamage = calculateDamageBase(finalAtk, coefficient, constant, defPenMultiplier);
 
             const totalSwift = getStatSum(stats, "신속");
             const swiftSpeedBonus = totalSwift * STAT_CONSTANTS.SWIFT_TO_SPEED;
             const atkSpeedSum = getStatSum(stats, "공격 속도");
             const moveSpeedSum = getStatSum(stats, "이동 속도");
-            
+
             const finalAtkSpeed = swiftSpeedBonus + atkSpeedSum;
             const finalMoveSpeed = swiftSpeedBonus + moveSpeedSum;
 
             const moveSpeedBonus = Math.min(STAT_CONSTANTS.SPEED_CAP, Math.max(0, finalMoveSpeed));
 
-            addStat(stats, "치명타 적중률", "깨달음 - 기민함", Math.min(finalMoveSpeed, STAT_CONSTANTS.SPEED_CAP) * STAT_CONSTANTS.SPEED_TO_CRIT_RATE_COEFF, "%");
-            addStat(stats, "치명타 피해", "깨달음 - 기민함", Math.min(finalAtkSpeed, STAT_CONSTANTS.SPEED_CAP) * STAT_CONSTANTS.SPEED_TO_CRIT_DMG_COEFF, "%");
-
-
             const totalCritStat = getStatSum(stats, "치명");
             const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + getStatSum(stats, "치명타 적중률");
             let critRate = Math.min(totalCritRatePercent / 100, 1.0);
-            
+
             let totalBluntDmg = 0;
-            if(bluntThornNode && bluntThornNode.current >0){
-                const excessCrit = Math.max(0, (totalCritRatePercent/100 - 0.8)*100);
-                // 레벨별(1LV / 2LV) 기준값 설정
+            if (bluntThornNode && bluntThornNode.current > 0) {
+                const excessCrit = Math.max(0, (totalCritRatePercent / 100 - 0.8) * 100);
                 const baseDmg = bluntThornNode.current === 1 ? 7.5 : 15.0;
                 const ratio   = bluntThornNode.current === 1 ? 1.25 : 1.5;
                 const maxDmg  = bluntThornNode.current === 1 ? 52.5 : 75.0;
-                
-                // 최종 진화형 피해 계산 (최대치 제한 적용)
+
                 totalBluntDmg = Math.min(maxDmg, baseDmg + (excessCrit * ratio));
                 critRate = Math.min(critRate, 0.8);
-                
-                // 스탯 합산
+
                 addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 뭉툭한 가시 [${bluntThornNode.current}/${bluntThornNode.max}LV]`, parseFloat(totalBluntDmg.toFixed(2)));
             }
-
-
-
 
             if (stats["_돌격대장계수"]) {
                 addStat(stats, "적에게 주는 피해", `${stats["_돌격대장정보"]} (이속 +${moveSpeedBonus.toFixed(2)}% 적용)`, parseFloat((moveSpeedBonus * stats["_돌격대장계수"]).toFixed(2)));
@@ -2072,32 +1881,104 @@ function loadArkPassive() {
                 addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 음속 돌파 [${sonicsNode.current}/${sonicsNode.max}LV]`, parseFloat(totalSonicDmg.toFixed(2)));
             }
 
+            let totalMpFurnaceDmg = 0;
+                if (MpFurnaceNode && MpFurnaceNode.current > 0) {
+                    // 2. 마나 용광로 기본 연산: 소모 마나 * 0.05
+                    
+                    let furnaceDmg = mana * 0.05;
+
+                    // 3. 최대치 캡 적용 (최대 12%)
+                    furnaceDmg = Math.min(24, furnaceDmg);
+
+                    // 4. 레벨별 보정 (1LV: 50%, 2LV: 100%)
+                    if (MpFurnaceNode.current === 1) {
+                        furnaceDmg *= 0.5;
+                    }
+
+                    // 5. 최종 진화형 피해 스탯에 반영
+                    if (furnaceDmg > 0) {
+                        addStat(
+                            stats, 
+                            "진화형 피해", 
+                            `아크 패시브(진화 5티어): 마나 용광로 [${MpFurnaceNode.current}/${MpFurnaceNode.max}LV]`, 
+                            parseFloat(furnaceDmg.toFixed(2))
+                        );
+                    }
+            }
+
+            //추가 피해 , 진화형 피해는 합연산으로 계산
             const totalAdditionalDamageMuntiplier = 1 + (getStatSum(stats, "추가 피해") / 100);
             if (!stats["추가 피해"]) stats["추가 피해"] = [];
 
             const totalEvolutionDamage = getStatSum(stats, "진화형 피해");
             const evolutionDamageMultiplier = 1 + (totalEvolutionDamage / 100);
 
+
+
             if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
+
+            // 1. 특화 수치 합산 구하기
+            const specStatValue = getStatSum(stats, "특화");
+
+            // 2. 특화 DB 안전 추출 (중첩 구조 대응)
+            let specDB = window.specializationDatabase  || {};
+            if (specDB.specializationDatabase) {
+                specDB = specDB.specializationDatabase;
+            }
+
+            if (specStatValue > 0 && specDB && Array.isArray(skillTags)) {
+                let totalSpecCoeff = 0;
+
+                // specDB가 배열 형태든, 객체 형태든, 단일 객체든 배열화하여 순회
+                const specItems = Array.isArray(specDB) 
+                    ? specDB 
+                    : (specDB.targetTags ? [specDB] : Object.values(specDB));
+
+                specItems.forEach(item => {
+                    if (!item || !Array.isArray(item.targetTags)) return;
+
+                    // 원하셨던 각인 매칭 방식 (targetTags 중 하나라도 skillTags 또는 skillName과 일치하는지 확인)
+                    const isMatch = item.targetTags.some(tag => 
+                        skillTags.includes(tag) || tag === skillName
+                    );
+
+                    if (isMatch) {
+                        const coeff = Number(item.coefficient) || 0;
+                        totalSpecCoeff += coeff;
+                    }
+                });
+
+                // 3. 특화 피해가 존재할 경우 stats["적에게 주는 피해"]에 반영
+                if (totalSpecCoeff > 0) {
+                    const specDamageValue = specStatValue * totalSpecCoeff/699;
+
+                    stats["적에게 주는 피해"].push({
+                        val: parseFloat(specDamageValue.toFixed(2)),
+                        source: "특화"
+                    });
+                }
+            }
             
+            // 상세 출력 결과에서 트라이포드를 위로 옮기는 코드
             if (stats["적에게 주는 피해"]) {
                 const isSkillSpec = (source) => source.startsWith("트라이포드") || source.startsWith("깨달음") || source.startsWith("도약");
                 const tpItems = stats["적에게 주는 피해"].filter(item => isSkillSpec(item.source));
                 const otherItems = stats["적에게 주는 피해"].filter(item => !isSkillSpec(item.source));
                 stats["적에게 주는 피해"] = [...tpItems, ...otherItems];
             }
-            const totalDamageMultiplier = stats["적에게 주는 피해"].reduce((acc, item) => acc * (1 + ((Number(item.val) || 0) / 100)), 1.0);
+            const totalDamageMultiplier = getStatProduct(stats, "적에게 주는 피해", true);
+
             const totalCritDamagePercent = getStatSum(stats, "치명타 피해");
-            
-            const critHitDamageMultiplier = (stats['치명타 시 적에게 주는 피해'] || []).reduce((acc, cur) => acc * (1 + cur.val / 100), 1.0);
+
+            const critHitDamageMultiplier = getStatProduct(stats, "치명타 시 적에게 주는 피해", true);
+
             const nonCritBaseDamage = baseDamage * totalDamageMultiplier * evolutionDamageMultiplier * totalAdditionalDamageMuntiplier;
             const CritBaseDamage = nonCritBaseDamage * (totalCritDamagePercent / 100) * critHitDamageMultiplier;
 
-            
             const expDmg = CritBaseDamage * critRate + nonCritBaseDamage * (1 - critRate);
 
             const swiftMultiplier = 1 - ((totalSwift * STAT_CONSTANTS.SWIFT_TO_CDR) / 100);
-            const appliedManaCdrMultiplier = (skillName !== "공간 가르기") ? (1 - (getStatSum(stats, "마나 스킬 쿨타임 감소") / 100)) : 1.0;
+            const appliedManaCdrMultiplier = 1 - (getStatSum(stats, "마나 스킬 쿨타임 감소") / 100);
 
             const allCdrList = stats['쿨타임 감소'] || [];
             const passiveCdrMultiplier = 1 - ((allCdrList || []).filter(i => i && i.source && (i.source.includes('최적화 훈련') || i.source.includes('타이밍 지배'))).reduce((s, c) => s + (Number(c.val) || 0), 0) / 100);
@@ -2137,9 +2018,9 @@ function loadArkPassive() {
                 stats
             });
         });
+
         return allSkillResults;
     }
-
     // =============================================================================
     // 6. UI 초기화 및 결과 출력 함수
     // =============================================================================
@@ -2322,7 +2203,7 @@ function loadArkPassive() {
         bodyContent += `
             <h3 style="border:none; margin:0 0 12px 0; color: #c084fc; font-size: 1.1rem;">📊 [공격력 산출 과정]</h3>
             <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.9rem;">
-                
+
                 <!-- 0. 주스탯 -->
                 <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
                     <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">0. 주스탯</div>
@@ -2376,7 +2257,7 @@ function loadArkPassive() {
                 if (cat.startsWith('_')) return;
 
                 let items = selectedResult.stats[cat];
-                
+
                 bodyContent += `
                     <div style="margin-top: 14px;">
                         <div style="font-weight: bold; color: #c084fc; font-size: 0.85rem; border-bottom: 1px solid #2e323d; padding-bottom: 4px; margin-bottom: 4px;">
@@ -2479,7 +2360,7 @@ function loadArkPassive() {
             console.warn('미니 모달 업데이트 중 오류 발생 (무시하고 연산 진행):', err);
         }
     };
-    
+
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') window.closeSimModal();
@@ -2610,7 +2491,7 @@ function loadArkPassive() {
     // ==========================================
     window.toggleCalcPause = function() {
         window.isCalcPaused = !window.isCalcPaused;
-        
+
         const btn = document.getElementById('calc-pause-btn');
         if (!btn) return;
 
@@ -2636,7 +2517,7 @@ function loadArkPassive() {
         }
         // 1) 메모리 상의 변수에 저장
         baselineResults = JSON.parse(JSON.stringify(lastCalculatedResults));
-        
+
         // 2) 로컬 스토리지에 JSON 문자열 형태로 영구 저장
         try {
             localStorage.setItem('savedBaselineResults', JSON.stringify(baselineResults));
@@ -2710,28 +2591,15 @@ function loadArkPassive() {
 
     /**
      * 1. 좌측 하단 통합 플로팅 패널 생성
-
     */
-    // 외부(parseArkCores 등)에서 코어 세팅 변경 시 호출할 수 있는 UI 갱신 함수
-    window.updateCoreSetUI = function() {
-        const badge = document.getElementById('core-set-badge');
-        if (!badge) return;
 
-        // window.isGiRyuSet 값을 확실히 참조
-        const isGiRyu = !!window.isGiRyuSet;
-        
-        badge.innerText = isGiRyu ? '🌀 기류 조절' : '⚔️ 비연참';
-        badge.style.backgroundColor = isGiRyu ? '#1e3a8a' : '#831843';
-        badge.style.borderColor = isGiRyu ? '#3b82f6' : '#f43f5e';
-        badge.style.color = isGiRyu ? '#bfdbfe' : '#fbcfe8';
-    };
 
 
     window.updateEstherUI = function(isEsther) {
         const estherBox = document.getElementById('esther-bonding-box');
         const btn1 = document.getElementById('esther-bonding-btn-1');
         const btn2 = document.getElementById('esther-bonding-btn-2');
-        
+
         if (!estherBox || !btn1 || !btn2) return;
 
         if (isEsther) {
@@ -2770,307 +2638,558 @@ function loadArkPassive() {
     } else {
         if (typeof injectPauseButton === 'function') injectPauseButton();
     }
-    
-    function injectPauseButton() {
-        if (document.getElementById('calc-floating-panel')) return;
 
-        // 1) 전체 플로팅 컨테이너
-        const panel = document.createElement('div');
-        panel.id = 'calc-floating-panel';
-        panel.style.cssText = `
-            position: fixed;
-            bottom: 25px;
-            left: 25px;
-            z-index: 999999;
+    // =========================================================================
+// 2. 데이터 불러오기 전용 모달 UI 생성 함수
+// =========================================================================
+    // =========================================================================
+// 2. 데이터 불러오기 전용 모달 UI 생성 함수
+// =========================================================================
+    // =========================================================================
+// 2. 데이터 불러오기 전용 모달 UI 생성 함수 (에러 방어 보완 버전)
+// =========================================================================
+function openDataLoaderModal() {
+    if (document.getElementById('data-loader-modal')) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'data-loader-modal';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        width: 380px;
+        color: #f8fafc;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    `;
+
+    modal.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: #38bdf8;">📂 시뮬레이터 데이터 설정</h3>
+            <span id="close-data-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
+        </div>
+        <p style="margin: 0; font-size: 0.78rem; color: #94a3b8; line-height: 1.4;">
+            기본 스탯/특화 데이터는 기존 코드 데이터를 유지하며, 업로드한 JSON 데이터가 누적 추가됩니다.
+        </p>
+    `;
+
+    const createFileInputGroup = (label, keyName) => {
+        const group = document.createElement('div');
+        group.style.cssText = `
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #161d24;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 12px;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            width: 175px;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
         `;
 
-        // 🌟 현재 코어 세팅 표시 뱃지
-        const coreBadge = document.createElement('div');
-        coreBadge.id = 'core-set-badge';
-        coreBadge.style.cssText = `
+        const hasData = Boolean(window[keyName] && Object.keys(window[keyName]).length > 0);
+
+        group.innerHTML = `
+            <div>
+                <div style="font-size: 0.85rem; font-weight: bold; color: #e2e8f0;">${label}</div>
+                <div id="status-${keyName}" style="font-size: 0.7rem; color: ${hasData ? '#4ade80' : '#f87171'}; margin-top: 2px;">
+                    ${hasData ? '● 데이터 있음' : '○ 데이터 없음'}
+                </div>
+            </div>
+            <label style="
+                background: #2563eb; color: #fff; padding: 6px 10px; font-size: 0.75rem; 
+                font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s;
+            ">
+                파일 선택
+                <input type="file" accept=".json" style="display: none;" data-key="${keyName}">
+            </label>
+        `;
+
+        const fileInput = group.querySelector('input');
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const parsed = JSON.parse(event.target.result);
+                    
+                    if (keyName === 'ADD_STAT_BASE') {
+                        let incomingArray = [];
+                        if (Array.isArray(parsed)) {
+                            incomingArray = parsed;
+                        } else if (parsed && parsed.ADD_STAT_BASE && Array.isArray(parsed.ADD_STAT_BASE)) {
+                            incomingArray = parsed.ADD_STAT_BASE;
+                        } else if (parsed && typeof parsed === 'object') {
+                            incomingArray = Object.values(parsed);
+                        }
+
+                        let baseArray = [];
+                        if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && DEFAULT_ADD_STAT_BASE) {
+                            if (Array.isArray(DEFAULT_ADD_STAT_BASE)) {
+                                baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+                            } else if (typeof DEFAULT_ADD_STAT_BASE === 'object') {
+                                baseArray = Object.values(DEFAULT_ADD_STAT_BASE).map(item => ({
+                                    name: item.name || '',
+                                    effects: [{
+                                        category: item.category || '',
+                                        val: item.value !== undefined ? item.value : (item.val || 0),
+                                        unit: item.unit || ''
+                                    }]
+                                }));
+                            }
+                        }
+
+                        if (typeof GM_setValue === 'function') {
+                            GM_setValue('ADD_STAT_BASE_CUSTOM', incomingArray);
+                        }
+
+                        const fullList = baseArray.concat(incomingArray);
+
+                        if (typeof ADD_STAT_BASE !== 'undefined' && Array.isArray(ADD_STAT_BASE)) {
+                            ADD_STAT_BASE.length = 0;
+                            fullList.forEach(item => ADD_STAT_BASE.push(item));
+                        } else {
+                            window.ADD_STAT_BASE = fullList;
+                        }
+
+                    } else if (keyName === 'specializationDatabase') {
+                        window.skillDatabase = parsed;
+                        if (typeof GM_setValue === 'function') GM_setValue('specializationDatabase', parsed);
+                    } else if (keyName === 'skillDatabase') {
+                        window.skillDatabase = parsed;
+                        if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', parsed);
+                    } else if (keyName === 'orderDataSets') {
+                        window.orderDataSets = parsed;
+                        if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', parsed);
+                    }
+
+                    const statusElem = document.getElementById(`status-${keyName}`);
+                    if (statusElem) {
+                        statusElem.style.color = '#4ade80';
+                        statusElem.innerText = '● 불러오기 완료';
+                    }
+
+                    alert(`[${label}] 데이터를 성공적으로 추가 및 반영했습니다!`);
+                    if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+
+                } catch (err) {
+                    // 💡 에러 원인을 개발자가 파악하기 용이하도록 alert에 메세지 표시
+                    alert(`JSON 파싱 중 오류 발생:\n${err.message}`);
+                    console.error("JSON Error Details:", err);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        return group;
+    };
+
+    modal.appendChild(createFileInputGroup('1. 스킬 데이터 (skillDatabase)', 'skillDatabase'));
+    modal.appendChild(createFileInputGroup('2. 질서 코어 (orderDataSets)', 'orderDataSets'));
+    modal.appendChild(createFileInputGroup('3. 기본 스탯 (ADD_STAT_BASE)', 'ADD_STAT_BASE'));
+    modal.appendChild(createFileInputGroup('4. 특화 데이터 (specializationDatabase)', 'specializationDatabase'));
+
+    const footer = document.createElement('div');
+    footer.style.cssText = `
+        display: flex; gap: 8px; margin-top: 8px; padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    `;
+
+    const allInOneBtn = document.createElement('button');
+    allInOneBtn.innerText = '📦 전체 데이터 한번에 불러오기';
+    allInOneBtn.style.cssText = `
+        flex: 1; padding: 8px; font-size: 0.75rem; font-weight: bold;
+        background: #0d9488; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+    `;
+    
+    const allFileInput = document.createElement('input');
+    allFileInput.type = 'file';
+    allFileInput.accept = '.json';
+    allFileInput.style.display = 'none';
+
+    allInOneBtn.onclick = () => allFileInput.click();
+    allFileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+
+                if (data.skillDatabase) {
+                    window.skillDatabase = data.skillDatabase;
+                    if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', data.skillDatabase);
+                }
+                if (data.orderDataSets) {
+                    window.orderDataSets = data.orderDataSets;
+                    if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', data.orderDataSets);
+                }
+                if (data.ADD_STAT_BASE) {
+                    const statContent = data.ADD_STAT_BASE.ADD_STAT_BASE ? data.ADD_STAT_BASE.ADD_STAT_BASE : data.ADD_STAT_BASE;
+                    if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', statContent);
+                    window.ADD_STAT_BASE = statContent;
+                }
+                if (data.specializationDatabase) {
+                    const specContent = data.specializationDatabase;
+                    if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', specContent);
+                    window.specializationDatabase = specContent;
+                }
+
+                alert('전체 데이터를 성공적으로 불러왔습니다!');
+                modalOverlay.remove();
+                if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+            } catch (err) {
+                alert(`전체 JSON 파싱 중 오류 발생:\n${err.message}`);
+                console.error(err);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    };
+
+    const clearBtn = document.createElement('button');
+    clearBtn.innerText = '🗑️ 초기화';
+    clearBtn.style.cssText = `
+        padding: 8px 12px; font-size: 0.75rem; font-weight: bold;
+        background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+    `;
+    clearBtn.onclick = () => {
+        if (confirm('저장된 외부 데이터를 초기화하시겠습니까?')) {
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('skillDatabase', {});
+                GM_setValue('orderDataSets', {});
+                GM_setValue('ADD_STAT_BASE_CUSTOM', {});
+                GM_setValue('SPECIALIZATION_CUSTOM', {});
+            }
+
+            window.skillDatabase = {};
+            window.orderDataSets = {};
+            
+            if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') {
+                window.ADD_STAT_BASE = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+            }
+            if (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') {
+                window.specializationDatabase = JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE));
+            } else {
+                window.specializationDatabase = {};
+            }
+
+            alert('외부 불러오기 데이터가 초기화되었습니다.');
+            modalOverlay.remove();
+            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+        }
+    };
+
+    footer.appendChild(allInOneBtn);
+    footer.appendChild(allFileInput);
+    footer.appendChild(clearBtn);
+    modal.appendChild(footer);
+
+    modalOverlay.appendChild(modal);
+    document.body.appendChild(modalOverlay);
+
+    modal.querySelector('#close-data-modal').onclick = () => modalOverlay.remove();
+    modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+}
+
+// =========================================================================
+// 3. 기존 플로팅 버튼 injectPauseButton 함수 (수정 적용)
+// =========================================================================
+function injectPauseButton() {
+    if (document.getElementById('calc-floating-panel')) return;
+
+    // 1) 전체 플로팅 컨테이너
+    const panel = document.createElement('div');
+    panel.id = 'calc-floating-panel';
+    panel.style.cssText = `
+        position: fixed;
+        bottom: 25px;
+        left: 25px;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #161d24;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        width: 175px;
+    `;
+
+    // 공통 버튼 생성 함수
+    const createButton = (text, bgColor, borderColor, onClick, id = '') => {
+        const btn = document.createElement('button');
+        if (id) btn.id = id;
+        btn.type = 'button';
+        btn.innerText = text;
+        btn.style.cssText = `
             width: 100%;
             padding: 8px 0;
             font-size: 0.8rem;
-            font-weight: 700;
+            font-weight: 600;
             border-radius: 6px;
-            border: 1px solid #f43f5e;
-            background-color: #831843;
-            color: #fbcfe8;
-            box-sizing: border-box;
+            border: 1px solid ${borderColor};
+            background-color: ${bgColor};
+            color: #f1f5f9;
+            cursor: pointer;
+            transition: all 0.15s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            transition: all 0.2s ease;
+            box-sizing: border-box;
         `;
-        panel.appendChild(coreBadge);
+        btn.onmouseover = () => btn.style.filter = 'brightness(1.15)';
+        btn.onmouseout = () => btn.style.filter = 'none';
+        btn.onclick = onClick;
+        return btn;
+    };
 
-        // 공통 버튼 생성 함수
-        const createButton = (text, bgColor, borderColor, onClick, id = '') => {
-            const btn = document.createElement('button');
-            if (id) btn.id = id;
-            btn.type = 'button';
-            btn.innerText = text;
-            btn.style.cssText = `
-                width: 100%;
-                padding: 8px 0;
-                font-size: 0.8rem;
-                font-weight: 600;
-                border-radius: 6px;
-                border: 1px solid ${borderColor};
-                background-color: ${bgColor};
-                color: #f1f5f9;
-                cursor: pointer;
-                transition: all 0.15s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 4px;
-                box-sizing: border-box;
-            `;
-            btn.onmouseover = () => btn.style.filter = 'brightness(1.15)';
-            btn.onmouseout = () => btn.style.filter = 'none';
-            btn.onclick = onClick;
-            return btn;
-        };
+    // 🌟 [최상단 추가] 0) 데이터 불러오기 버튼
+    const loadDataBtn = createButton(
+        '📂 데이터 불러오기',
+        '#0d9488',
+        '#14b8a6',
+        openDataLoaderModal,
+        'btn-open-data-loader'
+    );
 
-        // 2) ⚖️ 비교 세팅 버튼
-        const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
-            if (typeof window.setBaseline === 'function') window.setBaseline();
-        });
+    // 2) ⚖️ 비교 세팅 버튼
+    const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
+        if (typeof window.setBaseline === 'function') window.setBaseline();
+    });
 
-        const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
-            if (typeof window.openCompareModal === 'function') window.openCompareModal();
-            else if (typeof openCompareModal === 'function') openCompareModal();
-        });
+    const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
+        if (typeof window.openCompareModal === 'function') window.openCompareModal();
+        else if (typeof openCompareModal === 'function') openCompareModal();
+    });
 
-        // 3) 🎯 치적 시너지 입력 박스
-        const synergyBox = document.createElement('div');
-        synergyBox.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            padding: 6px 0;
-            margin: 2px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        `;
+    // 3) 🎯 치적 시너지 입력 박스
+    const synergyBox = document.createElement('div');
+    synergyBox.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 6px 0;
+        margin: 2px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    `;
 
-        const label = document.createElement('span');
-        label.innerText = '파티 치적 시너지(본인 제외)';
-        label.style.cssText = `
-            color: #a5b4fc;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-align: left;
-            padding-left: 2px;
-        `;
+    const label = document.createElement('span');
+    label.innerText = '파티 치적 시너지(본인 제외)';
+    label.style.cssText = `
+        color: #a5b4fc;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-align: left;
+        padding-left: 2px;
+    `;
 
-        const select = document.createElement('select');
-        select.id = 'party-crit-select';
-        select.style.cssText = `
+    const select = document.createElement('select');
+    select.id = 'party-crit-select';
+    select.style.cssText = `
+        width: 100%;
+        background-color: #0f172a;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        cursor: pointer;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.15s ease;
+    `;
+
+    select.onmouseover = () => select.style.borderColor = '#38bdf8';
+    select.onmouseout = () => select.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+
+    [0, 1, 2].forEach(val => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.innerText = `${val}명 (${val * 10}%)`;
+        if (val === window.partyCritCount) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    select.onchange = function(e) {
+        window.partyCritCount = Number(e.target.value);
+        if (typeof window.triggerCalculation === 'function') {
+            window.triggerCalculation();
+        }
+    };
+
+    synergyBox.appendChild(label);
+    synergyBox.appendChild(select);
+
+    // 4) 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
+    const estherBox = document.createElement('div');
+    estherBox.id = 'esther-bonding-box';
+    estherBox.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    `;
+
+    const estherLabel = document.createElement('span');
+    estherLabel.innerText = '에스더 결속 효과';
+    estherLabel.style.cssText = `
+        color: #fcd34d;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-align: left;
+        padding-left: 2px;
+    `;
+    estherBox.appendChild(estherLabel);
+
+    window.estherBonding1 = Boolean(window.estherBonding1);
+    window.estherBonding2 = Boolean(window.estherBonding2);
+
+    const updateBondingBtnStyle = (btn, isOn, label) => {
+        if (isOn) {
+            btn.innerText = `⚡ ${label} : ON`;
+            btn.style.backgroundColor = '#78350f';
+            btn.style.borderColor = '#f59e0b';
+            btn.style.color = '#fef3c7';
+        } else {
+            btn.innerText = `💤 ${label} : OFF`;
+            btn.style.backgroundColor = '#0f172a';
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            btn.style.color = '#94a3b8';
+        }
+    };
+
+    const createBondingToggleBtn = (id, globalVarName, label) => {
+        const btn = document.createElement('button');
+        btn.id = id;
+        btn.type = 'button';
+        btn.style.cssText = `
             width: 100%;
-            background-color: #0f172a;
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            padding: 7px 10px;
-            font-size: 0.8rem;
+            padding: 6px 0;
+            font-size: 0.75rem;
             font-weight: bold;
+            border-radius: 6px;
+            border: 1px solid;
             cursor: pointer;
             outline: none;
             box-sizing: border-box;
-            transition: border-color 0.15s ease;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         `;
 
-        select.onmouseover = () => select.style.borderColor = '#38bdf8';
-        select.onmouseout = () => select.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        updateBondingBtnStyle(btn, window[globalVarName], label);
 
-        [0, 1, 2].forEach(val => {
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.innerText = `${val}명 (${val * 10}%)`;
-            if (val === window.partyCritCount) opt.selected = true;
-            select.appendChild(opt);
-        });
-
-        select.onchange = function(e) {
-            window.partyCritCount = Number(e.target.value);
+        btn.onclick = function() {
+            window[globalVarName] = !window[globalVarName];
+            updateBondingBtnStyle(btn, window[globalVarName], label);
             if (typeof window.triggerCalculation === 'function') {
                 window.triggerCalculation();
             }
         };
 
-        synergyBox.appendChild(label);
-        synergyBox.appendChild(select);
+        return btn;
+    };
 
-        // 4) 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
-        const estherBox = document.createElement('div');
-        estherBox.id = 'esther-bonding-box';
-        estherBox.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        `;
+    const btn1 = createBondingToggleBtn('esther-bonding-btn-1', 'estherBonding1', '결속 1단계');
+    const btn2 = createBondingToggleBtn('esther-bonding-btn-2', 'estherBonding2', '결속 2단계');
 
-        const estherLabel = document.createElement('span');
-        estherLabel.innerText = '에스더 결속 효과';
-        estherLabel.style.cssText = `
-            color: #fcd34d;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-align: left;
-            padding-left: 2px;
-        `;
-        estherBox.appendChild(estherLabel);
+    estherBox.appendChild(btn1);
+    estherBox.appendChild(btn2);
 
-        window.estherBonding1 = Boolean(window.estherBonding1);
-        window.estherBonding2 = Boolean(window.estherBonding2);
-
-        const updateBondingBtnStyle = (btn, isOn, label) => {
-            if (isOn) {
-                btn.innerText = `⚡ ${label} : ON`;
-                btn.style.backgroundColor = '#78350f';
-                btn.style.borderColor = '#f59e0b';
-                btn.style.color = '#fef3c7';
-            } else {
-                btn.innerText = `💤 ${label} : OFF`;
-                btn.style.backgroundColor = '#0f172a';
-                btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                btn.style.color = '#94a3b8';
-            }
-        };
-
-        const createBondingToggleBtn = (id, globalVarName, label) => {
-            const btn = document.createElement('button');
-            btn.id = id;
-            btn.type = 'button';
-            btn.style.cssText = `
-                width: 100%;
-                padding: 6px 0;
-                font-size: 0.75rem;
-                font-weight: bold;
-                border-radius: 6px;
-                border: 1px solid;
-                cursor: pointer;
-                outline: none;
-                box-sizing: border-box;
-                transition: all 0.15s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            `;
-
-            updateBondingBtnStyle(btn, window[globalVarName], label);
-
-            btn.onclick = function() {
-                window[globalVarName] = !window[globalVarName];
-                updateBondingBtnStyle(btn, window[globalVarName], label);
-                if (typeof window.triggerCalculation === 'function') {
-                    window.triggerCalculation();
-                }
-            };
-
-            return btn;
-        };
-
-        const btn1 = createBondingToggleBtn('esther-bonding-btn-1', 'estherBonding1', '결속 1단계');
-        const btn2 = createBondingToggleBtn('esther-bonding-btn-2', 'estherBonding2', '결속 2단계');
-
-        estherBox.appendChild(btn1);
-        estherBox.appendChild(btn2);
-
-        // -------------------------------------------------------------------------
-        // ★ 5) 스마트 토글 버튼 UI 갱신 함수
-        // -------------------------------------------------------------------------
-        const updatePauseBtnUI = (btn) => {
-            if (!window.hasCalculatedOnce) {
-                // 최초 상태: 계산 시작 버튼 (초록색)
-                btn.innerText = '🚀 계산 시작';
-                btn.style.backgroundColor = '#059669';
-                btn.style.borderColor = '#10b981';
-            } else if (window.isCalcPaused) {
-                // 이후 상태 (OFF)
-                btn.innerText = '⏸️ 실시간 계산 : OFF';
-                btn.style.backgroundColor = '#991b1b';
-                btn.style.borderColor = '#dc2626';
-            } else {
-                // 이후 상태 (ON)
-                btn.innerText = '▶️ 실시간 계산 : ON';
-                btn.style.backgroundColor = '#166534';
-                btn.style.borderColor = '#22c55e';
-            }
-        };
-
-        const handlePauseBtnClick = () => {
-            const btn = document.getElementById('calc-pause-btn');
-
-            if (!window.hasCalculatedOnce) {
-                // 최초 클릭 시: 실시간 계산 ON으로 전환 및 첫 계산 실행
-                window.hasCalculatedOnce = true;
-                window.isCalcPaused = false;
-                
-                if (typeof window.triggerCalculation === 'function') {
-                    window.triggerCalculation();
-                } else if (typeof window.handleCalculate === 'function') {
-                    window.handleCalculate();
-                }
-            } else {
-                // 두 번째 클릭부터: 기존 ON / OFF 토글 동작
-                window.isCalcPaused = !window.isCalcPaused;
-                if (!window.isCalcPaused && typeof window.triggerCalculation === 'function') {
-                    window.triggerCalculation();
-                }
-            }
-
-            if (btn) updatePauseBtnUI(btn);
-        };
-
-        // 토글 버튼 생성
-        const pauseBtn = createButton('', '', '', handlePauseBtnClick, 'calc-pause-btn');
-        updatePauseBtnUI(pauseBtn);
-
-        // 6) 📁 아크패시브 세팅 관리 버튼
-        const presetBtn = createButton(
-            '📁 아크패시브 세팅 관리', 
-            '#1d4ed8', 
-            '#60a5fa', 
-            () => {
-                if (typeof window.openPresetModal === 'function') {
-                    window.openPresetModal();
-                } else if (typeof openPresetModal === 'function') {
-                    openPresetModal();
-                }
-            }, 
-            'calc-preset-btn'
-        );
-
-        // 패널 조립
-        panel.appendChild(setBaseBtn);
-        panel.appendChild(toggleViewBtn);
-        panel.appendChild(synergyBox);
-        panel.appendChild(estherBox);
-        panel.appendChild(pauseBtn);
-        panel.appendChild(presetBtn);
-
-        document.body.appendChild(panel);
-
-        if (typeof window.updateCoreSetUI === 'function') {
-            window.updateCoreSetUI();
+    // 5) 스마트 토글 버튼 UI 갱신 함수
+    const updatePauseBtnUI = (btn) => {
+        if (!window.hasCalculatedOnce) {
+            btn.innerText = '🚀 계산 시작';
+            btn.style.backgroundColor = '#059669';
+            btn.style.borderColor = '#10b981';
+        } else if (window.isCalcPaused) {
+            btn.innerText = '⏸️ 실시간 계산 : OFF';
+            btn.style.backgroundColor = '#991b1b';
+            btn.style.borderColor = '#dc2626';
+        } else {
+            btn.innerText = '▶️ 실시간 계산 : ON';
+            btn.style.backgroundColor = '#166534';
+            btn.style.borderColor = '#22c55e';
         }
+    };
+
+    const handlePauseBtnClick = () => {
+        const btn = document.getElementById('calc-pause-btn');
+
+        if (!window.hasCalculatedOnce) {
+            window.hasCalculatedOnce = true;
+            window.isCalcPaused = false;
+
+            if (typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            } else if (typeof window.handleCalculate === 'function') {
+                window.handleCalculate();
+            }
+        } else {
+            window.isCalcPaused = !window.isCalcPaused;
+            if (!window.isCalcPaused && typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            }
+        }
+
+        if (btn) updatePauseBtnUI(btn);
+    };
+
+    const pauseBtn = createButton('', '', '', handlePauseBtnClick, 'calc-pause-btn');
+    updatePauseBtnUI(pauseBtn);
+
+    // 6) 📁 아크패시브 세팅 관리 버튼
+    const presetBtn = createButton(
+        '📁 아크패시브 세팅 관리',
+        '#1d4ed8',
+        '#60a5fa',
+        () => {
+            if (typeof window.openPresetModal === 'function') {
+                window.openPresetModal();
+            } else if (typeof openPresetModal === 'function') {
+                openPresetModal();
+            }
+        },
+        'calc-preset-btn'
+    );
+
+    // 패널 조립 (최상단에 loadDataBtn 배치)
+    panel.appendChild(loadDataBtn);
+    panel.appendChild(setBaseBtn);
+    panel.appendChild(toggleViewBtn);
+    panel.appendChild(synergyBox);
+    panel.appendChild(estherBox);
+    panel.appendChild(pauseBtn);
+    panel.appendChild(presetBtn);
+
+    document.body.appendChild(panel);
+
+    if (typeof window.updateCoreSetUI === 'function') {
+        window.updateCoreSetUI();
     }
+}
 
     // 💡 스크립트 맨 하단에서 즉시 버튼 패널 생성
     injectPauseButton();
@@ -3100,12 +3219,12 @@ function loadArkPassive() {
                 /* 1) 가로 크기: 화면 기준 70% (모바일/작은 화면을 위해 min-width 설정) */
                 width: 70vw;
                 min-width: 720px;
-                
+
                 /* 2) 세로 크기: 내용에 따라 자동 조정, 화면 85% 넘어가면 자동 스크롤 생성 */
                 height: auto;
                 max-height: 85vh;
                 overflow-y: auto;
-                
+
                 box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 color: #ffffff;
@@ -3236,7 +3355,7 @@ function loadArkPassive() {
                     </h3>
                     <button id="modal-close-btn" style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1.2rem; line-height:1;">✕</button>
                 </div>
-                
+
                 <div style="display:flex; gap:6px; margin-bottom: 16px;">
                     <input id="preset-name-input" type="text" placeholder="세팅 이름 (예: 깨달음 딜러)" style="flex:1; padding: 7px 10px; background:#0f1015; border:1px solid #333745; color:#fff; border-radius:6px; font-size:0.85rem; outline:none;" />
                     <button id="preset-save-btn" style="padding: 7px 14px; background:#22c55e; border:none; color:#fff; font-weight:bold; font-size:0.8rem; border-radius:6px; cursor:pointer;">저장</button>
@@ -3363,7 +3482,7 @@ function loadArkPassive() {
      */
     function getPassiveState() {
         const container = document.getElementById('arkEvolutionContainer');
-        
+
         if (!container) {
             console.error("아크 패시브 영역(#arkEvolutionContainer)을 찾을 수 없습니다.");
             return { timestamp: new Date().toLocaleString(), nodes: {} };
@@ -3376,7 +3495,7 @@ function loadArkPassive() {
             // 노드 이름 추출 (span 태그의 텍스트)
             const nameSpan = node.querySelector('span');
             if (!nameSpan) return;
-            
+
             const nodeName = nameSpan.textContent.trim();
 
             // 수치 추출 ("15/30" 형식의 span 태그)
@@ -3436,8 +3555,8 @@ function loadArkPassive() {
         // [STEP 1] 아크 패시브 전체 초기화 수행
         // 1-1. 화면 내 '초기화' 버튼이 있는지 찾고 클릭
         const allButtons = Array.from(container.querySelectorAll('button'));
-        const resetButton = allButtons.find(btn => 
-            btn.textContent.includes('초기화') || 
+        const resetButton = allButtons.find(btn =>
+            btn.textContent.includes('초기화') ||
             btn.classList.contains('btn-reset') ||
             btn.getAttribute('title')?.includes('초기화')
         );
@@ -3507,7 +3626,7 @@ function loadArkPassive() {
      * 4. 유틸리티 함수들 (목록 조회/삭제)
      */
     function getPresetList() {
-        try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || {}; } 
+        try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || {}; }
         catch (e) { return {}; }
     }
 
@@ -3539,7 +3658,7 @@ function loadArkPassive() {
 
         // 2. [핵심 수정 1] 특정 모달이 아닌 document 전역(body)에 이벤트 바인딩
         const eventTypes = ['input', 'change', 'click', 'keyup'];
-        
+
         eventTypes.forEach(eventType => {
             document.body.addEventListener(eventType, (e) => {
                 const target = e.target;
@@ -3774,7 +3893,7 @@ function loadArkPassive() {
 
             // 확인 버튼 클릭 시 닫기
             document.getElementById('customAlertBtn').onclick = closeAlert;
-            
+
             // 배경 클릭 시 닫기
             overlay.onclick = (e) => {
                 if (e.target === overlay) closeAlert();
