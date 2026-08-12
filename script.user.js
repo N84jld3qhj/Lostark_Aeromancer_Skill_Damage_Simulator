@@ -1598,8 +1598,15 @@
             // ★ 2. 트라이포드 적용 (신규/구버전 구조 완벽 호환 처리)
             if (Array.isArray(currentTripods)) {
                 currentTripods.forEach(tp => {
-                    // 트라이포드에 특정 태그 요구 조건(requiredTag)이 있는 경우 스킬 태그 검사
-                    if (tp.requiredTag && !skillTags.includes(tp.requiredTag)) {
+                    // 🌟 제외 태그 검사
+                    const exTags = tp.excludeTags || tp.excludeSkillTags || [];
+                    if (exTags.some(tag => skillTags.includes(tag))) {
+                        return;
+                    }
+
+                    // 트라이포드에 특정 태그 요구 조건(requiredTag/requireTags)이 있는 경우 스킬 태그 검사
+                    const reqTags = tp.requireTags || tp.requireSkillTags || (tp.requiredTag ? [tp.requiredTag] : []);
+                    if (reqTags.length > 0 && !reqTags.some(tag => skillTags.includes(tag))) {
                         return;
                     }
 
@@ -1618,6 +1625,7 @@
                 });
             }
 
+            // ★ 3. 각인 적용
             inputs.engravings.forEach(eng => {
                 if (!eng || eng.name === "none" || eng.level === "미사용") return;
 
@@ -1625,16 +1633,21 @@
 
                 if (!engData) return;
 
-                // 1. 태그 조건 검사 (예: 기습의 대가 -> 백어택 전용)
-                const reqTags = engData.requireTags || [];
+                // 🌟 제외 태그 검사 (excludeTags 또는 excludeSkillTags 중 하나라도 스킬 태그에 포함되어 있으면 제외)
+                const exTags = engData.excludeTags || engData.excludeSkillTags || [];
+                if (exTags.some(tag => skillTags.includes(tag))) return;
+
+                // 필요 태그 조건 검사 (예: 기습의 대가 -> 백어택 전용)
+                const reqTags = engData.requireTags || engData.requireSkillTags || [];
                 const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
+                
                 if (engData) {
                     // levelKey 형태로 데이터 조회가 잘 되는지 확인
                     const levelKey = String(eng.level).includes("LV") ? eng.level : `${eng.level}LV`;
                 }
                 if (!isMatch) return;
 
-                // 2. 현재 레벨 및 세공 수치 가져오기
+                // 현재 레벨 및 세공 수치 가져오기
                 const levelEffects = engData.levels?.[eng.level] || [];
                 const stoneEffects = engData.stone?.[eng.stone] || [];
 
@@ -1648,7 +1661,7 @@
                     return;
                 }
 
-                // ★ 3. 모든 각인 공통 완전 자동화 연산 (아드레날린, 질량증가, 원한, 기습 등 통일)
+                // 모든 각인 공통 완전 자동화 연산 (아드레날린, 질량증가, 원한, 기습 등 통일)
                 levelEffects.forEach(eff => {
                     // 동일한 type(예: "공격력 %")을 가진 돌 세공 수치 찾기
                     const matchingStone = stoneEffects.find(s => s.type === eff.type);
@@ -1673,37 +1686,42 @@
             }
 
             // ★ 4. 아크 패시브 진화 노드 적용 (태그 조건 판별)
-                const arkStats = getArkEvolutionStats();
-                if (arkStats && typeof arkStats === 'object') {
-                    for (let cat in arkStats) {
-                        if (Array.isArray(arkStats[cat])) {
-                            arkStats[cat].forEach(eff => {
-                                const reqTags = eff.requireTags || [];
+            const arkStats = getArkEvolutionStats();
+            if (arkStats && typeof arkStats === 'object') {
+                for (let cat in arkStats) {
+                    if (Array.isArray(arkStats[cat])) {
+                        arkStats[cat].forEach(eff => {
+                            // 🌟 제외 태그 검사
+                            const exTags = eff.excludeTags || eff.excludeSkillTags || [];
+                            if (exTags.some(tag => skillTags.includes(tag))) {
+                                return;
+                            }
 
-                                // [태그 검사 조건]
-                                // 1. requireTags가 비어있으면 (공통 노드) -> 무조건 적용
-                                // 2. requireTags가 존재하면 -> 스킬 태그(skillTags) 중 요구 태그를 모두/하나라도 만족해야 적용
-                                // (※ 아래는 요구 태그 중 1개 이상 만족 시 적용하는 some 조건 방식입니다)
-                                const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
+                            const reqTags = eff.requireTags || eff.requireSkillTags || [];
 
-                                if (isMatch) {
-                                    if (!stats[cat]) stats[cat] = [];
-                                    stats[cat].push({
-                                        source: eff.source,
-                                        val: eff.val,
-                                        unit: eff.unit
-                                    });
-                                }
-                            });
-                        }
+                            // [태그 검사 조건]
+                            // 1. requireTags가 비어있으면 (공통 노드) -> 무조건 적용
+                            // 2. requireTags가 존재하면 -> 스킬 태그(skillTags) 중 요구 태그를 1개 이상 만족 시 적용
+                            const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
+
+                            if (isMatch) {
+                                if (!stats[cat]) stats[cat] = [];
+                                stats[cat].push({
+                                    source: eff.source,
+                                    val: eff.val,
+                                    unit: eff.unit
+                                });
+                            }
+                        });
                     }
                 }
+            }
 
             const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
             const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
             const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
 
-            // ★ 3. 질서 코어 연산
+            // ★ 5. 질서 코어 연산
             const slotToKoreanMap = {
                 'sun': '해',
                 'moon': '달',
@@ -1731,9 +1749,6 @@
 
                 const userLevel = Number(level) || 0;
 
-                // -------------------------------------------------------------
-                // 🌟 [수정 포인트 1] 곱연산 그룹별 수치를 임시 집계할 객체 생성
-                // -------------------------------------------------------------
                 const pendingGroups = {};
 
                 Object.keys(coreData).forEach(reqPointStr => {
@@ -1747,7 +1762,14 @@
                                 const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
 
                                 targetEffects.forEach(effect => {
-                                    const { category, val, skills, requireTags, tags: targetTags, groupId, op } = effect;
+                                    const { category, val, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId, op } = effect;
+                                    
+                                    // 🌟 제외 태그 검사
+                                    const exTags = excludeTags || excludeSkillTags || [];
+                                    if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) {
+                                        return;
+                                    }
+
                                     const effectiveTags = requireTags || targetTags;
 
                                     // 매칭 검사
@@ -1773,7 +1795,7 @@
                                                 pointList: [reqPoint]
                                             };
                                         } else {
-                                            // 🌟 핵심: 동일한 groupId가 오면 더 큰 값(Math.max)으로 갱신!
+                                            // 🌟 동일한 groupId가 오면 더 큰 값(Math.max)으로 갱신
                                             if (groupId) {
                                                 pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
                                             } else {
@@ -1791,10 +1813,7 @@
                     }
                 });
 
-                // -------------------------------------------------------------
-                // 🌟 [수정 포인트 4] 그룹별 최종 수치를 통계 시스템(addStat)에 적용
-                // 각 그룹들은 독립된 별개의 항목으로 등록되므로 서로 곱연산 처리됩니다.
-                // -------------------------------------------------------------
+                // 그룹별 최종 수치를 통계 시스템(addStat)에 적용
                 Object.entries(pendingGroups).forEach(([groupKey, groupData]) => {
                     if (groupData.val === 0) return;
 
@@ -1935,7 +1954,15 @@
                     : (specDB.targetTags ? [specDB] : Object.values(specDB));
 
                 specItems.forEach(item => {
-                    if (!item || !Array.isArray(item.targetTags)) return;
+                    if (!item) return;
+
+                    // 🌟 특화 제외 태그 검사
+                    const exTags = item.excludeTags || item.excludeSkillTags || [];
+                    if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) {
+                        return;
+                    }
+
+                    if (!Array.isArray(item.targetTags)) return;
 
                     // 원하셨던 각인 매칭 방식 (targetTags 중 하나라도 skillTags 또는 skillName과 일치하는지 확인)
                     const isMatch = item.targetTags.some(tag => 
