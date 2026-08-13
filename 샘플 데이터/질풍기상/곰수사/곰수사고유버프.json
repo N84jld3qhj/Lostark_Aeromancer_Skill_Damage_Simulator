@@ -1,0 +1,113 @@
+[
+    {
+        "name": "깨달음 - 깨어난 잠재력",
+        "effects": [
+            {
+                "category": "치명타 적중률",
+                "val": 30,
+                "unit": "%",
+                "targetTags": [
+                    "둔갑"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 야성",
+        "effects": [
+            {
+                "category": "공격 속도",
+                "val": 10,
+                "unit": "%",
+                "targetTags": [
+                    "둔갑"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 야생의 충동",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 19,
+                "unit": "%",
+                "targetTags": [
+                    "둔갑"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 기민함",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 1,
+                "unit": "%",
+                "targetTags": [
+                    "둔갑"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 사냥 본능",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 40,
+                "unit": "%",
+                "targetTags": [
+                    "찢곰"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "시너지",
+        "effects": [
+            {
+                "category": "방어력 무시",
+                "val": 12,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "펫 효과",
+        "effects": [
+            {
+                "category": "특화",
+                "val": 160,
+                "unit": ""
+            }
+        ]
+    },
+    {
+        "name": "도약 - 풀려난 힘",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 15,
+                "unit": "%",
+                "targetTags": [
+                    "한방 곰"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "도약 - 잠재력 해방",
+        "effects": [
+            {
+                "category": "쿨타임 감소",
+                "val": 8,
+                "unit": "%",
+                "targetTags": [
+                    "한방 곰"
+                ]
+            }
+        ]
+    }
+]
