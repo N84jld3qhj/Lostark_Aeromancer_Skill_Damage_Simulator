@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.0.2
-// @description  시뮬레이터 DOM 파싱 및 실시간 데미지/스탯 연산
+// @version      1.0.3
+// @description  로펙 시뮬레이터 DOM 데이터를 읽어와 실시간으로 입력된 세팅을 기준으로 스킬 데미지 시뮬레이션을 제공합니다. 
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=lopec.kr
@@ -1359,19 +1359,34 @@
             ? window.ADD_STAT_BASE
             : Object.values(window.ADD_STAT_BASE || {});
 
-        // 🌟 2. 안전하게 순회
+        // 🌟 2. 공통 스탯 등록 (태그 조건이 없는 순수 공통 스탯만 commonStats에 수집)
         statList.forEach(item => {
             if (!item) return;
 
-            // A. 새로 변경된 구조: [{ name, effects: [{ category, val, unit }] }]
+            // A. 새로 변경된 구조: [{ name, effects: [{ category, val, unit, targetTags, requireTags, excludeTags }] }]
             if (Array.isArray(item.effects)) {
                 item.effects.forEach(eff => {
-                    addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
+                    const hasTagCondition = (eff.targetTags && eff.targetTags.length > 0) || 
+                                           (eff.requireTags && eff.requireTags.length > 0) || 
+                                           (eff.excludeTags && eff.excludeTags.length > 0) ||
+                                           (eff.excludeSkillTags && eff.excludeSkillTags.length > 0);
+                    
+                    // 태그 조건이 없는 경우에만 공통 스탯에 사전 추가
+                    if (!hasTagCondition) {
+                        addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
+                    }
                 });
             }
             // B. 기존 객체 구조 예외 처리: { category, name, value, unit }
             else if (item.category) {
-                addStat(commonStats, item.category, item.name, item.value, item.unit);
+                const hasTagCondition = (item.targetTags && item.targetTags.length > 0) || 
+                                       (item.requireTags && item.requireTags.length > 0) || 
+                                       (item.excludeTags && item.excludeTags.length > 0) ||
+                                       (item.excludeSkillTags && item.excludeSkillTags.length > 0);
+                
+                if (!hasTagCondition) {
+                    addStat(commonStats, item.category, item.name, item.value, item.unit);
+                }
             }
         });
 
@@ -1587,7 +1602,7 @@
                 constant,
                 baseCooldown = 0,
                 mana,
-                tripods: currentTripods = [] // skillData 내의 tripods를 바로 가져옴
+                tripods: currentTripods = []
             } = skillData;
 
             let stats = {};
@@ -1595,31 +1610,47 @@
                 stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
             }
 
-            // ★ 2. 트라이포드 적용 (신규/구버전 구조 완벽 호환 처리)
+            // 🌟 [추가된 로직] ADD_STAT_BASE의 태그 조건부 스탯 처리
+            statList.forEach(item => {
+                if (!item) return;
+
+                const checkAndAddEffect = (eff, name) => {
+                    const exTags = eff.excludeTags || eff.excludeSkillTags || [];
+                    if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) return;
+
+                    const reqTags = eff.targetTags || eff.requireTags || eff.requireSkillTags || [];
+                    const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag) || tag === skillName);
+
+                    if (isMatch && (reqTags.length > 0 || exTags.length > 0)) {
+                        addStat(stats, eff.category || eff.type, name, eff.val ?? eff.value, eff.unit ?? "%");
+                    }
+                };
+
+                if (Array.isArray(item.effects)) {
+                    item.effects.forEach(eff => checkAndAddEffect(eff, item.name));
+                } else if (item.category) {
+                    checkAndAddEffect(item, item.name);
+                }
+            });
+
+            // ★ 2. 트라이포드 적용
             if (Array.isArray(currentTripods)) {
                 currentTripods.forEach(tp => {
-                    // 🌟 제외 태그 검사
+                    // 제외 태그 검사
                     const exTags = tp.excludeTags || tp.excludeSkillTags || [];
-                    if (exTags.some(tag => skillTags.includes(tag))) {
-                        return;
-                    }
+                    if (exTags.some(tag => skillTags.includes(tag))) return;
 
-                    // 트라이포드에 특정 태그 요구 조건(requiredTag/requireTags)이 있는 경우 스킬 태그 검사
+                    // 필요 태그 검사
                     const reqTags = tp.requireTags || tp.requireSkillTags || (tp.requiredTag ? [tp.requiredTag] : []);
-                    if (reqTags.length > 0 && !reqTags.some(tag => skillTags.includes(tag))) {
-                        return;
-                    }
+                    if (reqTags.length > 0 && !reqTags.some(tag => skillTags.includes(tag))) return;
 
                     const sourceType = `트라이포드(${tp.tier ? tp.tier + '트포 - ' : ''}${tp.name})`;
 
-                    // 🌟 신규 JSON 구조 (effects 배열 내부 순회)
                     if (Array.isArray(tp.effects)) {
                         tp.effects.forEach(eff => {
                             addStat(stats, eff.category, sourceType, eff.val, eff.unit ?? "%");
                         });
-                    }
-                    // 🌟 구버전 JSON 구조 (단일 category, val 보유 시 호환)
-                    else if (tp.category && tp.val !== undefined) {
+                    } else if (tp.category && tp.val !== undefined) {
                         addStat(stats, tp.category, sourceType, tp.val, tp.unit ?? "%");
                     }
                 });
@@ -1630,28 +1661,18 @@
                 if (!eng || eng.name === "none" || eng.level === "미사용") return;
 
                 const engData = engravingTable[eng.name];
-
                 if (!engData) return;
 
-                // 🌟 제외 태그 검사 (excludeTags 또는 excludeSkillTags 중 하나라도 스킬 태그에 포함되어 있으면 제외)
                 const exTags = engData.excludeTags || engData.excludeSkillTags || [];
                 if (exTags.some(tag => skillTags.includes(tag))) return;
 
-                // 필요 태그 조건 검사 (예: 기습의 대가 -> 백어택 전용)
                 const reqTags = engData.requireTags || engData.requireSkillTags || [];
                 const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
-                
-                if (engData) {
-                    // levelKey 형태로 데이터 조회가 잘 되는지 확인
-                    const levelKey = String(eng.level).includes("LV") ? eng.level : `${eng.level}LV`;
-                }
                 if (!isMatch) return;
 
-                // 현재 레벨 및 세공 수치 가져오기
                 const levelEffects = engData.levels?.[eng.level] || [];
                 const stoneEffects = engData.stone?.[eng.stone] || [];
 
-                // 예외: 돌격대장은 이동속도 비례 계수 저장이 필요하므로 유일하게 분기 유지
                 if (eng.name === "돌격대장") {
                     const raidFactor = (levelEffects[0]?.val || 0) + (stoneEffects[0]?.val || 0);
                     if (raidFactor > 0) {
@@ -1661,13 +1682,9 @@
                     return;
                 }
 
-                // 모든 각인 공통 완전 자동화 연산 (아드레날린, 질량증가, 원한, 기습 등 통일)
                 levelEffects.forEach(eff => {
-                    // 동일한 type(예: "공격력 %")을 가진 돌 세공 수치 찾기
                     const matchingStone = stoneEffects.find(s => s.type === eff.type);
                     const stoneVal = matchingStone ? (Number(matchingStone.val) || 0) : 0;
-
-                    // 기본 각인 수치 + 돌 세공 수치 합산 (음수 수치도 그대로 반영됨)
                     const totalVal = parseFloat(((Number(eff.val) || 0) + stoneVal).toFixed(2));
 
                     addStat(stats, eff.type, `각인: ${eng.name} [${eng.level} + 세공 ${eng.stone}]`, totalVal, eff.unit || "%");
@@ -1685,23 +1702,16 @@
                 });
             }
 
-            // ★ 4. 아크 패시브 진화 노드 적용 (태그 조건 판별)
+            // ★ 4. 아크 패시브 진화 노드 적용
             const arkStats = getArkEvolutionStats();
             if (arkStats && typeof arkStats === 'object') {
                 for (let cat in arkStats) {
                     if (Array.isArray(arkStats[cat])) {
                         arkStats[cat].forEach(eff => {
-                            // 🌟 제외 태그 검사
                             const exTags = eff.excludeTags || eff.excludeSkillTags || [];
-                            if (exTags.some(tag => skillTags.includes(tag))) {
-                                return;
-                            }
+                            if (exTags.some(tag => skillTags.includes(tag))) return;
 
                             const reqTags = eff.requireTags || eff.requireSkillTags || [];
-
-                            // [태그 검사 조건]
-                            // 1. requireTags가 비어있으면 (공통 노드) -> 무조건 적용
-                            // 2. requireTags가 존재하면 -> 스킬 태그(skillTags) 중 요구 태그를 1개 이상 만족 시 적용
                             const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
 
                             if (isMatch) {
@@ -1722,16 +1732,10 @@
             const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
 
             // ★ 5. 질서 코어 연산
-            const slotToKoreanMap = {
-                'sun': '해',
-                'moon': '달',
-                'star': '별'
-            };
+            const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
 
             ['Sun', 'Moon', 'Star'].forEach(target => {
                 const coresObj = inputs?.orderCores || {};
-
-                // 입력 객체에서 Sun, Moon, Star 키 찾기
                 const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
                 const coreInfo = coresObj[targetKey];
 
@@ -1741,14 +1745,12 @@
                 const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
                 if (!matchedGrade) return;
 
-                // 🌟 1. 슬롯 타입('Sun' -> '해')에 맞춰 orderDataSets의 최상위 데이터 조회
                 const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
                 const coreData = window.orderDataSets[koreanSlotName]?.[matchedGrade];
 
                 if (!coreData) return;
 
                 const userLevel = Number(level) || 0;
-
                 const pendingGroups = {};
 
                 Object.keys(coreData).forEach(reqPointStr => {
@@ -1762,21 +1764,16 @@
                                 const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
 
                                 targetEffects.forEach(effect => {
-                                    const { category, val, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId, op } = effect;
+                                    const { category, val, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;
                                     
-                                    // 🌟 제외 태그 검사
                                     const exTags = excludeTags || excludeSkillTags || [];
-                                    if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) {
-                                        return;
-                                    }
+                                    if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) return;
 
                                     const effectiveTags = requireTags || targetTags;
 
-                                    // 매칭 검사
                                     const isSkillMatch = Array.isArray(skills) && skills.includes(skillName);
                                     const isTagMatch = Array.isArray(effectiveTags) && effectiveTags.some(t =>
-                                        (Array.isArray(skillTags) && skillTags.includes(t)) ||
-                                        t === skillName
+                                        (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName
                                     );
                                     const isGlobalMatch = !skills && !effectiveTags;
 
@@ -1784,8 +1781,6 @@
                                         if (!category || val === undefined) return;
 
                                         const numVal = Number(val);
-
-                                        // 🌟 groupId가 있으면 지정된 ID, 없으면 포인트별 자동 독립 키
                                         const groupKey = groupId || `point_${reqPoint}_${category}`;
 
                                         if (!pendingGroups[groupKey]) {
@@ -1795,7 +1790,6 @@
                                                 pointList: [reqPoint]
                                             };
                                         } else {
-                                            // 🌟 동일한 groupId가 오면 더 큰 값(Math.max)으로 갱신
                                             if (groupId) {
                                                 pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
                                             } else {
@@ -1813,12 +1807,9 @@
                     }
                 });
 
-                // 그룹별 최종 수치를 통계 시스템(addStat)에 적용
                 Object.entries(pendingGroups).forEach(([groupKey, groupData]) => {
                     if (groupData.val === 0) return;
-
                     const pointsStr = groupData.pointList.join(',');
-                    
                     addStat(
                         stats,
                         groupData.category,
@@ -1834,13 +1825,12 @@
             }
             const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
 
-            // -------------------- 계산 시작 -----------------------------
+            // -------------------- 수치 계산 -----------------------------
             const normalStat = getStatSum(stats, "주스탯");
             const statPercent = getStatSum(stats, "주스탯 %");
             const finalStat = normalStat * (1 + statPercent / 100);
 
-            const defPenMultiplier = getDefPenMultiplier(stats, "방어력 무시",true);
-
+            const defPenMultiplier = getDefPenMultiplier(stats, "방어력 무시", true);
 
             const weaponAtkPercent = getStatSum(stats, "무기 공격력 %");
             const finalWeaponAtk = getStatSum(stats, "무기 공격력") * (1 + (weaponAtkPercent / 100));
@@ -1901,46 +1891,35 @@
             }
 
             let totalMpFurnaceDmg = 0;
-                if (MpFurnaceNode && MpFurnaceNode.current > 0) {
-                    // 2. 마나 용광로 기본 연산: 소모 마나 * 0.05
-                    
-                    let furnaceDmg = mana * 0.05;
+            if (MpFurnaceNode && MpFurnaceNode.current > 0) {
+                let furnaceDmg = mana * 0.05;
+                furnaceDmg = Math.min(24, furnaceDmg);
 
-                    // 3. 최대치 캡 적용 (최대 12%)
-                    furnaceDmg = Math.min(24, furnaceDmg);
+                if (MpFurnaceNode.current === 1) {
+                    furnaceDmg *= 0.5;
+                }
 
-                    // 4. 레벨별 보정 (1LV: 50%, 2LV: 100%)
-                    if (MpFurnaceNode.current === 1) {
-                        furnaceDmg *= 0.5;
-                    }
-
-                    // 5. 최종 진화형 피해 스탯에 반영
-                    if (furnaceDmg > 0) {
-                        addStat(
-                            stats, 
-                            "진화형 피해", 
-                            `아크 패시브(진화 5티어): 마나 용광로 [${MpFurnaceNode.current}/${MpFurnaceNode.max}LV]`, 
-                            parseFloat(furnaceDmg.toFixed(2))
-                        );
-                    }
+                if (furnaceDmg > 0) {
+                    addStat(
+                        stats, 
+                        "진화형 피해", 
+                        `아크 패시브(진화 5티어): 마나 용광로 [${MpFurnaceNode.current}/${MpFurnaceNode.max}LV]`, 
+                        parseFloat(furnaceDmg.toFixed(2))
+                    );
+                }
             }
 
-            //추가 피해 , 진화형 피해는 합연산으로 계산
             const totalAdditionalDamageMuntiplier = 1 + (getStatSum(stats, "추가 피해") / 100);
             if (!stats["추가 피해"]) stats["추가 피해"] = [];
 
             const totalEvolutionDamage = getStatSum(stats, "진화형 피해");
             const evolutionDamageMultiplier = 1 + (totalEvolutionDamage / 100);
 
-
-
             if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
 
-            // 1. 특화 수치 합산 구하기
             const specStatValue = getStatSum(stats, "특화");
 
-            // 2. 특화 DB 안전 추출 (중첩 구조 대응)
-            let specDB = window.specializationDatabase  || {};
+            let specDB = window.specializationDatabase || {};
             if (specDB.specializationDatabase) {
                 specDB = specDB.specializationDatabase;
             }
@@ -1948,7 +1927,6 @@
             if (specStatValue > 0 && specDB && Array.isArray(skillTags)) {
                 let totalSpecCoeff = 0;
 
-                // specDB가 배열 형태든, 객체 형태든, 단일 객체든 배열화하여 순회
                 const specItems = Array.isArray(specDB) 
                     ? specDB 
                     : (specDB.targetTags ? [specDB] : Object.values(specDB));
@@ -1956,15 +1934,11 @@
                 specItems.forEach(item => {
                     if (!item) return;
 
-                    // 🌟 특화 제외 태그 검사
                     const exTags = item.excludeTags || item.excludeSkillTags || [];
-                    if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) {
-                        return;
-                    }
+                    if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) return;
 
                     if (!Array.isArray(item.targetTags)) return;
 
-                    // 원하셨던 각인 매칭 방식 (targetTags 중 하나라도 skillTags 또는 skillName과 일치하는지 확인)
                     const isMatch = item.targetTags.some(tag => 
                         skillTags.includes(tag) || tag === skillName
                     );
@@ -1975,19 +1949,16 @@
                     }
                 });
 
-                // 3. 특화 피해가 존재할 경우 stats["적에게 주는 피해"]에 반영
                 if (totalSpecCoeff > 0) {
-                    const specDamageValue = specStatValue * totalSpecCoeff/699*100;
+                    const specDamageValue = specStatValue * totalSpecCoeff / 699;
 
-                    addStat(stats,"적에게 주는 피해","특화",specDamageValue.toFixed(2),"%")
-                    // stats["적에게 주는 피해"].push({
-                    //     val: parseFloat(specDamageValue.toFixed(2)),
-                    //     source: "특화"
-                    // });
+                    stats["적에게 주는 피해"].push({
+                        val: parseFloat(specDamageValue.toFixed(2)),
+                        source: "특화"
+                    });
                 }
             }
             
-            // 상세 출력 결과에서 트라이포드를 위로 옮기는 코드
             if (stats["적에게 주는 피해"]) {
                 const isSkillSpec = (source) => source.startsWith("트라이포드") || source.startsWith("깨달음") || source.startsWith("도약");
                 const tpItems = stats["적에게 주는 피해"].filter(item => isSkillSpec(item.source));
@@ -2058,12 +2029,20 @@
         if (modal) modal.style.display = 'none';
     };
 
+    // 전역 변수로 섹션들의 열림 상태 기억 (기본값: 모두 true)
+    if (!window.sectionOpenStates) {
+        window.sectionOpenStates = {
+            sec1: true,
+            sec2: true,
+            sec3: true
+        };
+    }
+
     window.renderResultsHTML = function(allSkillResults, selectedSkillIdx = null) {
         if (!allSkillResults || allSkillResults.length === 0) return;
 
         window.lastSkillResults = allSkillResults;
 
-        // 💡 [핵심 1] 선택된 스킬 인덱스를 전역 변수에 기억 (실시간 연산이 실행되어도 선택 유지)
         if (selectedSkillIdx !== null && selectedSkillIdx !== undefined) {
             window.currentSelectedSkillIdx = selectedSkillIdx;
         } else if (window.currentSelectedSkillIdx === undefined) {
@@ -2074,61 +2053,121 @@
         const commonRes = allSkillResults[0];
         let bodyContent = ``;
 
-        // 1. 공통 세팅 지표
-        bodyContent += `
-            <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">[캐릭터 공통 세팅 지표]</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px;">
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">최종 공격력</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${Math.floor(commonRes.finalAtk || 0).toLocaleString()}</div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">치명 / 신속 / 특화</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalCritStat || 0} / ${commonRes.totalSwiftStat || 0} / ${commonRes.specStatValue || 0} </div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">치명타 적중률</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.totalCritRatePercent || 0).toFixed(2)}%</div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">진화형 피해</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalEvolutionDamage || 0).toFixed(2)}%</div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">공속 / 이속</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalAtkSpeed || 0).toFixed(1)}% / ${(commonRes.finalMoveSpeed || 0).toFixed(1)}%</div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">뭉툭한 가시 효율</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalBluntDmg || commonRes.totalBluntThornDmg || 0).toFixed(2)}%</div>
-                </div>
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">음속 돌파 효율</div>
-                    <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalSonicDmg || 0).toFixed(2)}%</div>
-                </div>
-            </div>
+        // ----------------------------------------------------
+        // 섹션공통 스타일
+        // ----------------------------------------------------
+        const sectionHeaderStyle = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #181920;
+            border: 1px solid #2e323d;
+            border-radius: 8px;
+            color: #c084fc;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
         `;
 
-        // 2. 스킬별 요약 테이블
+        // ----------------------------------------------------
+        // [SECTION 1] 공통 세팅 지표 + 스킬별 시뮬레이션 요약
+        // ----------------------------------------------------
+        const sec1Open = window.sectionOpenStates.sec1 ? 'open' : '';
+        const sec1Arrow = window.sectionOpenStates.sec1 ? '▼' : '▲';
+
         bodyContent += `
-            <h3 style="border:none; margin:0 0 8px 0; color: #c084fc; font-size: 1.1rem;">
-                [스킬별 시뮬레이션 결과 요약]
-                <span style="font-size: 0.75em; font-weight: normal; color: #94a3b8;">(행 클릭 시 세부 내역 표시)</span>
-            </h3>
-            <div style="overflow-x: auto; margin-top: 10px;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="background-color: #181920; color: #94a3b8; border-bottom: 1px solid #2e323d;">
-                            <th style="padding: 10px;">스킬명</th>
-                            <th style="padding: 10px;">대미지 기대값</th>
-                            <th style="padding: 10px;">스킬 쿨타임</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <details data-sec-key="sec1" ${sec1Open} style="margin-bottom: 20px;">
+                <summary style="${sectionHeaderStyle}">
+                    <span>📊 [1. 캐릭터 공통 세팅 및 스킬 요약]</span>
+                    <span class="toggle-icon" style="font-size: 0.8rem; color: #94a3b8;">${sec1Arrow}</span>
+                </summary>
+                <div style="padding-top: 16px;">
+                    
+                    <!-- 공통 세팅 지표 카드들 (치/신/특 분리 적용) -->
+                    <!-- 공통 세팅 지표 카드들 (10개 카드 / 5x2 고정 그리드 배치) -->
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px;">
+                        <!-- 1. 최종 공격력 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">최종 공격력</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${Math.floor(commonRes.finalAtk || 0).toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 2. 치명 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #e2e8f0; font-weight: 600;">치명</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalCritStat || 0}</div>
+                        </div>
+
+                        <!-- 3. 신속 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #e2e8f0; font-weight: 600;">신속</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.totalSwiftStat || 0}</div>
+                        </div>
+
+                        <!-- 4. 특화 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #e2e8f0; font-weight: 600;">특화</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${commonRes.specStatValue || 0}</div>
+                        </div>
+
+                        <!-- 5. 치명타 적중률 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">치명타 적중률</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.totalCritRatePercent || 0).toFixed(2)}%</div>
+                        </div>
+
+                        <!-- 6. 진화형 피해 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">진화형 피해</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalEvolutionDamage || 0).toFixed(2)}%</div>
+                        </div>
+
+                        <!-- 7. 공격 속도 (분리됨) -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">공격 속도</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalAtkSpeed || 0).toFixed(1)}%</div>
+                        </div>
+
+                        <!-- 8. 이동 속도 (분리됨) -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">이동 속도</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalMoveSpeed || 0).toFixed(1)}%</div>
+                        </div>
+
+                        <!-- 9. 뭉툭한 가시 효율 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">뭉툭한 가시 효율</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalBluntDmg || commonRes.totalBluntThornDmg || 0).toFixed(2)}%</div>
+                        </div>
+
+                        <!-- 10. 음속 돌파 효율 -->
+                        <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 0.8rem; color: #94a3b8;">음속 돌파 효율</div>
+                            <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalSonicDmg || 0).toFixed(2)}%</div>
+                        </div>
+                    </div>
+
+                    <!-- 스킬 요약 테이블 -->
+                    <div style="font-size: 0.95rem; font-weight: bold; color: #e2e8f0; margin-bottom: 8px;">
+                        [스킬별 시뮬레이션 결과 요약] <span style="font-size: 0.75em; font-weight: normal; color: #94a3b8;">(행 클릭 시 세부 내역 표시)</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background-color: #181920; color: #94a3b8; border-bottom: 1px solid #2e323d;">
+                                    <th style="padding: 10px;">스킬명</th>
+                                    <th style="padding: 10px;">대미지 기대값</th>
+                                    <th style="padding: 10px;">스킬 쿨타임</th>
+                                </tr>
+                            </thead>
+                            <tbody>
         `;
 
         allSkillResults.forEach((res, idx) => {
-            const isSelected = (idx === currentIdx); // 💡 저장된 currentIdx 기반으로 체크
+            const isSelected = (idx === currentIdx);
             const rowStyle = isSelected
                 ? 'background-color: #2d3142; cursor: pointer; border-bottom: 1px solid #2e323d;'
                 : 'cursor: pointer; border-bottom: 1px solid #2e323d;';
@@ -2145,13 +2184,16 @@
         });
 
         bodyContent += `
-                    </tbody>
-                </table>
-            </div>
-            <hr style="border: 0; border-top: 1px dashed #2e323d; margin: 25px 0;">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
         `;
 
-        // 3. 공격력 산출 상세 정보 계산 및 헬퍼 함수 (1열 전용 표)
+        // ----------------------------------------------------
+        // 헬퍼 함수: 테이블 포맷터
+        // ----------------------------------------------------
         const formatItemListToTable = (flatItems, percentItems, categoryNames = { flat: "[세부 항목]", percent: "[계수]" }) => {
             const hasFlat = Array.isArray(flatItems) && flatItems.length > 0;
             const hasPercent = Array.isArray(percentItems) && percentItems.length > 0;
@@ -2162,7 +2204,6 @@
 
             let html = `<table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 4px;"><tbody>`;
 
-            // 1. 고정 수치 파트 (1열 세로 정렬)
             if (hasFlat) {
                 html += `
                     <tr>
@@ -2171,11 +2212,9 @@
                         </td>
                     </tr>
                 `;
-
                 flatItems.forEach(item => {
                     const val = typeof item.val === 'number' ? item.val.toLocaleString() : item.val;
                     const src = item.source || '기본';
-
                     html += `
                         <tr>
                             <td style="padding: 5px 8px; color: #94a3b8; text-align: left; border-bottom: 1px solid #232733;">${src}</td>
@@ -2185,12 +2224,8 @@
                 });
             }
 
-            // 2. 퍼센트 수치 파트 (1열 세로 정렬)
             if (hasPercent) {
-                if (hasFlat) {
-                    html += `<tr><td colspan="2" style="padding: 6px 0;"></td></tr>`;
-                }
-
+                if (hasFlat) html += `<tr><td colspan="2" style="padding: 6px 0;"></td></tr>`;
                 html += `
                     <tr>
                         <td colspan="2" style="padding: 6px 0 4px 0; color: #38bdf8; font-weight: bold; font-size: 0.8rem; border-bottom: 1px solid #2e323d;">
@@ -2198,11 +2233,9 @@
                         </td>
                     </tr>
                 `;
-
                 percentItems.forEach(item => {
                     const val = (Number(item.val) || 0).toFixed(2);
                     const src = item.source || '옵션';
-
                     html += `
                         <tr>
                             <td style="padding: 5px 8px; color: #94a3b8; text-align: left; border-bottom: 1px solid #232733;">${src}</td>
@@ -2229,57 +2262,79 @@
             vambracePercentList.push({ source: `세공 (${totalStoneLevel}LV)`, val: carveAtkBonusPercent });
         }
 
+        // ----------------------------------------------------
+        // [SECTION 2] 공격력 산출 과정
+        // ----------------------------------------------------
+        const sec2Open = window.sectionOpenStates.sec2 ? 'open' : '';
+        const sec2Arrow = window.sectionOpenStates.sec2 ? '▼' : '▲';
+
         bodyContent += `
-            <h3 style="border:none; margin:0 0 12px 0; color: #c084fc; font-size: 1.1rem;">📊 [공격력 산출 과정]</h3>
-            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.9rem;">
+            <details data-sec-key="sec2" ${sec2Open} style="margin-bottom: 20px;">
+                <summary style="${sectionHeaderStyle}">
+                    <span>⚔️ [2. 공격력 산출 과정]</span>
+                    <span class="toggle-icon" style="font-size: 0.8rem; color: #94a3b8;">${sec2Arrow}</span>
+                </summary>
+                <div style="padding-top: 16px; display: flex; flex-direction: column; gap: 14px; font-size: 0.9rem;">
 
-                <!-- 0. 주스탯 -->
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">0. 주스탯</div>
-                    ${formatItemListToTable(stats["주스탯"], stats["주스탯 %"], { flat: "[주스탯 합산]", percent: "[주스탯 % 계수]" })}
-                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                        합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(finalStat).toLocaleString()}</span>
+                    <!-- 0. 주스탯 -->
+                    <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">0. 주스탯</div>
+                        ${formatItemListToTable(stats["주스탯"], stats["주스탯 %"], { flat: "[주스탯 합산]", percent: "[주스탯 % 계수]" })}
+                        <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                            합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(finalStat).toLocaleString()}</span>
+                        </div>
                     </div>
+
+                    <!-- 1. 최종 무기 공격력 -->
+                    <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">1. 최종 무기 공격력</div>
+                        ${formatItemListToTable(stats["무기 공격력"], stats["무기 공격력 %"] || stats["무기 공격력%"], { flat: "[무기 공격력 합산]", percent: "[무기 공격력 % 계수]" })}
+                        <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                            합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. 기본 공격력 -->
+                    <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">2. 기본 공격력</div>
+                        <div style="background: #0f1015; padding: 8px 12px; border-radius: 6px; border: 1px solid #222634; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                            💡 <strong>공식:</strong> ( √(주스탯 ${Math.floor(finalStat).toLocaleString()} × 최종무공 ${Math.floor(finalWeaponAtk).toLocaleString()}) / 6 )*계수
+                        </div>
+                        ${formatItemListToTable(stats["기본 공격력"], vambracePercentList, { flat: "[기본 공격력 합산]", percent: "[기본 공격력 % 계수]" })}
+                        <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                            합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. 최종 공격력 -->
+                    <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">3. 최종 공격력</div>
+                        ${formatItemListToTable(stats["공격력"], stats["공격력 %"], { flat: "[공격력 합산]", percent: "[공격력 % 계수]" })}
+                        <div style="text-align: right; font-weight: bold; color: #facc15; margin-top: 10px; font-size: 1.1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
+                            최종 공격력 = ${Math.floor(finalAtk).toLocaleString()}
+                        </div>
+                    </div>
+
                 </div>
-
-                <!-- 1. 최종 무기 공격력 -->
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">1. 최종 무기 공격력</div>
-                    ${formatItemListToTable(stats["무기 공격력"], stats["무기 공격력 %"] || stats["무기 공격력%"], { flat: "[무기 공격력 합산]", percent: "[무기 공격력 % 계수]" })}
-                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                        합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(finalWeaponAtk).toLocaleString()}</span>
-                    </div>
-                </div>
-
-                <!-- 2. 기본 공격력 -->
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">2. 기본 공격력</div>
-                    <div style="background: #0f1015; padding: 8px 12px; border-radius: 6px; border: 1px solid #222634; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
-                        💡 <strong>공식:</strong> ( √(주스탯 ${Math.floor(finalStat).toLocaleString()} × 최종무공 ${Math.floor(finalWeaponAtk).toLocaleString()}) / 6 )*계수
-                    </div>
-                    ${formatItemListToTable(stats["기본 공격력"], vambracePercentList, { flat: "[기본 공격력 합산]", percent: "[기본 공격력 % 계수]" })}
-                    <div style="text-align: right; font-weight: bold; color: #e2e8f0; margin-top: 10px; font-size: 0.95rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                        합계 = <span style="color: #38bdf8; font-size: 1.05rem;">${Math.floor(calculatedBaseAtk).toLocaleString()}</span>
-                    </div>
-                </div>
-
-                <!-- 3. 최종 공격력 -->
-                <div style="background: #181920; border: 1px solid #2e323d; padding: 14px; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #c084fc; margin-bottom: 8px; font-size: 0.95rem;">3. 최종 공격력</div>
-                    ${formatItemListToTable(stats["공격력"], stats["공격력 %"], { flat: "[공격력 합산]", percent: "[공격력 % 계수]" })}
-                    <div style="text-align: right; font-weight: bold; color: #facc15; margin-top: 10px; font-size: 1.1rem; border-top: 1px dashed #2e323d; padding-top: 8px;">
-                        최종 공격력 = ${Math.floor(finalAtk).toLocaleString()}
-                    </div>
-                </div>
-
-            </div>
+            </details>
         `;
 
-        // 4. 선택한 스킬 상세 적용 내역 (currentIdx 기반 - 1열 방식)
+        // ----------------------------------------------------
+        // [SECTION 3] 선택 스킬 상세 세팅 적용 내역
+        // ----------------------------------------------------
         const selectedResult = allSkillResults[currentIdx] || allSkillResults[0];
-        bodyContent += `<div style="margin-top: 20px;">`;
-        bodyContent += `<div style="background: #181920; border: 1px solid #2e323d; padding: 16px; border-radius: 8px;">`;
-        bodyContent += `<div style="font-size: 1.05rem; font-weight: bold; color: #facc15; margin-bottom: 12px;">▶ [선택 스킬] ${selectedResult.skillName} 상세 세팅 적용 내역</div>`;
+        const sec3Open = window.sectionOpenStates.sec3 ? 'open' : '';
+        const sec3Arrow = window.sectionOpenStates.sec3 ? '▼' : '▲';
+
+        bodyContent += `
+            <details data-sec-key="sec3" ${sec3Open} style="margin-bottom: 10px;">
+                <summary style="${sectionHeaderStyle}">
+                    <span>🎯 [3. 선택 스킬] <span style="color: #facc15;">${selectedResult.skillName}</span> 상세 세팅 내역</span>
+                    <span class="toggle-icon" style="font-size: 0.8rem; color: #94a3b8;">${sec3Arrow}</span>
+                </summary>
+                <div style="padding-top: 16px;">
+                    <div style="background: #181920; border: 1px solid #2e323d; padding: 16px; border-radius: 8px;">
+        `;
 
         if (selectedResult.stats) {
             Object.keys(selectedResult.stats).forEach(cat => {
@@ -2325,9 +2380,15 @@
             });
         }
 
-        bodyContent += `</div></div>`;
+        bodyContent += `
+                    </div>
+                </div>
+            </details>
+        `;
 
-        // 5. 결과 섹션 요소 생성 및 배치
+        // ----------------------------------------------------
+        // 결과 섹션 컨테이너 생성 및 배치
+        // ----------------------------------------------------
         let resultSection = document.getElementById('sim-result-section');
 
         if (!resultSection) {
@@ -2360,33 +2421,49 @@
             }
         }
 
-        // HTML 결과 업데이트
         resultSection.innerHTML = bodyContent;
-        injectPauseButton();
-        // 💡 [핵심 2] 이벤트 위임 방식으로 변경 (클릭 요소 추적 완벽 보장)
+
+        if (typeof injectPauseButton === 'function') {
+            injectPauseButton();
+        }
+
+        // ----------------------------------------------------
+        // 이벤트 바인딩 (스킬 클릭 & 토글 상태 기억)
+        // ----------------------------------------------------
         resultSection.onclick = function(e) {
             const row = e.target.closest('.sim-skill-row');
-            if (!row) return;
-
-            const clickIdx = Number(row.getAttribute('data-idx'));
-            if (!isNaN(clickIdx)) {
-                window.renderResultsHTML(window.lastSkillResults, clickIdx);
+            if (row) {
+                const clickIdx = Number(row.getAttribute('data-idx'));
+                if (!isNaN(clickIdx)) {
+                    window.renderResultsHTML(window.lastSkillResults, clickIdx);
+                }
             }
         };
 
-        // 6. 미니 모달 업데이트
-        try {
-            const allHeaders = Array.from(resultSection.querySelectorAll('h3'));
-            const metricsHeader = allHeaders.find(h3 => h3.textContent.includes('캐릭터 공통 세팅 지표'));
-
-            if (metricsHeader && metricsHeader.nextElementSibling) {
-                const metricsGridHtml = metricsHeader.nextElementSibling.outerHTML;
-                if (typeof updateMiniResultModal === 'function') {
-                    updateMiniResultModal(metricsGridHtml);
+        // 사용자가 직접 접거나 폈을 때 상태를 기억하는 이벤트 리스너
+        resultSection.querySelectorAll('details').forEach(details => {
+            details.ontoggle = function() {
+                const secKey = this.getAttribute('data-sec-key');
+                if (secKey) {
+                    window.sectionOpenStates[secKey] = this.open;
                 }
+                const icon = this.querySelector('.toggle-icon');
+                if (icon) {
+                    icon.textContent = this.open ? '▼' : '▲';
+                }
+            };
+        });
+
+        // ----------------------------------------------------
+        // 미니 모달 업데이트
+        // ----------------------------------------------------
+        try {
+            const metricsGrid = resultSection.querySelector('details div style*="grid"');
+            if (metricsGrid && typeof updateMiniResultModal === 'function') {
+                updateMiniResultModal(metricsGrid.outerHTML);
             }
         } catch (err) {
-            console.warn('미니 모달 업데이트 중 오류 발생 (무시하고 연산 진행):', err);
+            console.warn('미니 모달 업데이트 중 오류 발생:', err);
         }
     };
 
@@ -2400,9 +2477,6 @@
 
         const panelHtml = `
             <div id="arkPassiveModal" class="custom-ark-panel">
-                <div class="ark-panel-header">
-                <h3 style="border:none; margin:0 0 10px 0; color: #c084fc; font-size: 1.1rem;">⚙️ 아크 패시브 진화 설정</h3>
-                </div>
                 <div id="arkEvolutionContainer"></div>
             </div>
         `;
@@ -2439,12 +2513,71 @@
         renderArkPassiveUI();
     }
 
+    // 전역 변수로 아크 패시브 영역의 열림 상태 기억 (기본값: true)
+    if (window.isArkPassiveOpen === undefined) {
+        window.isArkPassiveOpen = true;
+    }
+
     function renderArkPassiveUI() {
         const container = document.getElementById('arkEvolutionContainer');
         if (!container) return;
 
         container.innerHTML = '';
 
+        // ----------------------------------------------------
+        // 헤더 스타일 (계산 출력 섹션과 동일한 스타일 적용)
+        // ----------------------------------------------------
+        const sectionHeaderStyle = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #181920;
+            border: 1px solid #2e323d;
+            border-radius: 8px;
+            color: #c084fc;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        `;
+
+        // 1. details / summary 아코디언 요소 생성
+        const details = document.createElement('details');
+        details.style.marginBottom = '20px';
+        if (window.isArkPassiveOpen) {
+            details.setAttribute('open', '');
+        }
+
+        const arrow = window.isArkPassiveOpen ? '▼' : '▲';
+        details.innerHTML = `
+            <summary style="${sectionHeaderStyle}">
+                <span>✨ [아크 패시브 - 진화] 세팅</span>
+                <span class="toggle-icon" style="font-size: 0.8rem; color: #94a3b8;">${arrow}</span>
+            </summary>
+        `;
+
+        // 상태 기억을 위한 ontoggle 이벤트
+        details.ontoggle = function() {
+            window.isArkPassiveOpen = this.open;
+            const icon = this.querySelector('.toggle-icon');
+            if (icon) {
+                icon.textContent = this.open ? '▼' : '▲';
+            }
+        };
+
+        // 2. 노드들이 들어갈 내부 컨테이너 생성
+        // 💥 [수정 포인트] 세로 간격을 유지하도록 flex 및 gap 추가
+        const contentDiv = document.createElement('div');
+        contentDiv.style.cssText = `
+            padding-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px; /* 행 간의 세로 간격을 넓혀줍니다 */
+        `;
+
+        // 3. 기존 노드 렌더링 로직 (contentDiv 안으로 배치)
         evolutionNodes.forEach((row, rowIndex) => {
             const rowDiv = document.createElement('div');
             rowDiv.className = 'ark-row';
@@ -2491,7 +2624,6 @@
                 const incBtn = nodeDiv.querySelector('.btn-inc');
                 const iconImg = nodeDiv.querySelector('.ark-icon');
 
-                // [수정] saveArkPassive() 호출 후 triggerCalculation()을 명시적으로 트리거
                 const handleNodeChange = (delta, e) => {
                     e.stopPropagation();
                     changeValue(delta);
@@ -2510,8 +2642,11 @@
                 rowDiv.appendChild(nodeDiv);
             });
 
-            container.appendChild(rowDiv);
+            contentDiv.appendChild(rowDiv);
         });
+
+        details.appendChild(contentDiv);
+        container.appendChild(details);
     }
 
 
