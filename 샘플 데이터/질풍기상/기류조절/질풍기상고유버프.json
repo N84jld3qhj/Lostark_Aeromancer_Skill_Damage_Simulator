@@ -20,12 +20,11 @@
         ]
     },
     {
-        "name": "질풍노도",
+        "name": "깨달음 - 질풍노도",
         "effects": [
             {
                 "category": "공격 속도",
-                "val": 12,
-                "unit": "%"
+                "val": 12
             }
         ]
     },
@@ -40,22 +39,15 @@
         ]
     },
     {
-        "name": "깨달음 치적",
+        "name": "깨달음 - 기민함",
         "effects": [
             {
                 "category": "치명타 적중률",
-                "val": 12,
-                "unit": "%"
-            }
-        ]
-    },
-    {
-        "name": "깨달음 치피",
-        "effects": [
+                "formula": "Math.min(finalMoveSpeed,40)*0.3"
+            },
             {
                 "category": "치명타 피해",
-                "val": 48,
-                "unit": "%"
+                "formula": "Math.min(finalAtkSpeed,40)*1.2"
             }
         ]
     },
