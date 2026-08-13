@@ -125,6 +125,14 @@
         { name: "신속", effects: [{ category: "신속", val: 77, unit: "" }] },
         { name: "특화", effects: [{ category: "특화", val: 75, unit: "" }] },
 
+        { name: "헤드어택 보너스",effects:[
+            { category: "적에게 주는 피해",val:20,unit:"%",requireTags: ["헤드어택"]},        
+        ]}
+        { name: "백어택 보너스",effects:[
+            { category: "적에게 주는 피해",val:5,unit:"%",requireTags: ["백어택"]},        
+            { category: "치명타 확률",val:20,unit:"%",requiredTag:["백어택"]},           
+        ]}
+
         { name: "원정대 레벨(400 기준)", effects: [{ category: "주스탯", val: 1000, unit: "" }] },
         { name: "전투 레벨 70", effects: [{ category: "주스탯", val: 477, unit: "" }] },
         { name: "능력치 증가 물약", effects: [{ category: "주스탯", val: 850, unit: "" }] },
