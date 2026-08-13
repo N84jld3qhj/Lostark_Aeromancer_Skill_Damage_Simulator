@@ -93,7 +93,7 @@
 
 <img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png" style="border: 1px solid #cccccc;">
 
-기본 스탯, 캐릭터 시너지, 펫 효과,아크 패시브 깨달음 등 캐릭터에 적용되는 고유 버프 정보를 입력합니다.
+캐릭터 시너지, 펫 효과, 아크 패시브 깨달음, 도약 등 캐릭터에 적용되는 고유 버프 정보를 입력합니다. 
 
 1. **버프 / 스탯명**: 버프의 이름을 입력합니다. (예: `깨달음 - 질풍노도`, `사이드 노드 - 바람의 길`). 원하는 스타일로 입력하시면 됩니다.
 
