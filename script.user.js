@@ -1348,7 +1348,7 @@
     // =============================================================================
     // 5. 핵심 스탯 및 데미지 연산 엔진
     // =============================================================================
-    function calculateSkillStats(inputs) {
+   function calculateSkillStats(inputs) {
 
         const partyCritBonus = (window.partyCritCount || 0) * STAT_CONSTANTS.PARTY_CRIT_SYNERGY_PER_PLAYER;
         let commonStats = {
@@ -1374,12 +1374,12 @@
             if (Array.isArray(item.effects)) {
                 item.effects.forEach(eff => {
                     const hasTagCondition = (eff.targetTags && eff.targetTags.length > 0) || 
-                                           (eff.requireTags && eff.requireTags.length > 0) || 
-                                           (eff.excludeTags && eff.excludeTags.length > 0) ||
-                                           (eff.excludeSkillTags && eff.excludeSkillTags.length > 0);
+                                        (eff.requireTags && eff.requireTags.length > 0) || 
+                                        (eff.excludeTags && eff.excludeTags.length > 0) ||
+                                        (eff.excludeSkillTags && eff.excludeSkillTags.length > 0);
                     
-                    // 태그 조건이 없는 경우에만 공통 스탯에 사전 추가
-                    if (!hasTagCondition) {
+                    // 태그 조건이 없고, 수식이 아닌 경우에만 공통 스탯에 사전 추가
+                    if (!hasTagCondition && !eff.formula) {
                         addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
                     }
                 });
@@ -1387,11 +1387,11 @@
             // B. 기존 객체 구조 예외 처리: { category, name, value, unit }
             else if (item.category) {
                 const hasTagCondition = (item.targetTags && item.targetTags.length > 0) || 
-                                       (item.requireTags && item.requireTags.length > 0) || 
-                                       (item.excludeTags && item.excludeTags.length > 0) ||
-                                       (item.excludeSkillTags && item.excludeSkillTags.length > 0);
+                                    (item.requireTags && item.requireTags.length > 0) || 
+                                    (item.excludeTags && item.excludeTags.length > 0) ||
+                                    (item.excludeSkillTags && item.excludeSkillTags.length > 0);
                 
-                if (!hasTagCondition) {
+                if (!hasTagCondition && !item.formula) {
                     addStat(commonStats, item.category, item.name, item.value, item.unit);
                 }
             }
@@ -1490,7 +1490,6 @@
             const statValue = Number((enlightenLevel * 0.1).toFixed(2));
             addStat(commonStats, "무기 공격력 %", `아크 패시브 깨달음 (Lv.${enlightenLevel})`, statValue, "%");
         }
-
 
         // 장신구
         const percentStatList = ["공격력 %", "무기 공격력 %", "치명타 피해", "치명타 적중률", "피해 증가", "추가 피해", "적에게 주는 피해"];
@@ -1601,7 +1600,6 @@
         // 스킬별 계산 루프
         // =============================================================================
         window.skillDatabase.forEach((skillData) => {
-            // ★ 1. 스킬 정보 및 트라이포드(tripods) 직접 추출
             const {
                 name: skillName,
                 tags: skillTags = [],
@@ -1617,7 +1615,10 @@
                 stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
             }
 
-            // 🌟 [추가된 로직] ADD_STAT_BASE의 태그 조건부 스탯 처리
+            // 🌟 [수정 포인트 1] 지연 수식 계산용 임시 저장 배열
+            const pendingFormulas = [];
+
+            // 🌟 [수정 포인트 2] ADD_STAT_BASE의 태그 조건부 스탯 & 수식 분류 처리
             statList.forEach(item => {
                 if (!item) return;
 
@@ -1628,14 +1629,30 @@
                     const reqTags = eff.targetTags || eff.requireTags || eff.requireSkillTags || [];
                     const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag) || tag === skillName);
 
-                    if (isMatch && (reqTags.length > 0 || exTags.length > 0)) {
-                        addStat(stats, eff.category || eff.type, name, eff.val ?? eff.value, eff.unit ?? "%");
+                    if (isMatch) {
+                        // formula 수식이 지정된 경우
+                        const formulaStr = eff.formula || item.formula;
+                        if (formulaStr) {
+                            pendingFormulas.push({
+                                category: eff.category || eff.type || item.category || item.type,
+                                name: name,
+                                formula: formulaStr,
+                                unit: eff.unit ?? item.unit ?? "%"
+                            });
+                        } 
+                        // 수식 없이 태그 조건만 만족하는 경우 (조건이 있든 없든 isMatch=true일 때 정상 반영)
+                        else {
+                            const val = eff.val ?? eff.value ?? item.val ?? item.value;
+                            if (val !== undefined && (reqTags.length > 0 || exTags.length > 0)) {
+                                addStat(stats, eff.category || eff.type, name, val, eff.unit ?? "%");
+                            }
+                        }
                     }
                 };
 
                 if (Array.isArray(item.effects)) {
                     item.effects.forEach(eff => checkAndAddEffect(eff, item.name));
-                } else if (item.category) {
+                } else if (item.category || item.type || item.formula) {
                     checkAndAddEffect(item, item.name);
                 }
             });
@@ -1643,11 +1660,9 @@
             // ★ 2. 트라이포드 적용
             if (Array.isArray(currentTripods)) {
                 currentTripods.forEach(tp => {
-                    // 제외 태그 검사
                     const exTags = tp.excludeTags || tp.excludeSkillTags || [];
                     if (exTags.some(tag => skillTags.includes(tag))) return;
 
-                    // 필요 태그 검사
                     const reqTags = tp.requireTags || tp.requireSkillTags || (tp.requiredTag ? [tp.requiredTag] : []);
                     if (reqTags.length > 0 && !reqTags.some(tag => skillTags.includes(tag))) return;
 
@@ -1832,7 +1847,7 @@
             }
             const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
 
-            // -------------------- 수치 계산 -----------------------------
+            // -------------------- 기본 수치 연산 -----------------------------
             const normalStat = getStatSum(stats, "주스탯");
             const statPercent = getStatSum(stats, "주스탯 %");
             const finalStat = normalStat * (1 + statPercent / 100);
@@ -1852,8 +1867,6 @@
             const percentAtkBonus = getStatSum(stats, "공격력 %");
             const finalAtk = (calculatedBaseAtk + flatAtkBonus) * (1 + (percentAtkBonus / 100));
 
-            let baseDamage = calculateDamageBase(finalAtk, coefficient, constant, defPenMultiplier);
-
             const totalSwift = getStatSum(stats, "신속");
             const swiftSpeedBonus = totalSwift * STAT_CONSTANTS.SWIFT_TO_SPEED;
             const atkSpeedSum = getStatSum(stats, "공격 속도");
@@ -1861,6 +1874,35 @@
 
             const finalAtkSpeed = swiftSpeedBonus + atkSpeedSum;
             const finalMoveSpeed = swiftSpeedBonus + moveSpeedSum;
+
+            // 🌟 [수정 포인트 3] 속도 및 스탯 확정 시점! 수식(formula) 동적 평가 연산 실행
+            if (pendingFormulas.length > 0) {
+                const formulaContext = {
+                    finalMoveSpeed,
+                    finalAtkSpeed,
+                    totalSwift,
+                    finalAtk,
+                    totalCritStat: getStatSum(stats, "치명"),
+                    totalSpecStat: getStatSum(stats, "특화"),
+                    Math
+                };
+
+                pendingFormulas.forEach(item => {
+                    try {
+                        const calcFunc = new Function(...Object.keys(formulaContext), `return ${item.formula};`);
+                        const calcVal = calcFunc(...Object.values(formulaContext));
+
+                        if (typeof calcVal === 'number' && !isNaN(calcVal)) {
+                            addStat(stats, item.category, item.name, parseFloat(calcVal.toFixed(2)), item.unit);
+                        }
+                    } catch (err) {
+                        console.error(`[수식 계산 실패] ${item.name}:`, item.formula, err);
+                    }
+                });
+            }
+
+            // 수식 결과까지 반영된 스탯 기반으로 계속 데미지 연산 진행
+            let baseDamage = calculateDamageBase(finalAtk, coefficient, constant, defPenMultiplier);
 
             const moveSpeedBonus = Math.min(STAT_CONSTANTS.SPEED_CAP, Math.max(0, finalMoveSpeed));
 

@@ -52,6 +52,8 @@
         .btn-submit-spec { background: #20c997; }
         .btn-submit-spec:hover { background: #19a179; }
 
+        .btn-cancel { background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 12px; font-size: 14px; font-weight: bold; margin-top: 8px; width: 100%; display: none; }
+
         /* 제어 버튼 그룹 */
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .btn-action { padding: 8px 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; }
@@ -131,6 +133,7 @@
                 </div>
 
                 <button type="button" id="btnSkillSubmit" class="btn-submit btn-submit-skill" onclick="addSkillToDatabase()">+ 스킬 목록에 추가</button>
+                <button type="button" id="btnSkillCancel" class="btn-cancel" onclick="cancelSkillEdit()">❌ 수정 취소</button>
             </form>
         </div>
 
@@ -191,7 +194,8 @@
                     <div id="orderEffectsContainer"></div>
                 </div>
 
-                <button type="button" class="btn-submit btn-submit-order" onclick="addOrderNode()">+ 질서 코어 노드 추가</button>
+                <button type="button" id="btnOrderSubmit" class="btn-submit btn-submit-order" onclick="addOrderNode()">+ 질서 코어 노드 추가</button>
+                <button type="button" id="btnOrderCancel" class="btn-cancel" onclick="cancelOrderEdit()">❌ 수정 취소</button>
             </form>
         </div>
 
@@ -234,6 +238,7 @@
                 </div>
 
                 <button type="button" id="btnBuffSubmit" class="btn-submit btn-submit-buff" onclick="addBuffToDatabase()">+ 버프 / 스탯 목록에 추가</button>
+                <button type="button" id="btnBuffCancel" class="btn-cancel" onclick="cancelBuffEdit()">❌ 수정 취소</button>
             </form>
         </div>
 
@@ -298,7 +303,7 @@
 </div>
 
 <script>
-    // --- 카테고리 정의 ---
+    // 카테고리 정의
     const BASE_CATEGORIES = [
         "주스탯", "주스탯 %",
         "무기 공격력", "무기 공격력 %", "기본 공격력", "기본 공격력 %", "공격력", "공격력 %",
@@ -318,13 +323,24 @@
         return `${cat} (%)`;
     }
 
+    // 초기 구조 생성자
+    function createEmptyOrderStructure() {
+        return {
+            "해": { "고대": {}, "유물": {} },
+            "달": { "고대": {}, "유물": {} },
+            "별": { "고대": {}, "유물": {} }
+        };
+    }
+
+    // 전역 데이터
     let skillDatabase = [];
-    let orderDataSets = { "해": { "고대": {}, "유물": {} }, "달": { "고대": {}, "유물": {} }, "별": { "고대": {}, "유물": {} } };
+    let orderDataSets = createEmptyOrderStructure();
     let buffDatabase = [];
     let specializationData = { coefficient: 0, targetTags: [] };
 
     let editingSkillIndex = null;
     let editingBuffIndex = null;
+    let editingOrderInfo = null;
 
     function getCategoryOptionsHtml(selected = "적에게 주는 피해") {
         return BASE_CATEGORIES.map(cat => `<option value="${cat}" ${cat === selected ? 'selected' : ''}>${getCategoryLabel(cat)}</option>`).join('');
@@ -337,7 +353,7 @@
         btn.classList.add('active');
     }
 
-    // --- TAB 1: 스킬 로직 ---
+    // --- TAB 1: 스킬 ---
     function syncSkillNameToTag() {
         const skillName = document.getElementById("skillName").value.trim();
         const tagsInput = document.getElementById("tags");
@@ -402,7 +418,6 @@
         const constant = parseFloat(document.getElementById("constant").value) || 0;
         const coefficient = parseFloat(document.getElementById("coefficient").value) || 0;
         const baseCooldown = parseFloat(document.getElementById("baseCooldown").value) || 0;
-        
         const rawMana = document.getElementById("baseMana").value;
         const mana = rawMana !== "" ? parseFloat(rawMana) : 0;
 
@@ -425,11 +440,7 @@
             card.querySelectorAll(".sub-effect-row").forEach(row => {
                 const category = row.querySelector(".sub-cat").value;
                 const val = parseFloat(row.querySelector(".sub-val").value) || 0;
-                
-                let unit = "%";
-                if (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) {
-                    unit = "";
-                }
+                let unit = (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) ? "" : "%";
                 effects.push({ category, val, unit });
             });
 
@@ -442,6 +453,7 @@
             skillDatabase[editingSkillIndex] = skillData;
             editingSkillIndex = null;
             document.getElementById("btnSkillSubmit").innerText = "+ 스킬 목록에 추가";
+            document.getElementById("btnSkillCancel").style.display = "none";
         } else {
             skillDatabase.push(skillData);
         }
@@ -478,6 +490,14 @@
         document.getElementById("tripodContainer").innerHTML = "";
         sk.tripods.forEach(tp => addTripodCard(tp));
         document.getElementById("btnSkillSubmit").innerText = "✏️ 스킬 정보 수정 완료";
+        document.getElementById("btnSkillCancel").style.display = "block";
+    }
+
+    function cancelSkillEdit() {
+        editingSkillIndex = null;
+        document.getElementById("btnSkillSubmit").innerText = "+ 스킬 목록에 추가";
+        document.getElementById("btnSkillCancel").style.display = "none";
+        resetSkillForm();
     }
 
     function deleteSkill(index) {
@@ -508,7 +528,21 @@
         addTripodCard({ tier: 3, name: "강화된 일격", effects: [{ category: "적에게 주는 피해", val: 60 }] });
     }
 
-    // --- TAB 2: 질서 코어 로직 ---
+    // --- TAB 2: 질서 코어 ---
+    function sanitizeOrderDataStructure(data) {
+        const types = ["해", "달", "별"];
+        const grades = ["고대", "유물"];
+        
+        let target = data || {};
+        types.forEach(t => {
+            if (!target[t]) target[t] = {};
+            grades.forEach(g => {
+                if (!target[t][g]) target[t][g] = {};
+            });
+        });
+        return target;
+    }
+
     function toggle17ptUI(selectedPoint) {
         const container = document.getElementById("orderEffectsContainer");
         container.innerHTML = "";
@@ -556,9 +590,14 @@
         const nodePointVal = document.getElementById("nodePoint").value;
         const is17pt = nodePointVal === "17";
 
-        if (!orderDataSets[coreType]) orderDataSets[coreType] = {};
-        if (!orderDataSets[coreType]["고대"]) orderDataSets[coreType]["고대"] = {};
-        if (!orderDataSets[coreType]["유물"]) orderDataSets[coreType]["유물"] = {};
+        orderDataSets = sanitizeOrderDataStructure(orderDataSets);
+
+        const nodeGroupId = editingOrderInfo ? editingOrderInfo.id : ('node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+
+        if (editingOrderInfo) {
+            deleteOrderNodeById(editingOrderInfo.id, false);
+            editingOrderInfo = null;
+        }
 
         if (is17pt) {
             const ancientEffects = [];
@@ -574,14 +613,8 @@
                 const effAncientObj = { category, val: valAncient };
                 const effRelicObj = { category, val: valRelic };
 
-                if (requireTags.length > 0) {
-                    effAncientObj.requireTags = requireTags;
-                    effRelicObj.requireTags = requireTags;
-                }
-                if (excludeTags.length > 0) {
-                    effAncientObj.excludeTags = excludeTags;
-                    effRelicObj.excludeTags = excludeTags;
-                }
+                if (requireTags.length > 0) { effAncientObj.requireTags = requireTags; effRelicObj.requireTags = requireTags; }
+                if (excludeTags.length > 0) { effAncientObj.excludeTags = excludeTags; effRelicObj.excludeTags = excludeTags; }
 
                 ancientEffects.push(effAncientObj);
                 relicEffects.push(effRelicObj);
@@ -592,12 +625,9 @@
             if (!orderDataSets[coreType]["고대"][17]) orderDataSets[coreType]["고대"][17] = [];
             if (!orderDataSets[coreType]["유물"][17]) orderDataSets[coreType]["유물"][17] = [];
 
-            const ancientObj = { effects: ancientEffects };
-            const relicObj = { effects: relicEffects };
-            if (groupId) {
-                ancientObj.groupId = groupId;
-                relicObj.groupId = groupId;
-            }
+            const ancientObj = { id: nodeGroupId, effects: ancientEffects };
+            const relicObj = { id: nodeGroupId, effects: relicEffects };
+            if (groupId) { ancientObj.groupId = groupId; relicObj.groupId = groupId; }
 
             orderDataSets[coreType]["고대"][17].push(ancientObj);
             orderDataSets[coreType]["유물"][17].push(relicObj);
@@ -627,41 +657,156 @@
                     }
                     const clonedEffects = JSON.parse(JSON.stringify(effects));
                     
-                    const nodeObj = { effects: clonedEffects };
-                    if (groupId) {
-                        nodeObj.groupId = groupId;
-                    }
+                    const nodeObj = { id: nodeGroupId, effects: clonedEffects };
+                    if (groupId) nodeObj.groupId = groupId;
 
                     orderDataSets[coreType][grade][pt].push(nodeObj);
                 });
             });
         }
 
+        const submitBtn = document.getElementById("btnOrderSubmit");
+        if (submitBtn) {
+            submitBtn.innerText = "+ 질서 코어 노드 추가";
+            submitBtn.style.background = "#fd7e14";
+            submitBtn.style.color = "white";
+        }
+        document.getElementById("btnOrderCancel").style.display = "none";
+
         updateOrderUI();
         document.getElementById("orderEffectsContainer").innerHTML = "";
         addOrderEffectRow();
     }
 
-    function deleteOrderNode(coreType, grade, nodePoint, index) {
-        if (confirm(`${coreType} 코어 [${grade} - ${nodePoint}pt] 항목을 삭제하시겠습니까?`)) {
-            if (orderDataSets[coreType] && orderDataSets[coreType][grade] && orderDataSets[coreType][grade][nodePoint]) {
-                orderDataSets[coreType][grade][nodePoint].splice(index, 1);
-                
-                if (orderDataSets[coreType][grade][nodePoint].length === 0) {
-                    delete orderDataSets[coreType][grade][nodePoint];
+    function editOrderNodeById(targetId) {
+        let foundType = null, foundPoint = null, ancientNode = null, relicNode = null;
+
+        for (const coreType in orderDataSets) {
+            for (const grade in orderDataSets[coreType]) {
+                for (const pt in orderDataSets[coreType][grade]) {
+                    const list = orderDataSets[coreType][grade][pt];
+                    if (Array.isArray(list)) {
+                        const item = list.find(node => node && node.id === targetId);
+                        if (item) {
+                            foundType = coreType;
+                            foundPoint = String(pt);
+                            if (grade === "고대") ancientNode = item;
+                            if (grade === "유물") relicNode = item;
+                        }
+                    }
                 }
+            }
+            if (ancientNode || relicNode) break;
+        }
+
+        if (!ancientNode && !relicNode) {
+            alert("수정할 노드 데이터를 찾지 못했습니다.");
+            return;
+        }
+
+        if (!ancientNode) ancientNode = relicNode;
+        if (!relicNode) relicNode = ancientNode;
+
+        editingOrderInfo = { id: targetId };
+
+        document.getElementById("coreType").value = foundType;
+        document.getElementById("groupId").value = ancientNode.groupId || "";
+        
+        const is18to20 = ["18", "19", "20"].includes(foundPoint);
+        const ptSelect = document.getElementById("nodePoint");
+        ptSelect.value = is18to20 ? "18-20" : foundPoint;
+
+        const container = document.getElementById("orderEffectsContainer");
+        container.innerHTML = "";
+
+        const is17pt = foundPoint === "17";
+
+        if (is17pt) {
+            const ancEffs = ancientNode.effects || [];
+            const relEffs = relicNode.effects || [];
+            const maxLen = Math.max(ancEffs.length, relEffs.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                const anc = ancEffs[i] || {};
+                const rel = relEffs[i] || {};
+                const cat = anc.category || rel.category || "적에게 주는 피해";
+                const reqTags = (anc.requireTags || rel.requireTags || []).join(", ");
+                const excTags = (anc.excludeTags || rel.excludeTags || []).join(", ");
+
+                addOrderEffectRow(cat, anc.val ?? "", rel.val ?? "", reqTags, excTags);
+            }
+        } else {
+            (ancientNode.effects || []).forEach(eff => {
+                const reqTags = (eff.requireTags || []).join(", ");
+                const excTags = (eff.excludeTags || []).join(", ");
+                addOrderEffectRow(eff.category, eff.val ?? "", "", reqTags, excTags);
+            });
+        }
+
+        const submitBtn = document.getElementById("btnOrderSubmit");
+        if (submitBtn) {
+            submitBtn.innerText = "✏️ 질서 코어 노드 수정 완료 (고대/유물 세트)";
+            submitBtn.style.background = "#ffc107";
+            submitBtn.style.color = "#212529";
+        }
+        document.getElementById("btnOrderCancel").style.display = "block";
+
+        document.getElementById("orderForm").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelOrderEdit() {
+        editingOrderInfo = null;
+        const submitBtn = document.getElementById("btnOrderSubmit");
+        if (submitBtn) {
+            submitBtn.innerText = "+ 질서 코어 노드 추가";
+            submitBtn.style.background = "#fd7e14";
+            submitBtn.style.color = "white";
+        }
+        document.getElementById("btnOrderCancel").style.display = "none";
+        document.getElementById("groupId").value = "";
+        document.getElementById("orderEffectsContainer").innerHTML = "";
+        addOrderEffectRow();
+    }
+
+    function deleteOrderNodeById(targetId, needUpdateUI = true) {
+        if (!targetId) return;
+        
+        if (needUpdateUI && !confirm("이 코어 노드를 삭제하시겠습니까?")) return;
+
+        let found = false;
+        for (const coreType in orderDataSets) {
+            for (const grade in orderDataSets[coreType]) {
+                for (const pt in orderDataSets[coreType][grade]) {
+                    const list = orderDataSets[coreType][grade][pt];
+                    if (Array.isArray(list)) {
+                        const initialLen = list.length;
+                        orderDataSets[coreType][grade][pt] = list.filter(node => node && node.id !== targetId);
+                        if (orderDataSets[coreType][grade][pt].length < initialLen) {
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (needUpdateUI) {
+            if (found) {
                 updateOrderUI();
+            } else {
+                alert("삭제할 노드를 찾지 못했습니다.");
             }
         }
     }
 
     function updateOrderUI() {
+        orderDataSets = sanitizeOrderDataStructure(orderDataSets);
         document.getElementById("jsonOrderOutput").value = JSON.stringify(orderDataSets, null, 4);
         
         const listContainer = document.getElementById("orderListPreview");
         listContainer.innerHTML = "";
 
         let hasData = false;
+        const processedIds = new Set();
 
         for (const coreType in orderDataSets) {
             for (const grade in orderDataSets[coreType]) {
@@ -670,17 +815,30 @@
                 sortedPoints.forEach(nodePoint => {
                     const nodeList = orderDataSets[coreType][grade][nodePoint];
                     if (Array.isArray(nodeList)) {
-                        nodeList.forEach((node, idx) => {
+                        nodeList.forEach((node) => {
+                            if (!node) return;
+                            
+                            // ID가 없더라도 임시 생성해서 UI 노출
+                            if (!node.id) {
+                                node.id = 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                            }
+
+                            const nodeId = node.id;
+                            if (processedIds.has(nodeId)) return;
+                            processedIds.add(nodeId);
+
                             hasData = true;
                             const effCount = node.effects ? node.effects.length : 0;
                             const gIdStr = node.groupId ? ` | Group: <span style="color:#20c997;">${node.groupId}</span>` : '';
                             
                             const div = document.createElement("div");
                             div.className = "list-item";
+                            
                             div.innerHTML = `
-                                <span><strong>[${coreType}] ${grade} ${nodePoint}pt</strong>${gIdStr} (${effCount}개 효과)</span>
+                                <span><strong>[${coreType}] ${nodePoint}pt</strong>${gIdStr} (${effCount}개 효과) <small style="color:#aaa;">[고대/유물 연동]</small></span>
                                 <div>
-                                    <button class="btn-del" onclick="deleteOrderNode('${coreType}', '${grade}', '${nodePoint}', ${idx})">삭제</button>
+                                    <button class="btn-edit" onclick="editOrderNodeById('${nodeId}')">수정</button>
+                                    <button class="btn-del" onclick="deleteOrderNodeById('${nodeId}', true)">삭제</button>
                                 </div>
                             `;
                             listContainer.appendChild(div);
@@ -695,19 +853,74 @@
         }
     }
 
-    // --- TAB 3: 고유 버프 / 스탯 로직 ---
-    function addBuffEffectRow(category = "적에게 주는 피해", val = "", tags = "", excludeTags = "") {
+    // --- TAB 3: 고유 버프 / 스탯 ---
+    function toggleBuffInputType(selectEl) {
+        const rowBox = selectEl.closest('.buff-card');
+        const fixedContainer = rowBox.querySelector('.val-fixed-container');
+        const formulaContainer = rowBox.querySelector('.val-formula-container');
+
+        if (selectEl.value === 'formula') {
+            fixedContainer.style.display = 'none';
+            formulaContainer.style.display = 'block';
+        } else {
+            fixedContainer.style.display = 'block';
+            formulaContainer.style.display = 'none';
+        }
+    }
+
+    function insertVariable(btn, varName) {
+        const container = btn.closest('.val-formula-container');
+        const input = container.querySelector('.buff-formula');
+        if (input) {
+            input.value += varName;
+            input.focus();
+        }
+    }
+
+    function addBuffEffectRow(category = "적에게 주는 피해", val = "", formula = "", tags = "", excludeTags = "") {
         const container = document.getElementById("buffEffectsContainer");
         const rowDiv = document.createElement("div");
         rowDiv.className = "card-box buff-card";
+
+        const isFormulaMode = Boolean(formula);
+
         rowDiv.innerHTML = `
             <div style="display: flex; gap: 8px; margin-bottom: 6px;">
                 <select class="buff-cat" style="flex: 2;">${getCategoryOptionsHtml(category)}</select>
-                <input type="number" step="any" class="buff-val" value="${val}" placeholder="수치 (예: 10 또는 1500)" style="flex: 1;">
+                <select class="buff-val-type" style="width: 110px; font-weight: bold; background: #eef2ff;" onchange="toggleBuffInputType(this)">
+                    <option value="fixed" ${!isFormulaMode ? 'selected' : ''}>고정 수치</option>
+                    <option value="formula" ${isFormulaMode ? 'selected' : ''}>🧮 수식 입력</option>
+                </select>
                 <button type="button" class="btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
             </div>
+
+            <div class="val-fixed-container" style="display: ${isFormulaMode ? 'none' : 'block'}; margin-bottom: 6px;">
+                <input type="number" step="any" class="buff-val" value="${val}" placeholder="수치 (예: 10 또는 1500)">
+            </div>
+
+            <div class="val-formula-container" style="display: ${isFormulaMode ? 'block' : 'none'}; margin-bottom: 6px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #6366f1;">
+                <input type="text" class="buff-formula" value="${formula}" placeholder="예: Math.min(finalMoveSpeed, 40) * 0.36" style="margin-bottom: 8px; font-family: monospace; font-weight: bold; border: 1px solid #6366f1;">
+                
+                <div style="font-size: 11px; color: #475569; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #e2e8f0; line-height: 1.45;">
+                    <div style="font-weight: bold; color: #4f46e5; margin-bottom: 4px;">ℹ️ 수식 입력 가이드 (특별한 계산이 필요한 경우)</div>
+                    <div style="background: #f1f5f9; padding: 6px; border-radius: 4px; margin-bottom: 6px;">
+                        <strong>📌 기본 사용 가능 변수:</strong><br>
+                        • <code>critRate</code> : 치명타 적중률 (%)<br>
+                        • <code>finalAtkSpeed</code> : 공격 속도 증가량 (%)<br>
+                        • <code>finalMoveSpeed</code> : 이동 속도 증가량 (%)
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #475569;">⚡ 변수 클릭 입력:</span>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'critRate')">+ critRate</button>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#0891b2;" onclick="insertVariable(this, 'finalAtkSpeed')">+ finalAtkSpeed</button>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#059669;" onclick="insertVariable(this, 'finalMoveSpeed')">+ finalMoveSpeed</button>
+                </div>
+            </div>
+
             <div style="display: flex; gap: 8px;">
-                <input type="text" class="buff-tags" value="${tags}" placeholder="적용 스킬 태그 (비워두면 전체 적용, 예: 우산, 급습)" style="flex: 1;">
+                <input type="text" class="buff-tags" value="${tags}" placeholder="적용 스킬 태그 (비워두면 전체 적용)" style="flex: 1;">
                 <input type="text" class="buff-exclude-tags" value="${excludeTags}" placeholder="제외 스킬 태그 (예: 기상)" style="flex: 1; border: 1px solid #dc3545;">
             </div>
         `;
@@ -716,35 +929,44 @@
 
     function addBuffToDatabase() {
         const name = document.getElementById("buffName").value.trim();
+        if (!name) { alert("버프 / 스탯 이름을 입력해 주세요!"); return; }
 
-        if (!name) { alert("버프 / 스탯명을 입력해 주세요!"); return; }
-
+        const cards = document.querySelectorAll("#buffEffectsContainer .buff-card");
         const effects = [];
-        document.querySelectorAll("#buffEffectsContainer .buff-card").forEach(box => {
-            const category = box.querySelector(".buff-cat").value;
-            const val = parseFloat(box.querySelector(".buff-val").value) || 0;
-            const targetTags = box.querySelector(".buff-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
-            const excludeTags = box.querySelector(".buff-exclude-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
 
-            let unit = "%";
-            if (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) {
-                unit = "";
+        cards.forEach(card => {
+            const category = card.querySelector(".buff-cat").value;
+            const type = card.querySelector(".buff-val-type").value;
+            const val = parseFloat(card.querySelector(".buff-val")?.value) || 0;
+            const formula = card.querySelector(".buff-formula")?.value.trim() || "";
+            const requireTags = card.querySelector(".buff-tags")?.value.split(",").map(s => s.trim()).filter(s => s.length > 0) || [];
+            const excludeTags = card.querySelector(".buff-exclude-tags")?.value.split(",").map(s => s.trim()).filter(s => s.length > 0) || [];
+
+            const effObj = { category };
+            if (type === 'formula') {
+                effObj.formula = formula;
+            } else {
+                effObj.val = val;
             }
-
-            const effObj = { category, val, unit };
-            if (targetTags.length > 0) effObj.targetTags = targetTags;
+            if (requireTags.length > 0) effObj.requireTags = requireTags;
             if (excludeTags.length > 0) effObj.excludeTags = excludeTags;
+
             effects.push(effObj);
         });
 
-        if (effects.length === 0) { alert("최소 1개 이상의 효과를 입력해 주세요!"); return; }
+        if (effects.length === 0) { alert("최소 1개 이상의 효과를 추가해 주세요!"); return; }
 
         const buffData = { name, effects };
 
         if (editingBuffIndex !== null) {
             buffDatabase[editingBuffIndex] = buffData;
             editingBuffIndex = null;
-            document.getElementById("btnBuffSubmit").innerText = "+ 버프 / 스탯 목록에 추가";
+            const btn = document.getElementById("btnBuffSubmit");
+            if (btn) {
+                btn.innerText = "+ 버프 / 스탯 목록에 추가";
+                btn.style.background = "#6f42c1";
+            }
+            document.getElementById("btnBuffCancel").style.display = "none";
         } else {
             buffDatabase.push(buffData);
         }
@@ -760,7 +982,7 @@
         buffDatabase.forEach((bf, idx) => {
             listContainer.innerHTML += `
                 <div class="list-item">
-                    <span><strong>${bf.name}</strong> (${bf.effects.length}개 효과)</span>
+                    <span><strong>${bf.name}</strong> (${bf.effects ? bf.effects.length : 0}개 효과)</span>
                     <div>
                         <button class="btn-edit" onclick="editBuff(${idx})">수정</button>
                         <button class="btn-del" onclick="deleteBuff(${idx})">삭제</button>
@@ -771,22 +993,39 @@
 
     function editBuff(index) {
         const bf = buffDatabase[index];
-        editingBuffIndex = index;
+        if (!bf) return;
 
-        document.getElementById("buffName").value = bf.name;
+        editingBuffIndex = index;
+        document.getElementById("buffName").value = bf.name || "";
 
         const container = document.getElementById("buffEffectsContainer");
         container.innerHTML = "";
-        bf.effects.forEach(eff => {
-            addBuffEffectRow(
-                eff.category,
-                eff.val,
-                eff.targetTags ? eff.targetTags.join(", ") : "",
-                eff.excludeTags ? eff.excludeTags.join(", ") : ""
-            );
+
+        (bf.effects || []).forEach(eff => {
+            const reqTags = (eff.requireTags || []).join(", ");
+            const excTags = (eff.excludeTags || []).join(", ");
+            addBuffEffectRow(eff.category, eff.val ?? "", eff.formula ?? "", reqTags, excTags);
         });
 
-        document.getElementById("btnBuffSubmit").innerText = "✏️ 버프 / 스탯 수정 완료";
+        const btn = document.getElementById("btnBuffSubmit");
+        if (btn) {
+            btn.innerText = "✏️ 버프 / 스탯 수정 완료";
+            btn.style.background = "#ffc107";
+        }
+        document.getElementById("btnBuffCancel").style.display = "block";
+
+        document.getElementById("buffForm").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelBuffEdit() {
+        editingBuffIndex = null;
+        const btn = document.getElementById("btnBuffSubmit");
+        if (btn) {
+            btn.innerText = "+ 버프 / 스탯 목록에 추가";
+            btn.style.background = "#6f42c1";
+        }
+        document.getElementById("btnBuffCancel").style.display = "none";
+        resetBuffForm();
     }
 
     function deleteBuff(index) {
@@ -799,16 +1038,12 @@
         addBuffEffectRow();
     }
 
-    // --- TAB 4: 직업 특화 설정 로직 ---
+    // --- TAB 4: 직업 특화 설정 ---
     function saveSpecData() {
         const coefficient = parseFloat(document.getElementById("specCoefficient").value) || 0;
         const targetTags = document.getElementById("specTargetTags").value.split(",").map(t => t.trim()).filter(t => t.length > 0);
 
-        specializationData = {
-            coefficient: coefficient,
-            targetTags: targetTags
-        };
-
+        specializationData = { coefficient, targetTags };
         updateSpecUI();
         alert("특화 설정이 저장되었습니다!");
     }
@@ -828,7 +1063,7 @@
         `;
     }
 
-    // --- 공통 Utility ---
+    // --- Utility ---
     function copyJson(elementId) {
         const textarea = document.getElementById(elementId);
         if(!textarea.value) { alert("데이터가 없습니다!"); return; }
@@ -856,7 +1091,7 @@
             try {
                 const parsed = JSON.parse(e.target.result);
                 if (type === 'skill') { skillDatabase = parsed; updateSkillUI(); }
-                else if (type === 'order') { orderDataSets = parsed; updateOrderUI(); }
+                else if (type === 'order') { orderDataSets = sanitizeOrderDataStructure(parsed); updateOrderUI(); }
                 else if (type === 'buff') { buffDatabase = parsed; updateBuffUI(); }
                 else if (type === 'spec') { specializationData = parsed; updateSpecUI(); }
                 alert("성공적으로 불러왔습니다!");
@@ -873,7 +1108,8 @@
                 skillDatabase = JSON.parse(document.getElementById("jsonSkillOutput").value);
                 updateSkillUI();
             } else if (type === 'order') {
-                orderDataSets = JSON.parse(document.getElementById("jsonOrderOutput").value);
+                const parsed = JSON.parse(document.getElementById("jsonOrderOutput").value);
+                orderDataSets = sanitizeOrderDataStructure(parsed);
                 updateOrderUI();
             } else if (type === 'buff') {
                 buffDatabase = JSON.parse(document.getElementById("jsonBuffOutput").value);
@@ -891,13 +1127,13 @@
     function resetData(type) {
         if (confirm("정말로 모든 데이터를 삭제하시겠습니까?")) {
             if (type === 'skill') { skillDatabase = []; updateSkillUI(); resetSkillForm(); }
-            else if (type === 'order') { orderDataSets = { "해": { "고대": {}, "유물": {} }, "달": { "고대": {}, "유물": {} }, "별": { "고대": {}, "유물": {} } }; updateOrderUI(); }
+            else if (type === 'order') { orderDataSets = createEmptyOrderStructure(); updateOrderUI(); }
             else if (type === 'buff') { buffDatabase = []; updateBuffUI(); resetBuffForm(); }
             else if (type === 'spec') { specializationData = { coefficient: 0, targetTags: [] }; updateSpecUI(); }
         }
     }
 
-    // 초기 실행
+    // 페이지 로드 시 초기 실행
     addTripodCard();
     addOrderEffectRow();
     addBuffEffectRow();

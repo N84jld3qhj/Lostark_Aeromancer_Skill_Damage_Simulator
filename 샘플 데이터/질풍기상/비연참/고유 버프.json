@@ -44,8 +44,7 @@
         "effects": [
             {
                 "category": "치명타 적중률",
-                "val": 12,
-                "unit": "%"
+                "formula": "Math.min(finalMoveSpeed,40)*0.3"
             }
         ]
     },
@@ -54,8 +53,7 @@
         "effects": [
             {
                 "category": "치명타 피해",
-                "val": 48,
-                "unit": "%"
+                "formula": "Math.min(finalAtkSpeed,40)*1.2"
             }
         ]
     },
