@@ -2458,7 +2458,8 @@
         // 미니 모달 업데이트
         // ----------------------------------------------------
         try {
-            const metricsGrid = resultSection.querySelector('details div style*="grid"');
+            // 💡 style*="grid" -> [style*="grid"] 로 대괄호 추가!
+            const metricsGrid = resultSection.querySelector('details div[style*="grid"]'); 
             if (metricsGrid && typeof updateMiniResultModal === 'function') {
                 updateMiniResultModal(metricsGrid.outerHTML);
             }
