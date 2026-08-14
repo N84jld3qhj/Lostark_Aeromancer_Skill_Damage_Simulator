@@ -89,13 +89,24 @@
         "constant": 31143,
         "coefficient": 165.52,
         "baseCooldown": 22,
-        "mana": 0,
         "tags": [
             "공간 가르기",
             "우산",
             "타대"
         ],
-        "tripods": []
+        "tripods": [
+            {
+                "tier": 1,
+                "name": "깨달음 - 공간 가르기",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 200,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "우레바람",
@@ -109,7 +120,41 @@
             "우산",
             "타대"
         ],
-        "tripods": []
+        "tripods": [
+            {
+                "tier": 1,
+                "name": "도약 - 풀려난 힘",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 15,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 1,
+                "name": "도약 - 잠재력 해방",
+                "effects": [
+                    {
+                        "category": "쿨타임 감소",
+                        "val": 8,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "도약 - 단련된 가르기",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 70,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
     },
     {
         "name": "바람송곳",
