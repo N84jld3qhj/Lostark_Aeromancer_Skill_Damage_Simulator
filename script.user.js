@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.0.4
+// @version      1.0.5
 // @description  로펙 시뮬레이터 DOM 데이터를 읽어와 실시간으로 입력된 세팅을 기준으로 스킬 데미지 시뮬레이션을 제공합니다. 
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -222,7 +222,7 @@
             { name: "숙련", id: 6, max: 30, current: 0, effects: [] }
         ],
         [
-            { name: "끝없는 마나", id: 16, max: 2, current: 0, effects: [{ type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] },
+            { name: "끝없는 마나", id: 16, max: 2, current: 0, effects: [{ type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }],requireTags: ["마나"] },
             { name: "금단의 주문", id: 12, max: 2, current: 0, effects:
                 [
                 { type: "진화형 피해", valuePerLevel: 5, requireTags: [] },
@@ -234,7 +234,7 @@
             { name: "축복의 여신", id: 19, max: 3, current: 0, effects: [] }
         ],
         [
-            { name: "무한한 마력", id: 14, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 8 }, { type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] },
+            { name: "무한한 마력", id: 14, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 8 }, { type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }],requireTags: ["마나"]},
             { name: "혼신의 강타", id: 27, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 2 }, { type: "치명타 적중률", valuePerLevel: 12 }] },
             { name: "일격", id: 32, max: 2, current: 0, effects: [
                 
@@ -901,32 +901,49 @@
         return (coefficient * atk + constant) * 0.76 * defenseRatio;
     }
 
-    function getArkEvolutionStats(skillName, skillTags = []) {
+    function getArkEvolutionStats() {
         let arkStats = {};
-        evolutionNodes.forEach((row, rowIndex) => {
-            row.forEach((node) => {
-                if (node.current <= 0) return;
-                const tierName = `${rowIndex + 1}티어`;
 
-                if (node.effects && node.effects.length > 0) {
+        evolutionNodes.forEach(tier => {
+            tier.forEach(node => {
+                // 노드가 활성화(level/current > 0)되어 있는지 확인
+                const nodeLevel = node.current || node.level || 0;
+                if (nodeLevel <= 0) return;
+
+                // 노드 상위에 설정된 태그 조건 추출
+                const nodeReqTags = node.requireTags || node.requireSkillTags || [];
+                const nodeExTags = node.excludeTags || node.excludeSkillTags || [];
+
+                if (Array.isArray(node.effects)) {
                     node.effects.forEach(eff => {
-                        const catName = eff.type;
-                        const calculatedVal = node.current * eff.valuePerLevel;
-                        const isRawStat = ["치명", "신속", "특화", "제압", "인내", "숙련"].includes(catName);
-                        const unitStr = isRawStat ? "" : "%";
+                        // 🌟 핵심: 노드 레벨의 태그와 effect 레벨의 태그를 병합
+                        const effReqTags = eff.requireTags || eff.requireSkillTags || eff.targetTags || [];
+                        const effExTags = eff.excludeTags || eff.excludeSkillTags || [];
 
-                        if (!arkStats[catName]) arkStats[catName] = [];
-                        arkStats[catName].push({
-                            source: `아크 패시브(진화 ${tierName}): ${node.name} [${node.current}/${node.max}LV]`,
-                            val: parseFloat(calculatedVal.toFixed(2)),
-                            unit: unitStr,
-                            // 🌟 태그 조건 정보도 함께 수집해서 전달!
-                            requireTags: eff.requireTags || [],
+                        const mergedReqTags = [...new Set([...nodeReqTags, ...effReqTags])];
+                        const mergedExTags = [...new Set([...nodeExTags, ...effExTags])];
+
+                        // 효과 수치 계산
+                        const valPerLvl = eff.valuePerLevel || eff.val || 0;
+                        const totalVal = valPerLvl * nodeLevel;
+
+                        if (totalVal === 0 && !eff.type) return;
+
+                        const cat = eff.type || eff.category;
+                        if (!arkStats[cat]) arkStats[cat] = [];
+
+                        arkStats[cat].push({
+                            source: `아크 패시브(진화): ${node.name} [Lv.${nodeLevel}]`,
+                            val: totalVal,
+                            unit: eff.unit || "%",
+                            requireTags: mergedReqTags,  // 🔥 병합된 필요 태그 전달
+                            excludeTags: mergedExTags   // 🔥 병합된 제외 태그 전달
                         });
                     });
                 }
             });
         });
+
         return arkStats;
     }
 
@@ -1345,51 +1362,86 @@
         };
     }
 
-    // =============================================================================
-    // 5. 핵심 스탯 및 데미지 연산 엔진
-    // =============================================================================
-   function calculateSkillStats(inputs) {
 
+    /**
+     * 1. 스킬 태그 조건 매칭 공통 검증 함수
+     */
+    function isTagMatching(skillTags = [], skillName = "", parentObj = {}, childObj = null) {
+        const safeSkillTags = Array.isArray(skillTags) ? skillTags : [];
+        const child = childObj || {};
+
+        const excludeList = [
+            ...(parentObj.excludeTags || []),
+            ...(parentObj.excludeSkillTags || []),
+            ...(child.excludeTags || []),
+            ...(child.excludeSkillTags || [])
+        ];
+
+        if (excludeList.some(t => safeSkillTags.includes(t) || t === skillName)) {
+            return false;
+        }
+
+        const targetSkills = [
+            ...(parentObj.skills || []),
+            ...(child.skills || [])
+        ];
+
+        if (targetSkills.length > 0 && targetSkills.includes(skillName)) {
+            return true;
+        }
+
+        const requireList = [
+            ...(parentObj.requireTags || []),
+            ...(parentObj.requireSkillTags || []),
+            ...(parentObj.targetTags || []),
+            ...(child.requireTags || []),
+            ...(child.requireSkillTags || []),
+            ...(child.targetTags || [])
+        ];
+
+        if (requireList.length === 0 && targetSkills.length === 0) {
+            return true;
+        }
+
+        return requireList.some(t => safeSkillTags.includes(t) || t === skillName);
+    }
+
+    /**
+     * 2. 공통 스탯 수집 함수 (스킬 조건이 없는 무조건 적용 스탯 1회 계산)
+     */
+    function getCommonStats(inputs) {
         const partyCritBonus = (window.partyCritCount || 0) * STAT_CONSTANTS.PARTY_CRIT_SYNERGY_PER_PLAYER;
         let commonStats = {
-            "주스탯":[], "주스탯 %":[],"치명": [], "신속": [],"특화":[],
+            "주스탯":[], "주스탯 %":[], "치명": [], "신속": [], "특화":[],
             "무기 공격력": [], "무기 공격력 %": [], "기본 공격력": [], "기본 공격력 %": [], "공격력": [], "공격력 %": [],
             "진화형 피해": [], "추가 피해": [],
             "치명타 적중률": [], "치명타 피해": [], "치명타 시 적에게 주는 피해": [],
             "적에게 주는 피해": [], "방어력 무시":[],
             "이동 속도": [], "공격 속도": [], "쿨타임 감소": [],
-            "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소": [],"고정 쿨타임 증가":[]
+            "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소": [], "고정 쿨타임 증가":[]
         };
 
-        // 🌟 1. ADD_STAT_BASE가 배열이면 그대로 쓰고, 객체면 배열로 변환해서 안전하게 확보
         const statList = Array.isArray(window.ADD_STAT_BASE)
             ? window.ADD_STAT_BASE
             : Object.values(window.ADD_STAT_BASE || {});
 
-        // 🌟 2. 공통 스탯 등록 (태그 조건이 없는 순수 공통 스탯만 commonStats에 수집)
+        // ADD_STAT_BASE (조건 태그가 없는 純 공통 스탯 수집)
         statList.forEach(item => {
             if (!item) return;
 
-            // A. 새로 변경된 구조: [{ name, effects: [{ category, val, unit, targetTags, requireTags, excludeTags }] }]
             if (Array.isArray(item.effects)) {
                 item.effects.forEach(eff => {
-                    const hasTagCondition = (eff.targetTags && eff.targetTags.length > 0) || 
-                                        (eff.requireTags && eff.requireTags.length > 0) || 
-                                        (eff.excludeTags && eff.excludeTags.length > 0) ||
-                                        (eff.excludeSkillTags && eff.excludeSkillTags.length > 0);
+                    const hasTagCondition = (eff.targetTags?.length > 0) || (eff.requireTags?.length > 0) || 
+                                            (eff.excludeTags?.length > 0) || (eff.excludeSkillTags?.length > 0) ||
+                                            (item.requireTags?.length > 0) || (item.excludeTags?.length > 0);
                     
-                    // 태그 조건이 없고, 수식이 아닌 경우에만 공통 스탯에 사전 추가
-                    if (!hasTagCondition && !eff.formula) {
+                    if (!hasTagCondition && !eff.formula && !item.formula) {
                         addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
                     }
                 });
-            }
-            // B. 기존 객체 구조 예외 처리: { category, name, value, unit }
-            else if (item.category) {
-                const hasTagCondition = (item.targetTags && item.targetTags.length > 0) || 
-                                    (item.requireTags && item.requireTags.length > 0) || 
-                                    (item.excludeTags && item.excludeTags.length > 0) ||
-                                    (item.excludeSkillTags && item.excludeSkillTags.length > 0);
+            } else if (item.category) {
+                const hasTagCondition = (item.targetTags?.length > 0) || (item.requireTags?.length > 0) || 
+                                        (item.excludeTags?.length > 0) || (item.excludeSkillTags?.length > 0);
                 
                 if (!hasTagCondition && !item.formula) {
                     addStat(commonStats, item.category, item.name, item.value, item.unit);
@@ -1401,94 +1453,58 @@
             addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
         }
 
-        // 방어구 주스탯 합산
+        // 방어구 주스탯
         addStat(commonStats, "주스탯", "투구", inputs.headStat, "");
         addStat(commonStats, "주스탯", "견갑", inputs.shoulderStat, "");
         addStat(commonStats, "주스탯", "상의", inputs.topStat, "");
         addStat(commonStats, "주스탯", "하의", inputs.bottomStat, "");
         addStat(commonStats, "주스탯", "장갑", inputs.gloveStat, "");
 
-        // 무기 공격력 합산
+        // 무기 및 에스더
         const weaponLabel = inputs.isEsther ? `에스더 무기 (엘라 ${inputs.estherElla ?? 0})` : "무기";
         addStat(commonStats, "무기 공격력", weaponLabel, inputs.weaponAtk, "");
 
-        // 에스더 결속 데이터 정의
         const estherBonding1Data = [145983, 153282, 257503, 453359];
         const estherBonding2Data = [3946, 4305, 7250, 16450];
 
         if (inputs.isEsther) {
             const ellaLvl = inputs.estherElla ?? 0;
-
-            if (window.estherBonding1) {
-                const bonding1Stat = estherBonding1Data[ellaLvl] || 0;
-                if (bonding1Stat > 0) {
-                    addStat(commonStats, "주스탯", `에스더 결속 1단계 (엘라 ${ellaLvl})`, bonding1Stat, "");
-                }
+            if (window.estherBonding1 && estherBonding1Data[ellaLvl] > 0) {
+                addStat(commonStats, "주스탯", `에스더 결속 1단계 (엘라 ${ellaLvl})`, estherBonding1Data[ellaLvl], "");
             }
-
-            if (window.estherBonding2) {
-                const bonding2Stat = estherBonding2Data[ellaLvl] || 0;
-                if (bonding2Stat > 0) {
-                    addStat(commonStats, "공격력", `에스더 결속 2단계 (엘라 ${ellaLvl})`, bonding2Stat, "");
-                }
+            if (window.estherBonding2 && estherBonding2Data[ellaLvl] > 0) {
+                addStat(commonStats, "공격력", `에스더 결속 2단계 (엘라 ${ellaLvl})`, estherBonding2Data[ellaLvl], "");
             }
         }
 
-        // 완갑 데이터 처리
+        // 완갑
         if (inputs.vambraceData) {
-            const weaponAtk = inputs.vambraceData.무기공격력 || 0;
-            if (weaponAtk > 0) addStat(commonStats, "무기 공격력", "완갑", weaponAtk, "");
-
-            const mainStat = inputs.vambraceData.주스탯 || 0;
-            if (mainStat > 0) addStat(commonStats, "주스탯", "완갑", mainStat, "");
-
-            const baseAtk = inputs.vambraceData.기본공격력 || 0;
-            if (baseAtk > 0) addStat(commonStats, "기본 공격력", "완갑", baseAtk, "");
+            if (inputs.vambraceData.무기공격력 > 0) addStat(commonStats, "무기 공격력", "완갑", inputs.vambraceData.무기공격력, "");
+            if (inputs.vambraceData.주스탯 > 0) addStat(commonStats, "주스탯", "완갑", inputs.vambraceData.주스탯, "");
+            if (inputs.vambraceData.기본공격력 > 0) addStat(commonStats, "기본 공격력", "완갑", inputs.vambraceData.기본공격력, "");
         }
 
-        // 완갑 등급별 기본 공격력 %
         const vambraceGradeAtkMap = { "영웅": 0, "전설": 1, "유물": 2, "고대": 3 };
-        const vambraceGrade = inputs.vambraceGrade || "영웅";
-        const vambraceNormalAtkPercent = vambraceGradeAtkMap[vambraceGrade] ?? 0;
-
+        const vambraceNormalAtkPercent = vambraceGradeAtkMap[inputs.vambraceGrade || "영웅"] ?? 0;
         if (vambraceNormalAtkPercent > 0) {
             addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", vambraceNormalAtkPercent, "%");
         }
 
-        // 아크 패시브 진화
+        // 아크 패시브 (진화 Rank / 깨달음 Level)
         const evolutionData = inputs?.arkPassive?.["진화"] || inputs?.arkPassive?.evolution;
-        let evolutionRank = 0;
-
-        if (typeof evolutionData === "object" && evolutionData !== null) {
-            evolutionRank = Number(evolutionData.rank) || 0;
-        } else {
-            evolutionRank = Number(inputs?.arkPassive?.evolutionRank) || 0;
-        }
-
+        const evolutionRank = typeof evolutionData === "object" && evolutionData !== null ? Number(evolutionData.rank) || 0 : Number(inputs?.arkPassive?.evolutionRank) || 0;
         if (evolutionRank > 0) {
-            const STAT_PER_RANK = 1;
-            const statValue = Number((evolutionRank * STAT_PER_RANK).toFixed(2));
-            addStat(commonStats, "진화형 피해", `아크 패시브 진화 (Rank.${evolutionRank})`, statValue, "%");
+            addStat(commonStats, "진화형 피해", `아크 패시브 진화 (Rank.${evolutionRank})`, Number((evolutionRank * 1).toFixed(2)), "%");
         }
 
-        // 아크 패시브 깨달음
         const enlightenData = inputs?.arkPassive?.["깨달음"] || inputs?.arkPassive?.enlighten;
         let enlightenLevel = 0;
-
-        if (typeof enlightenData === "object" && enlightenData !== null) {
-            enlightenLevel = Number(enlightenData.level) || 0;
-        } else if (Array.isArray(enlightenData)) {
-            const atkNode = enlightenData.find(node =>
-                node.name && (node.name.includes("무기 공격력") || node.name.includes("깨달음"))
-            );
-            enlightenLevel = Number(atkNode?.level) || 0;
-        } else {
-            enlightenLevel = Number(inputs?.arkPassive?.enlightenLevel) || 0;
-        }
+        if (typeof enlightenData === "object" && enlightenData !== null) enlightenLevel = Number(enlightenData.level) || 0;
+        else if (Array.isArray(enlightenData)) enlightenLevel = Number(enlightenData.find(n => n.name?.includes("무기 공격력") || n.name?.includes("깨달음"))?.level) || 0;
+        else enlightenLevel = Number(inputs?.arkPassive?.enlightenLevel) || 0;
 
         if (enlightenLevel > 0) {
-            const statValue = Number((enlightenLevel * 0.1).toFixed(2));
-            addStat(commonStats, "무기 공격력 %", `아크 패시브 깨달음 (Lv.${enlightenLevel})`, statValue, "%");
+            addStat(commonStats, "무기 공격력 %", `아크 패시브 깨달음 (Lv.${enlightenLevel})`, Number((enlightenLevel * 0.1).toFixed(2)), "%");
         }
 
         // 장신구
@@ -1497,18 +1513,14 @@
             addStat(commonStats, "주스탯", acc.name, acc.statValue, "");
             acc.slots.forEach((slot, idx) => {
                 if (!slot || !slot.opt || slot.opt === "none" || slot.opt === "없음") return;
-
                 let rawKey = slot.opt.trim();
                 let matchedKey = Object.keys(accessoryTable).find(k => k.trim() === rawKey);
 
                 if (!matchedKey) {
-                    if (rawKey.includes("아군 공격력") || rawKey.includes("아공강")) {
-                        matchedKey = Object.keys(accessoryTable).find(k => k.includes("아군 공격력")) || "아군 공격력 강화 효과 %";
-                    } else if (rawKey.includes("아군 피해") || rawKey.includes("아피강")) {
-                        matchedKey = Object.keys(accessoryTable).find(k => k.includes("아군 피해")) || "아군 피해 강화 효과 %";
-                    } else if (rawKey.includes("낙인력")) {
-                        matchedKey = Object.keys(accessoryTable).find(k => k.includes("낙인력")) || "낙인력 %";
-                    } else if (rawKey.includes("무기 공격력") && rawKey.includes("%")) matchedKey = "무기 공격력 %";
+                    if (rawKey.includes("아군 공격력") || rawKey.includes("아공강")) matchedKey = Object.keys(accessoryTable).find(k => k.includes("아군 공격력")) || "아군 공격력 강화 효과 %";
+                    else if (rawKey.includes("아군 피해") || rawKey.includes("아피강")) matchedKey = Object.keys(accessoryTable).find(k => k.includes("아군 피해")) || "아군 피해 강화 효과 %";
+                    else if (rawKey.includes("낙인력")) matchedKey = Object.keys(accessoryTable).find(k => k.includes("낙인력")) || "낙인력 %";
+                    else if (rawKey.includes("무기 공격력") && rawKey.includes("%")) matchedKey = "무기 공격력 %";
                     else if (rawKey.includes("무기 공격력")) matchedKey = "무기 공격력";
                     else if (rawKey.includes("공격력") && rawKey.includes("%")) matchedKey = "공격력 %";
                     else if (rawKey.includes("공격력")) matchedKey = "공격력";
@@ -1520,8 +1532,7 @@
 
                 if (matchedKey && accessoryTable[matchedKey]?.[slot.grade] !== undefined) {
                     const val = accessoryTable[matchedKey][slot.grade];
-                    const isPercent = matchedKey.includes("%") || percentStatList.includes(matchedKey);
-                    const unit = isPercent ? "%" : "";
+                    const unit = (matchedKey.includes("%") || percentStatList.includes(matchedKey)) ? "%" : "";
                     addStat(commonStats, matchedKey, `장신구: ${acc.name} (슬롯${idx + 1}) [${matchedKey} - ${slot.grade}]`, val, unit);
                 }
             });
@@ -1532,53 +1543,31 @@
         addStat(commonStats, "추가 피해", "젬: 추가 피해", inputs.gems.addDmg);
         addStat(commonStats, "적에게 주는 피해", "젬: 보스 피해", inputs.gems.bossDmg);
 
-        // 스킬 보석
-        const skillGemMap = {};
-        inputs.skillGems.forEach(gem => {
-            const gemAtkVal = gemDataTable["공증"]?.[gem.level] || 0;
-            if (gemAtkVal > 0) {
-                const sourceText = `보석(${gem.type}): ${gem.skillName} [${gem.level}레벨]`;
-                addStat(commonStats, "기본 공격력 %", sourceText, parseFloat(gemAtkVal.toFixed(2)));
-            }
-
-            if (!skillGemMap[gem.skillName]) skillGemMap[gem.skillName] = [];
-            skillGemMap[gem.skillName].push({ type: gem.type, level: gem.level });
-        });
-
         // 혼돈 코어
         ['Sun', 'Moon', 'Star'].forEach(target => {
             const coresObj = inputs?.chaosCores || {};
             const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
             const coreInfo = coresObj[targetKey];
-
             if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착') return;
 
-            const { grade, level } = coreInfo;
-            const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
+            const matchedGrade = coreInfo.grade.includes('고대') ? '고대' : (coreInfo.grade.includes('유물') ? '유물' : null);
             if (!matchedGrade) return;
 
             const data = chaosDataSets[matchedGrade]?.[target.toLowerCase()];
-
             if (data) {
                 coreLevels.forEach(lvl => {
-                    if (Number(level) >= lvl && Array.isArray(data[lvl])) {
+                    if (Number(coreInfo.level) >= lvl && Array.isArray(data[lvl])) {
                         data[lvl].forEach(opt => {
-                            const unit = opt.type === "공격력" ? "" : "%";
-                            addStat(commonStats, opt.type, `혼돈 코어(${target}) Lv.${lvl} [${grade}]`, opt.value, unit);
+                            addStat(commonStats, opt.type, `혼돈 코어(${target}) Lv.${lvl} [${coreInfo.grade}]`, opt.value, opt.type === "공격력" ? "" : "%");
                         });
                     }
                 });
             }
         });
 
-        // 팔찌 스탯
-        [
-            ['crit', '치명'],
-            ['swift', '신속'],
-            ['mainStat', '주스탯']
-        ].forEach(([key, category]) => {
-            const val = inputs.bracelet?.[key];
-            if (val) addStat(commonStats, category, "팔찌", val, "");
+        // 팔찌
+        [['crit', '치명'], ['swift', '신속'], ['mainStat', '주스탯']].forEach(([key, category]) => {
+            if (inputs.bracelet?.[key]) addStat(commonStats, category, "팔찌", inputs.bracelet[key], "");
         });
 
         (inputs?.bracelet?.options || []).forEach((opt, i) => {
@@ -1588,488 +1577,358 @@
                     for (let eff in optionData) {
                         addStat(commonStats, eff, `팔찌 옵션 ${i + 1} (${opt.opt} - ${opt.grade})`, optionData[eff]);
                     }
-                } else {
-                    console.warn(`[팔찌 옵션 매칭 실패] 원본: "${opt.opt}", 등급: "${opt.grade}"`);
                 }
             }
         });
 
-        let allSkillResults = [];
+        return commonStats;
+    }
 
-        // =============================================================================
-        // 스킬별 계산 루프
-        // =============================================================================
-        window.skillDatabase.forEach((skillData) => {
-            const {
-                name: skillName,
-                tags: skillTags = [],
-                coefficient,
-                constant,
-                baseCooldown = 0,
-                mana,
-                tripods: currentTripods = []
-            } = skillData;
+    /**
+     * 3. 스킬별 조건부 스탯 합성 함수 (트포, 각인, 아크패시브, 질서코어 등 태그 연산)
+     */
+    function getSkillAppliedStats(skillData, commonStats, inputs, skillGemMap) {
+        const { name: skillName, tags: skillTags = [], tripods: currentTripods = [] } = skillData;
 
-            let stats = {};
-            for (let key in commonStats) {
-                stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
-            }
+        let stats = {};
+        for (let key in commonStats) {
+            stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
+        }
 
-            // 🌟 [수정 포인트 1] 지연 수식 계산용 임시 저장 배열
-            const pendingFormulas = [];
+        const pendingFormulas = [];
+        const statList = Array.isArray(window.ADD_STAT_BASE) ? window.ADD_STAT_BASE : Object.values(window.ADD_STAT_BASE || {});
 
-            // 🌟 [수정 포인트 2] ADD_STAT_BASE의 태그 조건부 스탯 & 수식 분류 처리
-            statList.forEach(item => {
-                if (!item) return;
+        // A. ADD_STAT_BASE 스킬 조건부 스탯
+        statList.forEach(item => {
+            if (!item) return;
 
-                const checkAndAddEffect = (eff, name) => {
-                    const exTags = eff.excludeTags || eff.excludeSkillTags || [];
-                    if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) return;
+            const checkAndAdd = (eff, name) => {
+                if (!isTagMatching(skillTags, skillName, item, eff)) return;
 
-                    const reqTags = eff.targetTags || eff.requireTags || eff.requireSkillTags || [];
-                    const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag) || tag === skillName);
+                const hasTagCondition = (eff.targetTags?.length > 0) || (eff.requireTags?.length > 0) || 
+                                        (eff.excludeTags?.length > 0) || (eff.excludeSkillTags?.length > 0) ||
+                                        (item.requireTags?.length > 0) || (item.excludeTags?.length > 0);
 
-                    if (isMatch) {
-                        // formula 수식이 지정된 경우
-                        const formulaStr = eff.formula || item.formula;
-                        if (formulaStr) {
-                            pendingFormulas.push({
-                                category: eff.category || eff.type || item.category || item.type,
-                                name: name,
-                                formula: formulaStr,
-                                unit: eff.unit ?? item.unit ?? "%"
-                            });
-                        } 
-                        // 수식 없이 태그 조건만 만족하는 경우 (조건이 있든 없든 isMatch=true일 때 정상 반영)
-                        else {
-                            const val = eff.val ?? eff.value ?? item.val ?? item.value;
-                            if (val !== undefined && (reqTags.length > 0 || exTags.length > 0)) {
-                                addStat(stats, eff.category || eff.type, name, val, eff.unit ?? "%");
-                            }
-                        }
-                    }
-                };
+                const formulaStr = eff.formula || item.formula;
+                if (formulaStr) {
+                    pendingFormulas.push({
+                        category: eff.category || eff.type || item.category || item.type,
+                        name: name,
+                        formula: formulaStr,
+                        unit: eff.unit ?? item.unit ?? "%"
+                    });
+                } else if (hasTagCondition) {
+                    const val = eff.val ?? eff.value ?? item.val ?? item.value;
+                    if (val !== undefined) addStat(stats, eff.category || eff.type, name, val, eff.unit ?? "%");
+                }
+            };
 
-                if (Array.isArray(item.effects)) {
-                    item.effects.forEach(eff => checkAndAddEffect(eff, item.name));
-                } else if (item.category || item.type || item.formula) {
-                    checkAndAddEffect(item, item.name);
+            if (Array.isArray(item.effects)) item.effects.forEach(eff => checkAndAdd(eff, item.name));
+            else if (item.category || item.type || item.formula) checkAndAdd(item, item.name);
+        });
+
+        // B. 트라이포드
+        if (Array.isArray(currentTripods)) {
+            currentTripods.forEach(tp => {
+                const sourceType = `트라이포드(${tp.tier ? tp.tier + '트포 - ' : ''}${tp.name})`;
+                if (Array.isArray(tp.effects)) {
+                    tp.effects.forEach(eff => {
+                        if (isTagMatching(skillTags, skillName, tp, eff)) addStat(stats, eff.category, sourceType, eff.val, eff.unit ?? "%");
+                    });
+                } else if (tp.category && tp.val !== undefined && isTagMatching(skillTags, skillName, tp)) {
+                    addStat(stats, tp.category, sourceType, tp.val, tp.unit ?? "%");
                 }
             });
+        }
 
-            // ★ 2. 트라이포드 적용
-            if (Array.isArray(currentTripods)) {
-                currentTripods.forEach(tp => {
-                    const exTags = tp.excludeTags || tp.excludeSkillTags || [];
-                    if (exTags.some(tag => skillTags.includes(tag))) return;
+        // C. 각인
+        inputs.engravings.forEach(eng => {
+            if (!eng || eng.name === "none" || eng.level === "미사용") return;
+            const engData = engravingTable[eng.name];
+            if (!engData || !isTagMatching(skillTags, skillName, engData)) return;
 
-                    const reqTags = tp.requireTags || tp.requireSkillTags || (tp.requiredTag ? [tp.requiredTag] : []);
-                    if (reqTags.length > 0 && !reqTags.some(tag => skillTags.includes(tag))) return;
+            const levelEffects = engData.levels?.[eng.level] || [];
+            const stoneEffects = engData.stone?.[eng.stone] || [];
 
-                    const sourceType = `트라이포드(${tp.tier ? tp.tier + '트포 - ' : ''}${tp.name})`;
-
-                    if (Array.isArray(tp.effects)) {
-                        tp.effects.forEach(eff => {
-                            addStat(stats, eff.category, sourceType, eff.val, eff.unit ?? "%");
-                        });
-                    } else if (tp.category && tp.val !== undefined) {
-                        addStat(stats, tp.category, sourceType, tp.val, tp.unit ?? "%");
-                    }
-                });
+            if (eng.name === "돌격대장") {
+                const raidFactor = (levelEffects[0]?.val || 0) + (stoneEffects[0]?.val || 0);
+                if (raidFactor > 0) {
+                    stats["_돌격대장계수"] = raidFactor / 100;
+                    stats["_돌격대장정보"] = `각인: 돌격대장 [${eng.level} + 세공 ${eng.stone}]`;
+                }
+                return;
             }
 
-            // ★ 3. 각인 적용
-            inputs.engravings.forEach(eng => {
-                if (!eng || eng.name === "none" || eng.level === "미사용") return;
-
-                const engData = engravingTable[eng.name];
-                if (!engData) return;
-
-                const exTags = engData.excludeTags || engData.excludeSkillTags || [];
-                if (exTags.some(tag => skillTags.includes(tag))) return;
-
-                const reqTags = engData.requireTags || engData.requireSkillTags || [];
-                const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
-                if (!isMatch) return;
-
-                const levelEffects = engData.levels?.[eng.level] || [];
-                const stoneEffects = engData.stone?.[eng.stone] || [];
-
-                if (eng.name === "돌격대장") {
-                    const raidFactor = (levelEffects[0]?.val || 0) + (stoneEffects[0]?.val || 0);
-                    if (raidFactor > 0) {
-                        stats["_돌격대장계수"] = raidFactor / 100;
-                        stats["_돌격대장정보"] = `각인: 돌격대장 [${eng.level} + 세공 ${eng.stone}]`;
-                    }
-                    return;
-                }
-
-                levelEffects.forEach(eff => {
-                    const matchingStone = stoneEffects.find(s => s.type === eff.type);
-                    const stoneVal = matchingStone ? (Number(matchingStone.val) || 0) : 0;
-                    const totalVal = parseFloat(((Number(eff.val) || 0) + stoneVal).toFixed(2));
-
-                    addStat(stats, eff.type, `각인: ${eng.name} [${eng.level} + 세공 ${eng.stone}]`, totalVal, eff.unit || "%");
-                });
+            levelEffects.forEach(eff => {
+                const matchingStone = stoneEffects.find(s => s.type === eff.type);
+                const totalVal = parseFloat(((Number(eff.val) || 0) + (Number(matchingStone?.val) || 0)).toFixed(2));
+                addStat(stats, eff.type, `각인: ${eng.name} [${eng.level} + 세공 ${eng.stone}]`, totalVal, eff.unit || "%");
             });
+        });
 
-            // 보석 적용
-            if (skillGemMap[skillName]) {
-                skillGemMap[skillName].forEach(({ type, level }) => {
-                    if (type === "겁화") {
-                        addStat(stats, "적에게 주는 피해", `보석(겁화): ${skillName} [${level}레벨]`, parseFloat(((gemDataTable["겁화"][level] - 1) * 100).toFixed(2)));
-                    } else if (type === "작열") {
-                        addStat(stats, "쿨타임 감소", `보석(작열): ${skillName} [${level}레벨]`, parseFloat(((1 - gemDataTable["작열"][level]) * 100).toFixed(2)));
-                    }
-                });
-            }
-
-            // ★ 4. 아크 패시브 진화 노드 적용
-            const arkStats = getArkEvolutionStats();
-            if (arkStats && typeof arkStats === 'object') {
-                for (let cat in arkStats) {
-                    if (Array.isArray(arkStats[cat])) {
-                        arkStats[cat].forEach(eff => {
-                            const exTags = eff.excludeTags || eff.excludeSkillTags || [];
-                            if (exTags.some(tag => skillTags.includes(tag))) return;
-
-                            const reqTags = eff.requireTags || eff.requireSkillTags || [];
-                            const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag));
-
-                            if (isMatch) {
-                                if (!stats[cat]) stats[cat] = [];
-                                stats[cat].push({
-                                    source: eff.source,
-                                    val: eff.val,
-                                    unit: eff.unit
-                                });
-                            }
-                        });
-                    }
-                }
-            }
-
-            const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
-            const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
-            const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
-
-            // ★ 5. 질서 코어 연산
-            const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
-
-            ['Sun', 'Moon', 'Star'].forEach(target => {
-                const coresObj = inputs?.orderCores || {};
-                const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
-                const coreInfo = coresObj[targetKey];
-
-                if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착' || !coreInfo.level) return;
-
-                const { name: equippedCoreName, grade, level } = coreInfo;
-                const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
-                if (!matchedGrade) return;
-
-                const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
-                const coreData = window.orderDataSets[koreanSlotName]?.[matchedGrade];
-
-                if (!coreData) return;
-
-                const userLevel = Number(level) || 0;
-                const pendingGroups = {};
-
-                Object.keys(coreData).forEach(reqPointStr => {
-                    const reqPoint = Number(reqPointStr);
-
-                    if (userLevel >= reqPoint) {
-                        const rawEffectList = coreData[reqPointStr];
-
-                        if (Array.isArray(rawEffectList)) {
-                            rawEffectList.forEach(item => {
-                                const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
-
-                                targetEffects.forEach(effect => {
-                                    const { category, val, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;
-                                    
-                                    const exTags = excludeTags || excludeSkillTags || [];
-                                    if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) return;
-
-                                    const effectiveTags = requireTags || targetTags;
-
-                                    const isSkillMatch = Array.isArray(skills) && skills.includes(skillName);
-                                    const isTagMatch = Array.isArray(effectiveTags) && effectiveTags.some(t =>
-                                        (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName
-                                    );
-                                    const isGlobalMatch = !skills && !effectiveTags;
-
-                                    if (isSkillMatch || isTagMatch || isGlobalMatch) {
-                                        if (!category || val === undefined) return;
-
-                                        const numVal = Number(val);
-                                        const groupKey = groupId || `point_${reqPoint}_${category}`;
-
-                                        if (!pendingGroups[groupKey]) {
-                                            pendingGroups[groupKey] = {
-                                                category: category,
-                                                val: numVal,
-                                                pointList: [reqPoint]
-                                            };
-                                        } else {
-                                            if (groupId) {
-                                                pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
-                                            } else {
-                                                pendingGroups[groupKey].val += numVal;
-                                            }
-
-                                            if (!pendingGroups[groupKey].pointList.includes(reqPoint)) {
-                                                pendingGroups[groupKey].pointList.push(reqPoint);
-                                            }
-                                        }
-                                    }
-                                });
-                            });
-                        }
-                    }
-                });
-
-                Object.entries(pendingGroups).forEach(([groupKey, groupData]) => {
-                    if (groupData.val === 0) return;
-                    const pointsStr = groupData.pointList.join(',');
-                    addStat(
-                        stats,
-                        groupData.category,
-                        `질서 코어(${koreanSlotName}:${equippedCoreName || '코어'}) Pt.${pointsStr} [${matchedGrade}]`,
-                        groupData.val
-                    );
-                });
+        // D. 스킬 보석 (겁화 / 작열)
+        if (skillGemMap[skillName]) {
+            skillGemMap[skillName].forEach(({ type, level }) => {
+                if (type === "겁화") addStat(stats, "적에게 주는 피해", `보석(겁화): ${skillName} [${level}레벨]`, parseFloat(((gemDataTable["겁화"][level] - 1) * 100).toFixed(2)));
+                else if (type === "작열") addStat(stats, "쿨타임 감소", `보석(작열): ${skillName} [${level}레벨]`, parseFloat(((1 - gemDataTable["작열"][level]) * 100).toFixed(2)));
             });
+        }
 
-            let totalStoneLevel = 0;
-            if (Array.isArray(inputs.engravings)) {
-                totalStoneLevel = inputs.engravings.reduce((sum, eng) => sum + (parseInt(eng?.stone, 10) || 0), 0);
-            }
-            const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
-
-            // -------------------- 기본 수치 연산 -----------------------------
-            const normalStat = getStatSum(stats, "주스탯");
-            const statPercent = getStatSum(stats, "주스탯 %");
-            const finalStat = normalStat * (1 + statPercent / 100);
-
-            const defPenMultiplier = getDefPenMultiplier(stats, "방어력 무시", true);
-
-            const weaponAtkPercent = getStatSum(stats, "무기 공격력 %");
-            const finalWeaponAtk = getStatSum(stats, "무기 공격력") * (1 + (weaponAtkPercent / 100));
-
-            const normalAtkPercent = getStatSum(stats, "기본 공격력 %");
-
-            const calculatedBaseAtk = finalStat > 0 && finalWeaponAtk > 0
-                ? (Math.sqrt((finalStat * finalWeaponAtk) / 6)) * (1 + (normalAtkPercent + carveAtkBonusPercent) / 100)
-                : 0;
-
-            const flatAtkBonus = getStatSum(stats, "공격력");
-            const percentAtkBonus = getStatSum(stats, "공격력 %");
-            const finalAtk = (calculatedBaseAtk + flatAtkBonus) * (1 + (percentAtkBonus / 100));
-
-            const totalSwift = getStatSum(stats, "신속");
-            const swiftSpeedBonus = totalSwift * STAT_CONSTANTS.SWIFT_TO_SPEED;
-            const atkSpeedSum = getStatSum(stats, "공격 속도");
-            const moveSpeedSum = getStatSum(stats, "이동 속도");
-
-            const finalAtkSpeed = swiftSpeedBonus + atkSpeedSum;
-            const finalMoveSpeed = swiftSpeedBonus + moveSpeedSum;
-
-            // 🌟 [수정 포인트 3] 속도 및 스탯 확정 시점! 수식(formula) 동적 평가 연산 실행
-            if (pendingFormulas.length > 0) {
-                const formulaContext = {
-                    finalMoveSpeed,
-                    finalAtkSpeed,
-                    totalSwift,
-                    finalAtk,
-                    totalCritStat: getStatSum(stats, "치명"),
-                    totalSpecStat: getStatSum(stats, "특화"),
-                    Math
-                };
-
-                pendingFormulas.forEach(item => {
-                    try {
-                        const calcFunc = new Function(...Object.keys(formulaContext), `return ${item.formula};`);
-                        const calcVal = calcFunc(...Object.values(formulaContext));
-
-                        if (typeof calcVal === 'number' && !isNaN(calcVal)) {
-                            addStat(stats, item.category, item.name, parseFloat(calcVal.toFixed(2)), item.unit);
+        // E. 아크 패시브 진화 노드
+        const arkStats = getArkEvolutionStats();
+        if (arkStats && typeof arkStats === 'object') {
+            for (let cat in arkStats) {
+                if (Array.isArray(arkStats[cat])) {
+                    arkStats[cat].forEach(eff => {
+                        if (isTagMatching(skillTags, skillName, eff)) {
+                            if (!stats[cat]) stats[cat] = [];
+                            stats[cat].push({ source: eff.source, val: eff.val, unit: eff.unit });
                         }
-                    } catch (err) {
-                        console.error(`[수식 계산 실패] ${item.name}:`, item.formula, err);
-                    }
-                });
-            }
-
-            // 수식 결과까지 반영된 스탯 기반으로 계속 데미지 연산 진행
-            let baseDamage = calculateDamageBase(finalAtk, coefficient, constant, defPenMultiplier);
-
-            const moveSpeedBonus = Math.min(STAT_CONSTANTS.SPEED_CAP, Math.max(0, finalMoveSpeed));
-
-            const totalCritStat = getStatSum(stats, "치명");
-            const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + getStatSum(stats, "치명타 적중률");
-            let critRate = Math.min(totalCritRatePercent / 100, 1.0);
-
-            let totalBluntDmg = 0;
-            if (bluntThornNode && bluntThornNode.current > 0) {
-                const excessCrit = Math.max(0, (totalCritRatePercent / 100 - 0.8) * 100);
-                const baseDmg = bluntThornNode.current === 1 ? 7.5 : 15.0;
-                const ratio   = bluntThornNode.current === 1 ? 1.25 : 1.5;
-                const maxDmg  = bluntThornNode.current === 1 ? 52.5 : 75.0;
-
-                totalBluntDmg = Math.min(maxDmg, baseDmg + (excessCrit * ratio));
-                critRate = Math.min(critRate, 0.8);
-
-                addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 뭉툭한 가시 [${bluntThornNode.current}/${bluntThornNode.max}LV]`, parseFloat(totalBluntDmg.toFixed(2)));
-            }
-
-            if (stats["_돌격대장계수"]) {
-                addStat(stats, "적에게 주는 피해", `${stats["_돌격대장정보"]} (이속 +${moveSpeedBonus.toFixed(2)}% 적용)`, parseFloat((moveSpeedBonus * stats["_돌격대장계수"]).toFixed(2)));
-            }
-
-            let totalSonicDmg = 0;
-            if (sonicsNode && sonicsNode.current > 0) {
-                const atkBonus = Math.max(0, finalAtkSpeed);
-                const moveBonus = Math.max(0, finalMoveSpeed);
-                let sonicDmg = (Math.min(STAT_CONSTANTS.SPEED_CAP, atkBonus) + Math.min(STAT_CONSTANTS.SPEED_CAP, moveBonus)) * 0.1;
-                sonicDmg += (Math.max(0, atkBonus - STAT_CONSTANTS.SPEED_CAP) + Math.max(0, moveBonus - STAT_CONSTANTS.SPEED_CAP)) * 0.3;
-                if (atkBonus > STAT_CONSTANTS.SPEED_CAP && moveBonus > STAT_CONSTANTS.SPEED_CAP) sonicDmg += 8;
-                if (sonicsNode.current === 1) sonicDmg *= 0.5;
-                totalSonicDmg = Math.min(STAT_CONSTANTS.SONICS_MAX_DMG, sonicDmg);
-                addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 음속 돌파 [${sonicsNode.current}/${sonicsNode.max}LV]`, parseFloat(totalSonicDmg.toFixed(2)));
-            }
-
-            let totalMpFurnaceDmg = 0;
-            if (MpFurnaceNode && MpFurnaceNode.current > 0) {
-                let furnaceDmg = mana * 0.05;
-                furnaceDmg = Math.min(24, furnaceDmg);
-
-                if (MpFurnaceNode.current === 1) {
-                    furnaceDmg *= 0.5;
-                }
-
-                if (furnaceDmg > 0) {
-                    addStat(
-                        stats, 
-                        "진화형 피해", 
-                        `아크 패시브(진화 5티어): 마나 용광로 [${MpFurnaceNode.current}/${MpFurnaceNode.max}LV]`, 
-                        parseFloat(furnaceDmg.toFixed(2))
-                    );
-                }
-            }
-
-            const totalAdditionalDamageMuntiplier = 1 + (getStatSum(stats, "추가 피해") / 100);
-            if (!stats["추가 피해"]) stats["추가 피해"] = [];
-
-            const totalEvolutionDamage = getStatSum(stats, "진화형 피해");
-            const evolutionDamageMultiplier = 1 + (totalEvolutionDamage / 100);
-
-            if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
-
-            const specStatValue = getStatSum(stats, "특화");
-
-            let specDB = window.specializationDatabase || {};
-            if (specDB.specializationDatabase) {
-                specDB = specDB.specializationDatabase;
-            }
-
-            if (specStatValue > 0 && specDB && Array.isArray(skillTags)) {
-                let totalSpecCoeff = 0;
-
-                const specItems = Array.isArray(specDB) 
-                    ? specDB 
-                    : (specDB.targetTags ? [specDB] : Object.values(specDB));
-
-                specItems.forEach(item => {
-                    if (!item) return;
-
-                    const exTags = item.excludeTags || item.excludeSkillTags || [];
-                    if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) return;
-
-                    if (!Array.isArray(item.targetTags)) return;
-
-                    const isMatch = item.targetTags.some(tag => 
-                        skillTags.includes(tag) || tag === skillName
-                    );
-
-                    if (isMatch) {
-                        const coeff = Number(item.coefficient) || 0;
-                        totalSpecCoeff += coeff;
-                    }
-                });
-
-                if (totalSpecCoeff > 0) {
-                    const specDamageValue = specStatValue * totalSpecCoeff / 699;
-
-                    stats["적에게 주는 피해"].push({
-                        val: parseFloat(specDamageValue.toFixed(2)),
-                        source: "특화"
                     });
                 }
             }
-            
-            if (stats["적에게 주는 피해"]) {
-                const isSkillSpec = (source) => source.startsWith("트라이포드") || source.startsWith("깨달음") || source.startsWith("도약");
-                const tpItems = stats["적에게 주는 피해"].filter(item => isSkillSpec(item.source));
-                const otherItems = stats["적에게 주는 피해"].filter(item => !isSkillSpec(item.source));
-                stats["적에게 주는 피해"] = [...tpItems, ...otherItems];
-            }
-            const totalDamageMultiplier = getStatProduct(stats, "적에게 주는 피해", true);
+        }
 
-            const totalCritDamagePercent = getStatSum(stats, "치명타 피해");
+        // F. 질서 코어
+        const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
+        ['Sun', 'Moon', 'Star'].forEach(target => {
+            const coresObj = inputs?.orderCores || {};
+            const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
+            const coreInfo = coresObj[targetKey];
+            if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착' || !coreInfo.level) return;
 
-            const critHitDamageMultiplier = getStatProduct(stats, "치명타 시 적에게 주는 피해", true);
+            const matchedGrade = coreInfo.grade.includes('고대') ? '고대' : (coreInfo.grade.includes('유물') ? '유물' : null);
+            const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
+            const coreData = window.orderDataSets[koreanSlotName]?.[matchedGrade];
+            if (!coreData) return;
 
-            const nonCritBaseDamage = baseDamage * totalDamageMultiplier * evolutionDamageMultiplier * totalAdditionalDamageMuntiplier;
-            const CritBaseDamage = nonCritBaseDamage * (totalCritDamagePercent / 100) * critHitDamageMultiplier;
+            const pendingGroups = {};
+            Object.keys(coreData).forEach(reqPointStr => {
+                const reqPoint = Number(reqPointStr);
+                if (Number(coreInfo.level) >= reqPoint && Array.isArray(coreData[reqPointStr])) {
+                    coreData[reqPointStr].forEach(item => {
+                        const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
+                        targetEffects.forEach(effect => {
+                            if (!isTagMatching(skillTags, skillName, item, effect)) return;
+                            if (!effect.category || effect.val === undefined) return;
 
-            const expDmg = CritBaseDamage * critRate + nonCritBaseDamage * (1 - critRate);
+                            const numVal = Number(effect.val);
+                            const groupKey = effect.groupId || `point_${reqPoint}_${effect.category}`;
 
-            const swiftMultiplier = 1 - ((totalSwift * STAT_CONSTANTS.SWIFT_TO_CDR) / 100);
-            const appliedManaCdrMultiplier = 1 - (getStatSum(stats, "마나 스킬 쿨타임 감소") / 100);
+                            if (!pendingGroups[groupKey]) {
+                                pendingGroups[groupKey] = { category: effect.category, val: numVal, pointList: [reqPoint] };
+                            } else {
+                                pendingGroups[groupKey].val = effect.groupId ? Math.max(pendingGroups[groupKey].val, numVal) : pendingGroups[groupKey].val + numVal;
+                                if (!pendingGroups[groupKey].pointList.includes(reqPoint)) pendingGroups[groupKey].pointList.push(reqPoint);
+                            }
+                        });
+                    });
+                }
+            });
 
-            const allCdrList = stats['쿨타임 감소'] || [];
-            const passiveCdrMultiplier = 1 - ((allCdrList || []).filter(i => i && i.source && (i.source.includes('최적화 훈련') || i.source.includes('타이밍 지배'))).reduce((s, c) => s + (Number(c.val) || 0), 0) / 100);
-            const otherCdrMultiplier = allCdrList.filter(i => !i.source?.includes('최적화 훈련') && !i.source?.includes('타이밍 지배')).reduce((acc, cur) => acc * (1 - cur.val / 100), 1.0);
-            const cdrIncreaseMultiplier = 1 + (getStatSum(stats, "쿨타임 증가") / 100);
-
-            const rawBaseCooldown = baseCooldown;
-            const flatCdReduction = getStatSum(stats, "고정 쿨타임 감소");
-            const adjustedBaseCooldown = Math.max(0, rawBaseCooldown - flatCdReduction);
-            const finalCooldown = adjustedBaseCooldown * swiftMultiplier * appliedManaCdrMultiplier * passiveCdrMultiplier * otherCdrMultiplier * cdrIncreaseMultiplier;
-
-            allSkillResults.push({
-                skillName,
-                inputs,
-                weaponAtkPercent,
-                finalStat,
-                finalWeaponAtk,
-                normalAtkPercent,
-                carveAtkBonusPercent,
-                totalStoneLevel,
-                calculatedBaseAtk,
-                flatAtkBonus: getStatSum(stats, "공격력"),
-                percentAtkBonus: getStatSum(stats, "공격력 %"),
-                vambraceNormalAtk: getStatSum(stats, "기본 공격력"),
-                vambraceNormalAtkPercent: getStatSum(stats, "기본 공격력 %"),
-                finalAtk,
-                totalCritStat,
-                totalSwiftStat: totalSwift,
-                specStatValue,
-                totalCritRatePercent,
-                totalEvolutionDamage,
-                finalAtkSpeed,
-                finalMoveSpeed,
-                totalBluntDmg,
-                totalSonicDmg,
-                expDmg,
-                finalCooldown,
-                stats
+            Object.entries(pendingGroups).forEach(([_, groupData]) => {
+                if (groupData.val !== 0) {
+                    addStat(stats, groupData.category, `질서 코어(${koreanSlotName}:${coreInfo.name || '코어'}) Pt.${groupData.pointList.join(',')} [${matchedGrade}]`, groupData.val);
+                }
             });
         });
 
-        return allSkillResults;
+        // G. 특화 연산
+        const specStatValue = getStatSum(stats, "특화");
+        let specDB = window.specializationDatabase?.specializationDatabase || window.specializationDatabase || {};
+
+        if (specStatValue > 0 && specDB && Array.isArray(skillTags)) {
+            let totalSpecCoeff = 0;
+            const specItems = Array.isArray(specDB) ? specDB : (specDB.targetTags ? [specDB] : Object.values(specDB));
+
+            specItems.forEach(item => {
+                if (item && isTagMatching(skillTags, skillName, item)) {
+                    totalSpecCoeff += Number(item.coefficient) || 0;
+                }
+            });
+
+            if (totalSpecCoeff > 0) {
+                if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
+                stats["적에게 주는 피해"].push({ val: parseFloat((specStatValue * totalSpecCoeff / 699).toFixed(2)), source: "특화" });
+            }
+        }
+
+        return { stats, pendingFormulas };
     }
+
+    /**
+     * 4. 최종 스킬 수치 계산 함수 (데미지, 쿨타임, 5티어 노드 연산)
+     */
+    function computeFinalSkillResult(skillData, stats, pendingFormulas, inputs) {
+        const { name: skillName, coefficient, constant, baseCooldown = 0, mana } = skillData;
+
+        let totalStoneLevel = 0;
+        if (Array.isArray(inputs.engravings)) {
+            totalStoneLevel = inputs.engravings.reduce((sum, eng) => sum + (parseInt(eng?.stone, 10) || 0), 0);
+        }
+        const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
+
+        const normalStat = getStatSum(stats, "주스탯");
+        const statPercent = getStatSum(stats, "주스탯 %");
+        const finalStat = normalStat * (1 + statPercent / 100);
+
+        const defPenMultiplier = getDefPenMultiplier(stats, "방어력 무시", true);
+        const weaponAtkPercent = getStatSum(stats, "무기 공격력 %");
+        const finalWeaponAtk = getStatSum(stats, "무기 공격력") * (1 + (weaponAtkPercent / 100));
+        const normalAtkPercent = getStatSum(stats, "기본 공격력 %");
+
+        const calculatedBaseAtk = finalStat > 0 && finalWeaponAtk > 0
+            ? (Math.sqrt((finalStat * finalWeaponAtk) / 6)) * (1 + (normalAtkPercent + carveAtkBonusPercent) / 100)
+            : 0;
+
+        const flatAtkBonus = getStatSum(stats, "공격력");
+        const percentAtkBonus = getStatSum(stats, "공격력 %");
+        const finalAtk = (calculatedBaseAtk + flatAtkBonus) * (1 + (percentAtkBonus / 100));
+
+        const totalSwift = getStatSum(stats, "신속");
+        const swiftSpeedBonus = totalSwift * STAT_CONSTANTS.SWIFT_TO_SPEED;
+        const finalAtkSpeed = swiftSpeedBonus + getStatSum(stats, "공격 속도");
+        const finalMoveSpeed = swiftSpeedBonus + getStatSum(stats, "이동 속도");
+
+        // 동적 수식(Formula) 연산
+        if (pendingFormulas.length > 0) {
+            const formulaContext = {
+                finalMoveSpeed, finalAtkSpeed, totalSwift, finalAtk,
+                totalCritStat: getStatSum(stats, "치명"),
+                totalSpecStat: getStatSum(stats, "특화"),
+                Math
+            };
+
+            pendingFormulas.forEach(item => {
+                try {
+                    const calcFunc = new Function(...Object.keys(formulaContext), `return ${item.formula};`);
+                    const calcVal = calcFunc(...Object.values(formulaContext));
+                    if (typeof calcVal === 'number' && !isNaN(calcVal)) {
+                        addStat(stats, item.category, item.name, parseFloat(calcVal.toFixed(2)), item.unit);
+                    }
+                } catch (err) {
+                    console.error(`[수식 계산 실패] ${item.name}:`, item.formula, err);
+                }
+            });
+        }
+
+        let baseDamage = calculateDamageBase(finalAtk, coefficient, constant, defPenMultiplier);
+        const moveSpeedBonus = Math.min(STAT_CONSTANTS.SPEED_CAP, Math.max(0, finalMoveSpeed));
+
+        const totalCritStat = getStatSum(stats, "치명");
+        const totalCritRatePercent = (totalCritStat * STAT_CONSTANTS.CRIT_TO_RATE) + getStatSum(stats, "치명타 적중률");
+        let critRate = Math.min(totalCritRatePercent / 100, 1.0);
+
+        // 5티어 진화 노드 처리
+        const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
+        const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
+        const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
+
+        let totalBluntDmg = 0;
+        if (bluntThornNode && bluntThornNode.current > 0) {
+            const excessCrit = Math.max(0, (totalCritRatePercent / 100 - 0.8) * 100);
+            const baseDmg = bluntThornNode.current === 1 ? 7.5 : 15.0;
+            const ratio   = bluntThornNode.current === 1 ? 1.25 : 1.5;
+            const maxDmg  = bluntThornNode.current === 1 ? 52.5 : 75.0;
+
+            totalBluntDmg = Math.min(maxDmg, baseDmg + (excessCrit * ratio));
+            critRate = Math.min(critRate, 0.8);
+            addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 뭉툭한 가시 [${bluntThornNode.current}/${bluntThornNode.max}LV]`, parseFloat(totalBluntDmg.toFixed(2)));
+        }
+
+        if (stats["_돌격대장계수"]) {
+            addStat(stats, "적에게 주는 피해", `${stats["_돌격대장정보"]} (이속 +${moveSpeedBonus.toFixed(2)}% 적용)`, parseFloat((moveSpeedBonus * stats["_돌격대장계수"]).toFixed(2)));
+        }
+
+        let totalSonicDmg = 0;
+        if (sonicsNode && sonicsNode.current > 0) {
+            const atkBonus = Math.max(0, finalAtkSpeed);
+            const moveBonus = Math.max(0, finalMoveSpeed);
+            let sonicDmg = (Math.min(STAT_CONSTANTS.SPEED_CAP, atkBonus) + Math.min(STAT_CONSTANTS.SPEED_CAP, moveBonus)) * 0.1;
+            sonicDmg += (Math.max(0, atkBonus - STAT_CONSTANTS.SPEED_CAP) + Math.max(0, moveBonus - STAT_CONSTANTS.SPEED_CAP)) * 0.3;
+            if (atkBonus > STAT_CONSTANTS.SPEED_CAP && moveBonus > STAT_CONSTANTS.SPEED_CAP) sonicDmg += 8;
+            if (sonicsNode.current === 1) sonicDmg *= 0.5;
+            totalSonicDmg = Math.min(STAT_CONSTANTS.SONICS_MAX_DMG, sonicDmg);
+            addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 음속 돌파 [${sonicsNode.current}/${sonicsNode.max}LV]`, parseFloat(totalSonicDmg.toFixed(2)));
+        }
+
+        let totalMpFurnaceDmg = 0;
+        if (MpFurnaceNode && MpFurnaceNode.current > 0) {
+            let furnaceDmg = Math.min(24, mana * 0.05);
+            if (MpFurnaceNode.current === 1) furnaceDmg *= 0.5;
+            if (furnaceDmg > 0) {
+                addStat(stats, "진화형 피해", `아크 패시브(진화 5티어): 마나 용광로 [${MpFurnaceNode.current}/${MpFurnaceNode.max}LV]`, parseFloat(furnaceDmg.toFixed(2)));
+            }
+        }
+
+        const totalAdditionalDamageMuntiplier = 1 + (getStatSum(stats, "추가 피해") / 100);
+        const totalEvolutionDamage = getStatSum(stats, "진화형 피해");
+        const evolutionDamageMultiplier = 1 + (totalEvolutionDamage / 100);
+
+        if (stats["적에게 주는 피해"]) {
+            const isSkillSpec = (source) => source.startsWith("트라이포드") || source.startsWith("깨달음") || source.startsWith("도약");
+            const tpItems = stats["적에게 주는 피해"].filter(item => isSkillSpec(item.source));
+            const otherItems = stats["적에게 주는 피해"].filter(item => !isSkillSpec(item.source));
+            stats["적에게 주는 피해"] = [...tpItems, ...otherItems];
+        }
+
+        const totalDamageMultiplier = getStatProduct(stats, "적에게 주는 피해", true);
+        const totalCritDamagePercent = getStatSum(stats, "치명타 피해");
+        const critHitDamageMultiplier = getStatProduct(stats, "치명타 시 적에게 주는 피해", true);
+
+        const nonCritBaseDamage = baseDamage * totalDamageMultiplier * evolutionDamageMultiplier * totalAdditionalDamageMuntiplier;
+        const CritBaseDamage = nonCritBaseDamage * (totalCritDamagePercent / 100) * critHitDamageMultiplier;
+        const expDmg = CritBaseDamage * critRate + nonCritBaseDamage * (1 - critRate);
+
+        // 쿨타임 연산
+        const swiftMultiplier = 1 - ((totalSwift * STAT_CONSTANTS.SWIFT_TO_CDR) / 100);
+        const appliedManaCdrMultiplier = 1 - (getStatSum(stats, "마나 스킬 쿨타임 감소") / 100);
+        const allCdrList = stats['쿨타임 감소'] || [];
+        const passiveCdrMultiplier = 1 - ((allCdrList.filter(i => i?.source?.includes('최적화 훈련') || i?.source?.includes('타이밍 지배')).reduce((s, c) => s + (Number(c.val) || 0), 0)) / 100);
+        const otherCdrMultiplier = allCdrList.filter(i => !i.source?.includes('최적화 훈련') && !i.source?.includes('타이밍 지배')).reduce((acc, cur) => acc * (1 - cur.val / 100), 1.0);
+        const cdrIncreaseMultiplier = 1 + (getStatSum(stats, "쿨타임 증가") / 100);
+
+        const adjustedBaseCooldown = Math.max(0, baseCooldown - getStatSum(stats, "고정 쿨타임 감소"));
+        const finalCooldown = adjustedBaseCooldown * swiftMultiplier * appliedManaCdrMultiplier * passiveCdrMultiplier * otherCdrMultiplier * cdrIncreaseMultiplier;
+
+        return {
+            skillName, inputs, weaponAtkPercent, finalStat, finalWeaponAtk,
+            normalAtkPercent, carveAtkBonusPercent, totalStoneLevel, calculatedBaseAtk,
+            flatAtkBonus, percentAtkBonus,
+            vambraceNormalAtk: getStatSum(stats, "기본 공격력"),
+            vambraceNormalAtkPercent: getStatSum(stats, "기본 공격력 %"),
+            finalAtk, totalCritStat, totalSwiftStat: totalSwift,
+            specStatValue: getStatSum(stats, "특화"),
+            totalCritRatePercent, totalEvolutionDamage, finalAtkSpeed, finalMoveSpeed,
+            totalBluntDmg, totalSonicDmg, expDmg, finalCooldown, stats
+        };
+    }
+
+    /**
+     * 🌟 [Main Entry Point] 메인 스탯 계산 함수
+     */
+    function calculateSkillStats(inputs) {
+        // 1. 공통 스탯 1회 수집
+        const commonStats = getCommonStats(inputs);
+
+        // 2. 보석 매핑 사전 생성
+        const skillGemMap = {};
+        inputs.skillGems.forEach(gem => {
+            const gemAtkVal = gemDataTable["공증"]?.[gem.level] || 0;
+            if (gemAtkVal > 0) {
+                addStat(commonStats, "기본 공격력 %", `보석(${gem.type}): ${gem.skillName} [${gem.level}레벨]`, parseFloat(gemAtkVal.toFixed(2)));
+            }
+            if (!skillGemMap[gem.skillName]) skillGemMap[gem.skillName] = [];
+            skillGemMap[gem.skillName].push({ type: gem.type, level: gem.level });
+        });
+
+        // 3. 스킬별 순회 및 결과 조합
+        return window.skillDatabase.map(skillData => {
+            const { stats, pendingFormulas } = getSkillAppliedStats(skillData, commonStats, inputs, skillGemMap);
+            return computeFinalSkillResult(skillData, stats, pendingFormulas, inputs);
+        });
+    }
+
     // =============================================================================
     // 6. UI 초기화 및 결과 출력 함수
     // =============================================================================
