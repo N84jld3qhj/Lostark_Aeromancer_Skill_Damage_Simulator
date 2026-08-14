@@ -120,8 +120,17 @@
 
                 <div class="form-group">
                     <label>태그 (쉼표로 구분)</label>
-                    <input type="text" id="tags" placeholder="몰아치기, 마나, 우산, 타대">
+                    <input type="text" id="tags" placeholder="몰아치기, 마나, 우산, 타대" 
+                           onfocus="setActiveInput(this)" 
+                           onkeyup="handleTagKeyUp(event, this)" 
+                           onblur="registerTagsFromInput(this.value)">
                     <small style="color: #6c6c6c;">※ 스킬 입력 시 첫 번째 태그에 스킬명이 자동 추가됩니다.</small>
+
+                    <!-- 📌 태그 추천 뱃지 영역 -->
+                    <div style="margin-top: 8px;">
+                        <span style="font-size: 11px; font-weight: bold; color: #495057;">📌 최근 사용된 태그 (클릭하여 추가):</span>
+                        <div class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;"></div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -275,8 +284,17 @@
 
                 <div class="form-group">
                     <label>적용 스킬 태그 (쉼표 구분)</label>
-                    <input type="text" id="specTargetTags" placeholder="예: 우산, 급습, 사냥, 기류">
+                    <input type="text" id="specTargetTags" placeholder="예: 우산, 급습, 랜스, 둔갑" 
+                           onfocus="setActiveInput(this)" 
+                           onkeyup="handleTagKeyUp(event, this)" 
+                           onblur="registerTagsFromInput(this.value)">
                     <small style="color: #6c6c6c;">※ 해당 태그를 소유한 스킬에 특화 데미지 증가가 적용됩니다.</small>
+                    
+                    <!-- 📌 태그 추천 뱃지 영역 -->
+                    <div style="margin-top: 8px;">
+                        <span style="font-size: 11px; font-weight: bold; color: #495057;">⚡ 최근 사용된 태그 (클릭하여 추가):</span>
+                        <div class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;"></div>
+                    </div>
                 </div>
 
                 <button type="button" class="btn-submit btn-submit-spec" onclick="saveSpecData()">💾 특화 설정 저장</button>
@@ -341,6 +359,142 @@
     let editingSkillIndex = null;
     let editingBuffIndex = null;
     let editingOrderInfo = null;
+
+    // 프로그램 전체에서 사용할 통합 태그 캐시 (Set)
+    const globalTagCache = new Set();
+    // 현재 포커스되어 있는 태그 입력창 기억 변수
+    let activeTagInput = null;
+
+    function setActiveInput(inputElem) {
+        activeTagInput = inputElem;
+    }
+
+    // 1. 기존 데이터베이스 + 사용중인 태그를 모두 수집하는 함수
+    function refreshGlobalTagCache() {
+        for (const coreType in orderDataSets) {
+            for (const grade in orderDataSets[coreType]) {
+                for (const pt in orderDataSets[coreType][grade]) {
+                    (orderDataSets[coreType][grade][pt] || []).forEach(node => {
+                        (node.effects || []).forEach(eff => {
+                            if (eff.requireTags) eff.requireTags.forEach(t => t && globalTagCache.add(t.trim()));
+                            if (eff.excludeTags) eff.excludeTags.forEach(t => t && globalTagCache.add(t.trim()));
+                        });
+                    });
+                }
+            }
+        }
+
+        buffDatabase.forEach(buff => {
+            (buff.effects || []).forEach(eff => {
+                if (eff.requireTags) eff.requireTags.forEach(t => t && globalTagCache.add(t.trim()));
+                if (eff.excludeTags) eff.excludeTags.forEach(t => t && globalTagCache.add(t.trim()));
+            });
+        });
+
+        if (specializationData && specializationData.targetTags) {
+            specializationData.targetTags.forEach(t => t && globalTagCache.add(t.trim()));
+        }
+
+        skillDatabase.forEach(skill => {
+            if (skill.tags) skill.tags.forEach(t => t && globalTagCache.add(t.trim()));
+        });
+    }
+
+    // 2. 완성된 태그만 캐시에 등록하는 함수 (한글 조합 버그 해결)
+    function registerTagsFromInput(inputValue) {
+        if (!inputValue) return;
+
+        // 한글 자음/모음만 외롭게 있는 글자(ㄱ-ㅎ, ㅏ-ㅣ) 제외 정규식
+        const jamoRegex = /^[ㄱ-ㅎㅏ-ㅣ]+$/;
+
+        const tags = inputValue.split(',')
+            .map(t => t.trim())
+            .filter(t => t.length > 0 && !jamoRegex.test(t));
+
+        let isNewAdded = false;
+
+        tags.forEach(tag => {
+            if (!globalTagCache.has(tag)) {
+                globalTagCache.add(tag);
+                isNewAdded = true;
+            }
+        });
+
+        if (isNewAdded) {
+            renderAllTagBadges();
+        }
+    }
+
+    // 3. 키보드 입력 이벤트 감지 (쉼표나 Enter 입력 시 태그 즉시 반영)
+    function handleTagKeyUp(event, inputElem) {
+        if (event.key === ',' || event.key === 'Enter') {
+            registerTagsFromInput(inputElem.value);
+        }
+    }
+
+    // 4. 클릭한 태그를 Target Input 요소에 추가하는 함수
+    function appendTagToInput(tag, targetInput = null) {
+        const input = targetInput || activeTagInput;
+        if (!input) return;
+
+        let currentTags = input.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+        if (!currentTags.includes(tag)) {
+            currentTags.push(tag);
+            input.value = currentTags.join(', ');
+            registerTagsFromInput(input.value);
+        }
+    }
+
+    // 5. 화면 상의 모든 추천 태그 뱃지 영역을 갱신하는 공통 함수
+    function renderAllTagBadges() {
+        const sortedTags = Array.from(globalTagCache).sort();
+        
+        document.querySelectorAll(".dynamic-tag-badges").forEach(container => {
+            container.innerHTML = "";
+
+            if (sortedTags.length === 0) {
+                container.innerHTML = `<span style="font-size: 11px; color: #aaa;">(등록된 조건 태그가 없습니다)</span>`;
+                return;
+            }
+
+            sortedTags.forEach(tag => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.innerText = `+ ${tag}`;
+                btn.style.cssText = `
+                    padding: 2px 7px;
+                    font-size: 11px;
+                    background: #f8f9fa;
+                    color: #495057;
+                    border: 1px solid #dee2e6;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                `;
+                
+                btn.onmouseover = () => { btn.style.background = '#0d6efd'; btn.style.color = '#fff'; btn.style.borderColor = '#0d6efd'; };
+                btn.onmouseout = () => { btn.style.background = '#f8f9fa'; btn.style.color = '#495057'; btn.style.borderColor = '#dee2e6'; };
+
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    const parentGroup = container.closest('.card-box, .form-group');
+                    let targetInput = null;
+
+                    if (activeTagInput && parentGroup && parentGroup.contains(activeTagInput)) {
+                        targetInput = activeTagInput;
+                    } else if (parentGroup) {
+                        targetInput = parentGroup.querySelector('input[type="text"]');
+                    }
+                    if (!targetInput) targetInput = activeTagInput;
+
+                    appendTagToInput(tag, targetInput);
+                };
+
+                container.appendChild(btn);
+            });
+        });
+    }
 
     function getCategoryOptionsHtml(selected = "적에게 주는 피해") {
         return BASE_CATEGORIES.map(cat => `<option value="${cat}" ${cat === selected ? 'selected' : ''}>${getCategoryLabel(cat)}</option>`).join('');
@@ -476,6 +630,8 @@
                     </div>
                 </div>`;
         });
+        refreshGlobalTagCache();
+        renderAllTagBadges();
     }
 
     function editSkill(index) {
@@ -522,6 +678,7 @@
         document.getElementById("baseCooldown").value = 12;
         document.getElementById("baseMana").value = 480;
         document.getElementById("tags").value = "샘플 공격 스킬, 마나, 주력기";
+        registerTagsFromInput("샘플 공격 스킬, 마나, 주력기");
         document.getElementById("tripodContainer").innerHTML = "";
         addTripodCard({ tier: 1, name: "빠른 준비", effects: [{ category: "쿨타임 감소", val: 15 }] });
         addTripodCard({ tier: 2, name: "급경 타격", effects: [{ category: "치명타 적중률", val: 20 }] });
@@ -554,6 +711,19 @@
         const is17pt = document.getElementById("nodePoint").value === "17";
         const rowDiv = document.createElement("div");
         rowDiv.className = "card-box order-card";
+        
+        const rowId = "order_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+
+        const inputsHtml = `
+            <div style="display: flex; gap: 8px;">
+                <input type="text" class="ord-tags" value="${tags}" placeholder="적용 조건 태그 (비워두면 전체 적용)" style="flex: 1;" 
+                       onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
+                <input type="text" class="ord-exclude-tags" value="${excludeTags}" placeholder="제외 조건 태그 (예: 급습)" style="flex: 1; border: 1px solid #dc3545;" 
+                       onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
+            </div>
+            <!-- 📌 동적 추천 태그 뱃지 컨테이너 -->
+            <div id="badges_${rowId}" class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
+        `;
 
         if (is17pt) {
             rowDiv.innerHTML = `
@@ -563,10 +733,7 @@
                     <input type="number" step="any" class="ord-val-relic" value="${valRelic}" placeholder="유물 수치" style="flex: 1; border: 2px solid #6f42c1;">
                     <button type="button" class="btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" class="ord-tags" value="${tags}" placeholder="적용 조건 태그 (비워두면 전체 적용)" style="flex: 1;">
-                    <input type="text" class="ord-exclude-tags" value="${excludeTags}" placeholder="제외 조건 태그 (예: 급습)" style="flex: 1; border: 1px solid #dc3545;">
-                </div>
+                ${inputsHtml}
             `;
         } else {
             rowDiv.innerHTML = `
@@ -575,13 +742,12 @@
                     <input type="number" step="any" class="ord-val" value="${valAncient}" placeholder="수치" style="flex: 1;">
                     <button type="button" class="btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" class="ord-tags" value="${tags}" placeholder="적용 조건 태그 (비워두면 전체 적용)" style="flex: 1;">
-                    <input type="text" class="ord-exclude-tags" value="${excludeTags}" placeholder="제외 조건 태그 (예: 급습)" style="flex: 1; border: 1px solid #dc3545;">
-                </div>
+                ${inputsHtml}
             `;
         }
+
         container.appendChild(rowDiv);
+        renderAllTagBadges();
     }
 
     function addOrderNode() {
@@ -818,7 +984,6 @@
                         nodeList.forEach((node) => {
                             if (!node) return;
                             
-                            // ID가 없더라도 임시 생성해서 UI 노출
                             if (!node.id) {
                                 node.id = 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
                             }
@@ -851,6 +1016,8 @@
         if (!hasData) {
             listContainer.innerHTML = `<span style="color:#888; font-size:12px;">등록된 질서 코어 노드가 없습니다.</span>`;
         }
+        refreshGlobalTagCache();
+        renderAllTagBadges();
     }
 
     // --- TAB 3: 고유 버프 / 스탯 ---
@@ -883,6 +1050,7 @@
         rowDiv.className = "card-box buff-card";
 
         const isFormulaMode = Boolean(formula);
+        const rowId = "buff_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 
         rowDiv.innerHTML = `
             <div style="display: flex; gap: 8px; margin-bottom: 6px;">
@@ -905,9 +1073,9 @@
                     <div style="font-weight: bold; color: #4f46e5; margin-bottom: 4px;">ℹ️ 수식 입력 가이드 (특별한 계산이 필요한 경우)</div>
                     <div style="background: #f1f5f9; padding: 6px; border-radius: 4px; margin-bottom: 6px;">
                         <strong>📌 기본 사용 가능 변수:</strong><br>
-                        • <code>critRate</code> : 치명타 적중률 (%) 100%를 넘을 수 있습니다. 치명타 적중률 110%라면 계산 시 110으로 계산합니다.<br>
-                        • <code>finalAtkSpeed</code> : 공격 속도 증가량 (%) 40%를 넘을 수 있습니다. 공격 속도 153% 라면 계산 시 53으로 계산합니다.<br>
-                        • <code>finalMoveSpeed</code> : 이동 속도 증가량 (%) 40%를 넘을 수 있습니다. 이동 속도 153% 라면 계산 시 53으로 계산합니다.
+                        • <code>critRate</code> : 치명타 적중률 (%)<br>
+                        • <code>finalAtkSpeed</code> : 공격 속도 증가량 (%)<br>
+                        • <code>finalMoveSpeed</code> : 이동 속도 증가량 (%)
                     </div>
                 </div>
 
@@ -919,12 +1087,20 @@
                 </div>
             </div>
 
+            <!-- ⚡ 태그 입력란 및 추천 뱃지 영역 -->
             <div style="display: flex; gap: 8px;">
-                <input type="text" class="buff-tags" value="${tags}" placeholder="적용 스킬 태그 (비워두면 전체 적용)" style="flex: 1;">
-                <input type="text" class="buff-exclude-tags" value="${excludeTags}" placeholder="제외 스킬 태그 (예: 기상)" style="flex: 1; border: 1px solid #dc3545;">
+                <input type="text" class="buff-tags" value="${tags}" placeholder="적용 스킬 태그 (비워두면 전체 적용)" style="flex: 1;" 
+                       onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
+                <input type="text" class="buff-exclude-tags" value="${excludeTags}" placeholder="제외 스킬 태그 (예: 기상)" style="flex: 1; border: 1px solid #dc3545;" 
+                       onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
             </div>
+
+            <!-- 📌 동적 추천 태그 뱃지 컨테이너 -->
+            <div id="badges_${rowId}" class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
         `;
+
         container.appendChild(rowDiv);
+        renderAllTagBadges();
     }
 
     function addBuffToDatabase() {
@@ -989,6 +1165,8 @@
                     </div>
                 </div>`;
         });
+        refreshGlobalTagCache();
+        renderAllTagBadges();
     }
 
     function editBuff(index) {
@@ -1061,6 +1239,8 @@
                 <span><strong>계수:</strong> ${specializationData.coefficient} | <strong>적용 태그:</strong> [${tagsStr}]</span>
             </div>
         `;
+        refreshGlobalTagCache();
+        renderAllTagBadges();
     }
 
     // --- Utility ---
@@ -1133,7 +1313,7 @@
         }
     }
 
-    // 페이지 로드 시 초기 실행
+    // 페이지 로드 시 초기 화면 렌더링
     addTripodCard();
     addOrderEffectRow();
     addBuffEffectRow();
