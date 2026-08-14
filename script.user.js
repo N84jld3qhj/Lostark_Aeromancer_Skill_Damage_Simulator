@@ -902,50 +902,59 @@
     }
 
     function getArkEvolutionStats() {
-        let arkStats = {};
+    let arkStats = {};
 
-        evolutionNodes.forEach(tier => {
-            tier.forEach(node => {
-                // 노드가 활성화(level/current > 0)되어 있는지 확인
-                const nodeLevel = node.current || node.level || 0;
-                if (nodeLevel <= 0) return;
+    evolutionNodes.forEach((row, rowIndex) => {
+        const tierName = `${rowIndex + 1}티어`;
 
-                // 노드 상위에 설정된 태그 조건 추출
-                const nodeReqTags = node.requireTags || node.requireSkillTags || [];
-                const nodeExTags = node.excludeTags || node.excludeSkillTags || [];
+        row.forEach((node) => {
+            const nodeLevel = node.current || node.level || 0;
+            if (nodeLevel <= 0) return;
 
-                if (Array.isArray(node.effects)) {
-                    node.effects.forEach(eff => {
-                        // 🌟 핵심: 노드 레벨의 태그와 effect 레벨의 태그를 병합
-                        const effReqTags = eff.requireTags || eff.requireSkillTags || eff.targetTags || [];
-                        const effExTags = eff.excludeTags || eff.excludeSkillTags || [];
+            // 상위 노드 태그 추출
+            const nodeReqTags = node.requireTags || node.requireSkillTags || [];
+            const nodeExTags = node.excludeTags || node.excludeSkillTags || [];
 
-                        const mergedReqTags = [...new Set([...nodeReqTags, ...effReqTags])];
-                        const mergedExTags = [...new Set([...nodeExTags, ...effExTags])];
+            if (node.effects && node.effects.length > 0) {
+                node.effects.forEach(eff => {
+                    // 하위 이펙트 태그 추출
+                    const effReqTags = eff.requireTags || eff.requireSkillTags || eff.targetTags || [];
+                    const effExTags = eff.excludeTags || eff.excludeSkillTags || [];
 
-                        // 효과 수치 계산
-                        const valPerLvl = eff.valuePerLevel || eff.val || 0;
-                        const totalVal = valPerLvl * nodeLevel;
+                    // 태그 병합 (중복 제거)
+                    const mergedReqTags = [...new Set([...nodeReqTags, ...effReqTags])];
+                    const mergedExTags = [...new Set([...nodeExTags, ...effExTags])];
 
-                        if (totalVal === 0 && !eff.type) return;
+                    const catName = eff.type || eff.category;
+                    const valPerLvl = eff.valuePerLevel || eff.val || 0;
+                    const calculatedVal = parseFloat((nodeLevel * valPerLvl).toFixed(2));
 
-                        const cat = eff.type || eff.category;
-                        if (!arkStats[cat]) arkStats[cat] = [];
+                    if (calculatedVal === 0 && !catName) return;
 
-                        arkStats[cat].push({
-                            source: `아크 패시브(진화): ${node.name} [Lv.${nodeLevel}]`,
-                            val: totalVal,
-                            unit: eff.unit || "%",
-                            requireTags: mergedReqTags,  // 🔥 병합된 필요 태그 전달
-                            excludeTags: mergedExTags   // 🔥 병합된 제외 태그 전달
-                        });
+                    // 🌟 [핵심 복원] 스탯성 데이터(치/신/특) 단위 구분 로직
+                    const isRawStat = ["치명", "신속", "특화", "제압", "인내", "숙련"].includes(catName);
+                    const unitStr = eff.unit !== undefined ? eff.unit : (isRawStat ? "" : "%");
+
+                    // 출처 텍스트 (max 존재 여부에 따른 유연한 표기)
+                    const sourceText = node.max 
+                        ? `아크 패시브(진화 ${tierName}): ${node.name} [${nodeLevel}/${node.max}LV]`
+                        : `아크 패시브(진화 ${tierName}): ${node.name} [Lv.${nodeLevel}]`;
+
+                    if (!arkStats[catName]) arkStats[catName] = [];
+                    arkStats[catName].push({
+                        source: sourceText,
+                        val: calculatedVal,
+                        unit: unitStr,
+                        requireTags: mergedReqTags,
+                        excludeTags: mergedExTags
                     });
-                }
-            });
+                });
+            }
         });
+    });
 
-        return arkStats;
-    }
+    return arkStats;
+}
 
     // =============================================================================
     // 4. DOM 파싱 및 데이터 정제
@@ -1422,32 +1431,49 @@
         };
 
         const statList = Array.isArray(window.ADD_STAT_BASE)
-            ? window.ADD_STAT_BASE
-            : Object.values(window.ADD_STAT_BASE || {});
+    ? window.ADD_STAT_BASE
+    : Object.values(window.ADD_STAT_BASE || {});
 
-        // ADD_STAT_BASE (조건 태그가 없는 純 공통 스탯 수집)
-        statList.forEach(item => {
-            if (!item) return;
+    // 고정값 스탯 카테고리 목록
+    const RAW_STAT_CATEGORIES = ["치명", "신속", "특화", "제압", "인내", "숙련", "주스탯", "무기 공격력", "기본 공격력", "공격력"];
 
-            if (Array.isArray(item.effects)) {
-                item.effects.forEach(eff => {
-                    const hasTagCondition = (eff.targetTags?.length > 0) || (eff.requireTags?.length > 0) || 
-                                            (eff.excludeTags?.length > 0) || (eff.excludeSkillTags?.length > 0) ||
-                                            (item.requireTags?.length > 0) || (item.excludeTags?.length > 0);
-                    
-                    if (!hasTagCondition && !eff.formula && !item.formula) {
-                        addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
-                    }
-                });
-            } else if (item.category) {
-                const hasTagCondition = (item.targetTags?.length > 0) || (item.requireTags?.length > 0) || 
-                                        (item.excludeTags?.length > 0) || (item.excludeSkillTags?.length > 0);
+    // ADD_STAT_BASE (조건 태그가 없는 純 공통 스탯 수집)
+    statList.forEach(item => {
+        if (!item) return;
+
+        if (Array.isArray(item.effects)) {
+            item.effects.forEach(eff => {
+                const hasTagCondition = (eff.targetTags?.length > 0) || (eff.requireTags?.length > 0) || 
+                                        (eff.excludeTags?.length > 0) || (eff.excludeSkillTags?.length > 0) ||
+                                        (item.requireTags?.length > 0) || (item.excludeTags?.length > 0);
                 
-                if (!hasTagCondition && !item.formula) {
-                    addStat(commonStats, item.category, item.name, item.value, item.unit);
+                if (!hasTagCondition && !eff.formula && !item.formula) {
+                    const cat = eff.category || eff.type || item.category || item.type;
+                    const val = eff.val ?? eff.value ?? item.val ?? item.value;
+                    
+                    // 🌟 unit이 없으면 '고정 스탯 여부'를 확인해서 "" 또는 "%" 설정
+                    const isRawStat = RAW_STAT_CATEGORIES.includes(cat);
+                    const unitStr = eff.unit ?? item.unit ?? (isRawStat ? "" : "%");
+
+                    addStat(commonStats, cat, item.name, val, unitStr);
                 }
+            });
+        } else if (item.category || item.type) {
+            const hasTagCondition = (item.targetTags?.length > 0) || (item.requireTags?.length > 0) || 
+                                    (item.excludeTags?.length > 0) || (item.excludeSkillTags?.length > 0);
+            
+            if (!hasTagCondition && !item.formula) {
+                const cat = item.category || item.type;
+                const val = item.value ?? item.val;
+
+                // 🌟 unit이 없으면 '고정 스탯 여부'를 확인해서 "" 또는 "%" 설정
+                const isRawStat = RAW_STAT_CATEGORIES.includes(cat);
+                const unitStr = item.unit ?? (isRawStat ? "" : "%");
+
+                addStat(commonStats, cat, item.name, val, unitStr);
             }
-        });
+        }
+    });
 
         if (partyCritBonus > 0) {
             addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
@@ -1682,7 +1708,8 @@
                     arkStats[cat].forEach(eff => {
                         if (isTagMatching(skillTags, skillName, eff)) {
                             if (!stats[cat]) stats[cat] = [];
-                            stats[cat].push({ source: eff.source, val: eff.val, unit: eff.unit });
+                            addStat(stats,cat,eff.source,eff.val,eff.unit)
+                            // stats[cat].push({ source: eff.source, val: eff.val, unit: eff.unit });
                         }
                     });
                 }
@@ -1748,8 +1775,7 @@
             });
 
             if (totalSpecCoeff > 0) {
-                if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
-                stats["적에게 주는 피해"].push({ val: parseFloat((specStatValue * totalSpecCoeff / 699).toFixed(2)), source: "특화" });
+                addStat(stats,"적에게 주는 피해","특화 효과",parseFloat((specStatValue * totalSpecCoeff / 699 * 100).toFixed(2)),"%")
             }
         }
 

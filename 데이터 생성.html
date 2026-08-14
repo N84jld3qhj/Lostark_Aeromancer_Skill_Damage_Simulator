@@ -205,36 +205,6 @@
 
                 <button type="button" id="btnOrderSubmit" class="btn-submit btn-submit-order" onclick="addOrderNode()">+ 질서 코어 노드 추가</button>
                 <button type="button" id="btnOrderCancel" class="btn-cancel" onclick="cancelOrderEdit()">❌ 수정 취소</button>
-
-                <!-- 코어 관리 컨트롤러 -->
-<div class="core-management-panel" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-    <h4>⚙️ 질서 코어 모듈식 관리</h4>
-    
-    <!-- 1. 개별 / 전체 저장 -->
-    <div class="action-grid" style="display: flex; gap: 8px; margin-bottom: 10px;">
-        <button type="button" class="btn-action" onclick="downloadSingleCoreData()">💾 현재 코어만 저장 (해/달/별)</button>
-        <button type="button" class="btn-action" onclick="downloadJson(orderDataSets, 'orderDataSets_ALL.json')">💾 전체 코어 저장</button>
-    </div>
-
-    <!-- 2. 개별 불러오기 (덮어쓰기 / 병합 선택) -->
-    <div class="action-grid" style="display: flex; gap: 8px; margin-bottom: 15px;">
-        <button type="button" class="btn-action" onclick="triggerImport('replace')">📂 파일 불러오기 (덮어쓰기)</button>
-        <button type="button" class="btn-action" onclick="triggerImport('merge')">🔀 파일 불러오기 (병합하기)</button>
-    </div>
-    <input type="file" id="fileInputOrderConfig" style="display:none;" accept=".json" onchange="handleOrderJsonImport(event)">
-
-    <hr style="border: 0; border-top: 1px solid #dee2e6; margin: 10px 0;">
-
-    <!-- 3. localStorage 간이 프리셋 라이브러리 -->
-    <h5>🔖 브라우저 프리셋 저장소</h5>
-    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-        <input type="text" id="presetNameInput" placeholder="프리셋 이름 (예: 해-딜러 세팅A)" style="flex: 1; padding: 6px;">
-        <button type="button" onclick="saveCurrentCoreToPreset()">현재 코어 프리셋 저장</button>
-    </div>
-    <div id="presetListContainer" style="display: flex; flex-wrap: wrap; gap: 6px;">
-        <!-- 저장된 프리셋 뱃지가 동적으로 들어가는 공간 -->
-    </div>
-</div>
             </form>
         </div>
 
