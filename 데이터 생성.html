@@ -341,6 +341,14 @@
         return `${cat} (%)`;
     }
 
+    // 카테고리명을 기반으로 데이터 단위(unit) 결정하는 함수
+    function getUnitByCategory(category) {
+        if (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) {
+            return "";
+        }
+        return "%";
+    }
+
     // 초기 구조 생성자
     function createEmptyOrderStructure() {
         return {
@@ -594,7 +602,7 @@
             card.querySelectorAll(".sub-effect-row").forEach(row => {
                 const category = row.querySelector(".sub-cat").value;
                 const val = parseFloat(row.querySelector(".sub-val").value) || 0;
-                let unit = (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) ? "" : "%";
+                const unit = getUnitByCategory(category);
                 effects.push({ category, val, unit });
             });
 
@@ -680,9 +688,9 @@
         document.getElementById("tags").value = "샘플 공격 스킬, 마나, 주력기";
         registerTagsFromInput("샘플 공격 스킬, 마나, 주력기");
         document.getElementById("tripodContainer").innerHTML = "";
-        addTripodCard({ tier: 1, name: "빠른 준비", effects: [{ category: "쿨타임 감소", val: 15 }] });
-        addTripodCard({ tier: 2, name: "급경 타격", effects: [{ category: "치명타 적중률", val: 20 }] });
-        addTripodCard({ tier: 3, name: "강화된 일격", effects: [{ category: "적에게 주는 피해", val: 60 }] });
+        addTripodCard({ tier: 1, name: "빠른 준비", effects: [{ category: "쿨타임 감소", val: 15, unit: "%" }] });
+        addTripodCard({ tier: 2, name: "급경 타격", effects: [{ category: "치명타 적중률", val: 20, unit: "%" }] });
+        addTripodCard({ tier: 3, name: "강화된 일격", effects: [{ category: "적에게 주는 피해", val: 60, unit: "%" }] });
     }
 
     // --- TAB 2: 질서 코어 ---
@@ -776,8 +784,10 @@
                 const requireTags = box.querySelector(".ord-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
                 const excludeTags = box.querySelector(".ord-exclude-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
 
-                const effAncientObj = { category, val: valAncient };
-                const effRelicObj = { category, val: valRelic };
+                const unit = getUnitByCategory(category);
+
+                const effAncientObj = { category, val: valAncient, unit };
+                const effRelicObj = { category, val: valRelic, unit };
 
                 if (requireTags.length > 0) { effAncientObj.requireTags = requireTags; effRelicObj.requireTags = requireTags; }
                 if (excludeTags.length > 0) { effAncientObj.excludeTags = excludeTags; effRelicObj.excludeTags = excludeTags; }
@@ -806,7 +816,8 @@
                 const requireTags = box.querySelector(".ord-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
                 const excludeTags = box.querySelector(".ord-exclude-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
                 
-                const effObj = { category, val };
+                const unit = getUnitByCategory(category);
+                const effObj = { category, val, unit };
                 if (requireTags.length > 0) effObj.requireTags = requireTags;
                 if (excludeTags.length > 0) effObj.excludeTags = excludeTags;
                 effects.push(effObj);
@@ -1118,12 +1129,17 @@
             const requireTags = card.querySelector(".buff-tags")?.value.split(",").map(s => s.trim()).filter(s => s.length > 0) || [];
             const excludeTags = card.querySelector(".buff-exclude-tags")?.value.split(",").map(s => s.trim()).filter(s => s.length > 0) || [];
 
+            const unit = getUnitByCategory(category);
             const effObj = { category };
+            
             if (type === 'formula') {
                 effObj.formula = formula;
             } else {
                 effObj.val = val;
             }
+            
+            effObj.unit = unit;
+
             if (requireTags.length > 0) effObj.requireTags = requireTags;
             if (excludeTags.length > 0) effObj.excludeTags = excludeTags;
 
