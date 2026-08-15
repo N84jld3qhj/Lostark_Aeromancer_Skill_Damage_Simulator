@@ -10,7 +10,7 @@
         ]
     },
     {
-        "name": "질풍노도",
+        "name": "깨달음 - 질풍노도",
         "effects": [
             {
                 "category": "이동 속도",
@@ -24,7 +24,8 @@
         "effects": [
             {
                 "category": "공격 속도",
-                "val": 12
+                "val": 12,
+                "unit": "%"
             }
         ]
     },
@@ -43,11 +44,13 @@
         "effects": [
             {
                 "category": "치명타 적중률",
-                "formula": "Math.min(finalMoveSpeed,40)*0.3"
+                "formula": "Math.min(finalMoveSpeed,40)*0.3",
+                "unit": "%"
             },
             {
                 "category": "치명타 피해",
-                "formula": "Math.min(finalAtkSpeed,40)*1.2"
+                "formula": "Math.min(finalAtkSpeed,40)*1.2",
+                "unit": "%"
             }
         ]
     },
