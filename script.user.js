@@ -815,17 +815,17 @@
             "불타는 일격": {
                 "고대": {
                     "14": [{ "id": "node_1786772304498_gybm", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
-                    "17": [
-                        { "id": "node_1786772309898_xaxw", "effects": [{ "category": "적에게 주는 피해", "val": 2, "unit": "%" }] },
-                        { "id": "node_1786772314146_krx2", "effects": [{ "category": "적에게 주는 피해", "val": 0, "unit": "%" }] }
-                    ]
+                    "17": [{ "id": "node_1786772309898_xaxw", "effects": [{ "category": "적에게 주는 피해", "val": 2, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }]
                 },
                 "유물": {
                     "14": [{ "id": "node_1786772304498_gybm", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
-                    "17": [
-                        { "id": "node_1786772309898_xaxw", "effects": [{ "category": "적에게 주는 피해", "val": 1, "unit": "%" }] },
-                        { "id": "node_1786772314146_krx2", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }
-                    ]
+                    "17": [{ "id": "node_1786772309898_xaxw", "effects": [{ "category": "적에게 주는 피해", "val": 1, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }]
                 }
             }
         },
@@ -889,99 +889,100 @@
         }
     };
 
+
     const braceletTable = {
         // 1. 공이속
-        "공이속": {
-            "공격 속도": { 상: 6, 중: 5, 하: 4 },
-            "이동 속도": { 상: 6, 중: 5, 하: 4 }
-        },
+        "공이속": [
+            { category: "공격 속도", values: { 상: 6, 중: 5, 하: 4 }, unit: "%", requireTags: [] },
+            { category: "이동 속도", values: { 상: 6, 중: 5, 하: 4 }, unit: "%", requireTags: [] }
+        ],
 
         // 2. 치적 + 치명타 주는 피해
-        "치적|치명타주는피해": {
-            "치명타 적중률": { 상: 5.0, 중: 4.2, 하: 3.4 },
-            "치명타 시 적에게 주는 피해": { 상: 1.5, 중: 1.5, 하: 1.5 }
-        },
+        "치적|치명타주는피해": [
+            { category: "치명타 적중률", values: { 상: 5.0, 중: 4.2, 하: 3.4 }, unit: "%", requireTags: [] },
+            { category: "치명타 시 적에게 주는 피해", values: { 상: 1.5, 중: 1.5, 하: 1.5 }, unit: "%", requireTags: [] }
+        ],
 
         // 3. 치피 + 치명타 주는 피해
-        "치피|치명타주는피해": {
-            "치명타 피해": { 상: 10.0, 중: 8.4, 하: 6.8 },
-            "치명타 시 적에게 주는 피해": { 상: 1.5, 중: 1.5, 하: 1.5 }
-        },
+        "치피|치명타주는피해": [
+            { category: "치명타 피해", values: { 상: 10.0, 중: 8.4, 하: 6.8 }, unit: "%", requireTags: [] },
+            { category: "치명타 시 적에게 주는 피해", values: { 상: 1.5, 중: 1.5, 하: 1.5 }, unit: "%", requireTags: [] }
+        ],
 
         // 4. 적에게 주는 피해 (단독)
-        "적에게주는피해": {
-            "적에게 주는 피해": { 상: 3.0, 중: 2.5, 하: 2.0 }
-        },
+        "적에게주는피해": [
+            { category: "적에게 주는 피해", values: { 상: 3.0, 중: 2.5, 하: 2.0 }, unit: "%", requireTags: [] }
+        ],
 
         // 5. 적주피 + 무력화 적 피해
-        "적주피|무력화적피해량": {
-            "적에게 주는 피해": { 상: 3.0, 중: 2.5, 하: 2.0 }
-        },
+        "적주피|무력화적피해량": [
+            { category: "적에게 주는 피해", values: { 상: 3.0, 중: 2.5, 하: 2.0 }, unit: "%", requireTags: [] }
+        ],
 
         // 6. 쿨 + 적주피
-        "쿨|적에게주는피해": {
-            "적에게 주는 피해": { 상: 5.5, 중: 5.0, 하: 4.5 },
-            "쿨타임 증가": { 상: 2.0, 중: 2.0, 하: 2.0 }
-        },
+        "쿨|적에게주는피해": [
+            { category: "적에게 주는 피해", values: { 상: 5.5, 중: 5.0, 하: 4.5 }, unit: "%", requireTags: [] },
+            { category: "쿨타임 증가", values: { 상: 2.0, 중: 2.0, 하: 2.0 }, unit: "%", requireTags: [] }
+        ],
 
         // 7. 추피 + 악마&대악마 피해
-        "추피|악마&대악마피해량": {
-            "추가 피해": { 상: 3.5, 중: 3.0, 하: 2.5 },
-            "악마 및 대악마 피해": { 상: 2.5, 중: 2.5, 하: 2.5 }
-        },
+        "추피|악마&대악마피해량": [
+            { category: "추가 피해", values: { 상: 6, 중: 5.5, 하: 5 }, unit: "%", requireTags: [] },
+        ],
 
         // 8. 중첩 무공 + 공이속
-        "공격적중시무공": {
-            "무기 공격력": { 상: 1480, 중: 1320, 하: 1160 },
-            "공격 속도": { 상: 1, 중: 1, 하: 1 },
-            "이동 속도": { 상: 1, 중: 1, 하: 1 }
-        },
+        "공격적중시무공": [
+            { category: "무기 공격력", values: { 상: 1480, 중: 1320, 하: 1160 }, unit: "", requireTags: [] },
+            { category: "공격 속도", values: { 상: 1, 중: 1, 하: 1 }, unit: "%", requireTags: [] },
+            { category: "이동 속도", values: { 상: 1, 중: 1, 하: 1 }, unit: "%", requireTags: [] }
+        ],
 
         // 9. 조건부 무공
-        "조건부무공": {
-            "무기 공격력": { 상: 11400, 중: 10300, 하: 9200 }
-        },
+        "조건부무공": [
+            { category: "무기 공격력", values: { 상: 11400, 중: 10300, 하: 9200 }, unit: "", requireTags: [] }
+        ],
 
         // 10. 스택형 무공
-        "스택당무공": {
-            "무기 공격력": { 상: 13200, 중: 12000, 하: 10800 }
-        },
+        "스택당무공": [
+            { category: "무기 공격력", values: { 상: 13200, 중: 12000, 하: 10800 }, unit: "", requireTags: [] }
+        ],
 
-        // 11. 백어택 스킬 피해
-        "백어택스킬피해": {
-            "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
-        },
+        // 11. 백어택 스킬 피해 (태그 적용)
+        "백어택스킬피해": [
+            { category: "적에게 주는 피해", values: { 상: 3.5, 중: 3.0, 하: 2.5 }, unit: "%", requireTags: ["백어택"] }
+        ],
 
-        // 12. 헤드어택 스킬 피해
-        "헤드어택스킬피해": {
-            "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
-        },
+        // 12. 헤드어택 스킬 피해 (태그 적용)
+        "헤드어택스킬피해": [
+            { category: "적에게 주는 피해", values: { 상: 3.5, 중: 3.0, 하: 2.5 }, unit: "%", requireTags: ["헤드어택"] }
+        ],
 
-        // 13. 타대 스킬 피해 (방향성 X)
-        "타대스킬피해": {
-            "적에게 주는 피해": { 상: 3.5, 중: 3.0, 하: 2.5 }
-        },
+        // 13. 타대 스킬 피해 (방향성 X 태그 적용)
+        "타대스킬피해": [
+            { category: "적에게 주는 피해", values: { 상: 3.5, 중: 3.0, 하: 2.5 }, unit: "%", requireTags: ["타대"] }
+        ],
 
         // 14. 추가 피해 (단독)
-        "추가피해": {
-            "추가 피해": { 상: 4.0, 중: 3.5, 하: 3.0 }
-        },
+        "추가피해": [
+            { category: "추가 피해", values: { 상: 4.0, 중: 3.5, 하: 3.0 }, unit: "%", requireTags: [] }
+        ],
 
         // 15. 치명타 적중률 (단독)
-        "치명타적중률": {
-            "치명타 적중률": { 상: 5.0, 중: 4.2, 하: 3.4 }
-        },
+        "치명타적중률": [
+            { category: "치명타 적중률", values: { 상: 5.0, 중: 4.2, 하: 3.4 }, unit: "%", requireTags: [] }
+        ],
 
         // 16. 치명타 피해 (단독)
-        "치명타피해": {
-            "치명타 피해": { 상: 10.0, 중: 8.4, 하: 6.8 }
-        },
+        "치명타피해": [
+            { category: "치명타 피해", values: { 상: 10.0, 중: 8.4, 하: 6.8 }, unit: "%", requireTags: [] }
+        ],
 
         // 17. 무기 공격력 (단독)
-        "무기공격력": {
-            "무기 공격력": { 상: 9000, 중: 8100, 하: 7200 }
-        }
+        "무기공격력": [
+            { category: "무기 공격력", values: { 상: 9000, 중: 8100, 하: 7200 }, unit: "", requireTags: [] }
+        ]
     };
+
 
     const accessoryTable = {
         "추가 피해": { 상: 2.6, 중: 1.6, 하: 0.7 },
@@ -998,11 +999,8 @@
     // 3. 헬퍼 함수 정의
     // =============================================================================
     function getBraceletOptionData(rawOpt, grade) {
-        if (!rawOpt || rawOpt === '없음' || rawOpt === 'none') return null;
+        if (!rawOpt || rawOpt === '없음' || rawOpt === 'none') return [];
 
-        // 숫자, 마침표, +, %, 공백을 제거하여 순수 키워드만 추출
-        // 예: "타대 스킬 피해 +3.0%" -> "타대스킬피해"
-        // 예: "치피 +8.4% | 치명타 주는 피해 +1.5%" -> "치피|치명타주는피해"
         const cleanTarget = rawOpt
             .replace(/[\d\.\+%]+/g, '')
             .replace(/\s+/g, '');
@@ -1011,15 +1009,18 @@
             const cleanKey = key.replace(/\s+/g, '');
 
             if (cleanTarget.includes(cleanKey) || cleanKey.includes(cleanTarget)) {
-                const result = {};
-                for (const [statName, gradeMap] of Object.entries(effects)) {
-                    const val = gradeMap[grade] ?? gradeMap['중'] ?? 0;
-                    if (val !== 0) result[statName] = val;
-                }
-                return result;
+                return effects.map(eff => {
+                    const val = eff.values[grade] ?? eff.values['중'] ?? 0;
+                    return {
+                        category: eff.category,
+                        val: val,
+                        unit: eff.unit || "%",
+                        requireTags: eff.requireTags || []
+                    };
+                }).filter(eff => eff.val !== 0);
             }
         }
-        return null;
+        return [];
     }
 
     function addStat(statsObj, category, source, val, unit = "%") {
@@ -1864,13 +1865,30 @@
             if (val) addStat(commonStats, category, "팔찌", val, "");
         });
 
+        // 팔찌 태그형 스킬 효과를 담을 배열 (스킬 데미지 계산 로직으로 넘겨줄 데이터)
+        const braceletSkillEffects = [];
+
         (inputs?.bracelet?.options || []).forEach((opt, i) => {
             if (opt && opt.opt && opt.opt !== "none") {
-                const optionData = getBraceletOptionData(opt.opt, opt.grade);
-                if (optionData) {
-                    for (let eff in optionData) {
-                        addStat(commonStats, eff, `팔찌 옵션 ${i + 1} (${opt.opt} - ${opt.grade})`, optionData[eff]);
-                    }
+                const optionEffects = getBraceletOptionData(opt.opt, opt.grade);
+
+                if (optionEffects.length > 0) {
+                    optionEffects.forEach(eff => {
+                        // 1. 태그가 없는 경우 -> 모든 스킬에 적용되는 공용 스탯에 추가
+                        if (!eff.requireTags || eff.requireTags.length === 0) {
+                            addStat(commonStats, eff.category, `팔찌 옵션 ${i + 1} (${opt.opt} - ${opt.grade})`, eff.val);
+                        } 
+                        // 2. 태그가 존재하는 경우 -> 스킬 조건부 효과 배열에 추가
+                        else {
+                            braceletSkillEffects.push({
+                                source: `팔찌 옵션 ${i + 1} (${opt.opt} - ${opt.grade})`,
+                                category: eff.category,
+                                val: eff.val,
+                                unit: eff.unit,
+                                requireTags: eff.requireTags
+                            });
+                        }
+                    });
                 } else {
                     console.warn(`[팔찌 옵션 매칭 실패] 원본: "${opt.opt}", 등급: "${opt.grade}"`);
                 }
@@ -1897,6 +1915,22 @@
             for (let key in commonStats) {
                 stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
             }
+
+            // 💡 [추가] 팔찌 태그 조건부 효과 적용
+            braceletSkillEffects.forEach(effect => {
+                // 해당 스킬이 요구 태그(백어택, 헤드어택, 타격의 대가 등)를 모두 포함하는지 확인
+                const isMatched = effect.requireTags.every(tag => skillTags.includes(tag));
+
+                if (isMatched) {
+                    // 기존 addStat 함수를 사용해 해당 스킬의 stats에 직접 가산
+                    addStat(
+                        stats, 
+                        effect.category, 
+                        effect.source, 
+                        effect.val
+                    );
+                }
+            });
 
             // 🌟 [수정 포인트 1] 지연 수식 계산용 임시 저장 배열
             const pendingFormulas = [];
