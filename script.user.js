@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.0.6
+// @version      1.0.7
 // @description  로펙 시뮬레이터 DOM 데이터를 읽어와 실시간으로 입력된 세팅을 기준으로 스킬 데미지 시뮬레이션을 제공합니다. 
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -2008,11 +2008,7 @@
 
                             if (isMatch) {
                                 if (!stats[cat]) stats[cat] = [];
-                                stats[cat].push({
-                                    source: eff.source,
-                                    val: eff.val,
-                                    unit: eff.unit
-                                });
+                                addStat(stats,cat,eff.source,eff.val,eff.unit)
                             }
                         });
                     }
@@ -2270,12 +2266,10 @@
                 });
 
                 if (totalSpecCoeff > 0) {
-                    const specDamageValue = specStatValue * totalSpecCoeff / 699;
+                    const specDamageValue = specStatValue * totalSpecCoeff / 699 * 100;
 
-                    stats["적에게 주는 피해"].push({
-                        val: parseFloat(specDamageValue.toFixed(2)),
-                        source: "특화"
-                    });
+                    addStat(stats,"적에게 주는 피해","특화 효과",parseFloat(specDamageValue.toFixed(2)),"%")
+
                 }
             }
             
