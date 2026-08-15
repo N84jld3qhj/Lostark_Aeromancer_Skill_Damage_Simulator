@@ -1,0 +1,328 @@
+[
+    {
+        "name": "피니쉬 스트라이크",
+        "constant": 2639,
+        "coefficient": 15.74,
+        "baseCooldown": 18,
+        "mana": 441,
+        "tags": [
+            "피니쉬 스트라이크",
+            "마나",
+            "백어택"
+        ],
+        "tripods": [
+            {
+                "tier": 1,
+                "name": "강화된 일격",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 32,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "약점 포착",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 70,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "확인사살",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 205.5,
+                        "unit": "%"
+                    },
+                    {
+                        "category": "고정 쿨타임 증가",
+                        "val": 6,
+                        "unit": ""
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "오버드라이브",
+        "constant": 6134,
+        "coefficient": 36.55,
+        "baseCooldown": 24,
+        "mana": 521,
+        "tags": [
+            "오버드라이브",
+            "마나"
+        ],
+        "tripods": [
+            {
+                "tier": 2,
+                "name": "폭주 강화",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 104,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "일격필살",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 80,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "파워 브레이크",
+        "constant": 2735,
+        "coefficient": 16.32,
+        "baseCooldown": 15,
+        "mana": 397,
+        "tags": [
+            "파워 브레이크",
+            "마나",
+            "백어택"
+        ],
+        "tripods": [
+            {
+                "tier": 2,
+                "name": "원거리 타격",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 60,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "소용돌이",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 174.5,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "템페스트 슬래쉬",
+        "constant": 2927,
+        "coefficient": 17.49,
+        "baseCooldown": 24,
+        "mana": 521,
+        "tags": [
+            "템페스트 슬래쉬",
+            "백어택"
+        ],
+        "tripods": [
+            {
+                "tier": 1,
+                "name": "빠른 준비",
+                "effects": [
+                    {
+                        "category": "고정 쿨타임 감소",
+                        "val": 8,
+                        "unit": ""
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "폭주 강화",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 70,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "휘몰아치기",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 90.4,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "레드 더스트",
+        "constant": 1893,
+        "coefficient": 11.29,
+        "baseCooldown": 24,
+        "mana": 521,
+        "tags": [
+            "레드 더스트",
+            "마나",
+            "백어택"
+        ],
+        "tripods": [
+            {
+                "tier": 2,
+                "name": "강화된 일격",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 50,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "붉은 충격",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 236,
+                        "unit": "%"
+                    },
+                    {
+                        "category": "고정 쿨타임 감소",
+                        "val": 12,
+                        "unit": ""
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "마운틴 크래쉬",
+        "constant": 2326,
+        "coefficient": 11.36,
+        "baseCooldown": 12,
+        "mana": 349,
+        "tags": [
+            "마운틴 크래쉬",
+            "마나",
+            "헤드어택"
+        ],
+        "tripods": [
+            {
+                "tier": 3,
+                "name": "지진파",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 120,
+                        "unit": "%"
+                    },
+                    {
+                        "category": "치명타 적중률",
+                        "val": 20,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "윈드 블레이드",
+        "constant": 1653,
+        "coefficient": 8.08,
+        "baseCooldown": 13,
+        "mana": 366,
+        "tags": [
+            "윈드 블레이드"
+        ],
+        "tripods": [
+            {
+                "tier": 3,
+                "name": "멈추지 않는 공격",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 83,
+                        "unit": "%"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "숄더 차지",
+        "constant": 524,
+        "coefficient": 2.84,
+        "baseCooldown": 14,
+        "mana": 266,
+        "tags": [
+            "숄더 차지",
+            "백어택"
+        ],
+        "tripods": [
+            {
+                "tier": 2,
+                "name": "빠른 준비",
+                "effects": [
+                    {
+                        "category": "고정 쿨타임 감소",
+                        "val": 6,
+                        "unit": ""
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "블러드 러쉬 1타",
+        "constant": 21159,
+        "coefficient": 29.28,
+        "baseCooldown": 36,
+        "mana": 0,
+        "tags": [
+            "블러드 러쉬 1타",
+            "러쉬",
+            "백어택"
+        ],
+        "tripods": []
+    },
+    {
+        "name": "블러드 러쉬 2타",
+        "constant": 26029,
+        "coefficient": 36.03,
+        "baseCooldown": 36,
+        "mana": 0,
+        "tags": [
+            "블러드 러쉬 2타",
+            "러쉬",
+            "백어택"
+        ],
+        "tripods": []
+    },
+    {
+        "name": "블러드 러쉬 3타",
+        "constant": 41863,
+        "coefficient": 57.94,
+        "baseCooldown": 36,
+        "mana": 0,
+        "tags": [
+            "블러드 러쉬 3타",
+            "러쉬",
+            "백어택"
+        ],
+        "tripods": []
+    }
+]

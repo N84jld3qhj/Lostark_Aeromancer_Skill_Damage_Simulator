@@ -1084,6 +1084,9 @@
                     <div style="font-weight: bold; color: #4f46e5; margin-bottom: 4px;">ℹ️ 수식 입력 가이드 (특별한 계산이 필요한 경우)</div>
                     <div style="background: #f1f5f9; padding: 6px; border-radius: 4px; margin-bottom: 6px;">
                         <strong>📌 기본 사용 가능 변수:</strong><br>
+                        • <code>totalCritStat</code> : 치명<br>
+                        • <code>totalSwiftStat</code> : 신속<br>
+                        • <code>totalSpecStat</code> : 특화<br>
                         • <code>critRate</code> : 치명타 적중률 (%)<br>
                         • <code>finalAtkSpeed</code> : 공격 속도 증가량 (%)<br>
                         • <code>finalMoveSpeed</code> : 이동 속도 증가량 (%)
@@ -1092,9 +1095,12 @@
 
                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
                     <span style="font-size: 11px; font-weight: bold; color: #475569;">⚡ 변수 클릭 입력:</span>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'totalCritStat')">+ totalCritStat</button>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'totalSwiftStat')">+ totalSwiftStat</button>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'totalSpecStat')">+ totalSpecStat</button>
                     <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'critRate')">+ critRate</button>
-                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#0891b2;" onclick="insertVariable(this, 'finalAtkSpeed')">+ finalAtkSpeed</button>
-                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#059669;" onclick="insertVariable(this, 'finalMoveSpeed')">+ finalMoveSpeed</button>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'finalAtkSpeed')">+ finalAtkSpeed</button>
+                    <button type="button" class="btn-sub-add" style="margin:0; padding:2px 6px; font-size:11px; background:#4f46e5;" onclick="insertVariable(this, 'finalMoveSpeed')">+ finalMoveSpeed</button>
                 </div>
             </div>
 

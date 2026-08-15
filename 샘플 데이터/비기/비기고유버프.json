@@ -1,0 +1,124 @@
+[
+    {
+        "name": "펫효과",
+        "effects": [
+            {
+                "category": "특화",
+                "val": 160,
+                "unit": ""
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 폭주 강화",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 20,
+                "unit": "%"
+            },
+            {
+                "category": "공격력 %",
+                "val": 24,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 광전사의 비기",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 3.4,
+                "unit": "%"
+            },
+            {
+                "category": "적에게 주는 피해",
+                "val": 20,
+                "unit": "%",
+                "requireTags": [
+                    "러쉬"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 분노 소모",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 2.4,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "깨달음 - 쇄도",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 1,
+                "unit": "%"
+            }
+        ]
+    },
+    {
+        "name": "도약 - 풀려난 힘",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 15,
+                "unit": "%",
+                "requireTags": [
+                    "초각스"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "도약 - 잠재력 해방",
+        "effects": [
+            {
+                "category": "쿨타임 감소",
+                "val": 8,
+                "unit": "%",
+                "requireTags": [
+                    "초각스"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "도약 - 분노 증폭",
+        "effects": [
+            {
+                "category": "적에게 주는 피해",
+                "val": 95,
+                "unit": "%",
+                "requireTags": [
+                    "초각스"
+                ]
+            }
+        ]
+    },
+    {
+        "name": "폴주",
+        "effects": [
+            {
+                "category": "치명타 적중률",
+                "formula": "(totalSpecStat/699*0.26+1)*30",
+                "unit": "%"
+            },
+            {
+                "category": "이동 속도",
+                "formula": "(totalSpecStat/699*0.26+1)*20",
+                "unit": "%"
+            },
+            {
+                "category": "공격 속도",
+                "formula": "(totalSpecStat/699*0.26+1)*20",
+                "unit": "%"
+            }
+        ]
+    }
+]

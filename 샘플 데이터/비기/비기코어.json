@@ -3,14 +3,37 @@
         "고대": {
             "10": [
                 {
-                    "id": "node_1786779234863_3jg4",
+                    "id": "node_1786782085193_6i2h",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 10,
+                            "val": 4,
+                            "unit": "%",
+                            "excludeTags": [
+                                "초각스"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "14": [
+                {
+                    "id": "node_1786782115517_1jvw",
+                    "effects": [
+                        {
+                            "category": "적에게 주는 피해",
+                            "val": -30,
                             "unit": "%",
                             "requireTags": [
-                                "곰"
+                                "러쉬"
+                            ]
+                        },
+                        {
+                            "category": "쿨타임 감소",
+                            "val": 35,
+                            "unit": "%",
+                            "requireTags": [
+                                "러쉬"
                             ]
                         }
                     ]
@@ -18,39 +41,29 @@
             ],
             "17": [
                 {
-                    "id": "node_1786779271207_axcy",
+                    "id": "node_1786782126820_y7lb",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 10.5,
+                            "val": 16,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
-                        },
-                        {
-                            "category": "이동 속도",
-                            "val": 15,
-                            "unit": "%"
-                        },
-                        {
-                            "category": "공격 속도",
-                            "val": 15,
-                            "unit": "%"
                         }
                     ]
                 }
             ],
             "18": [
                 {
-                    "id": "node_1786779289311_4zr5",
+                    "id": "node_1786782135628_9oi8",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -58,14 +71,14 @@
             ],
             "19": [
                 {
-                    "id": "node_1786779289311_4zr5",
+                    "id": "node_1786782135628_9oi8",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -73,14 +86,14 @@
             ],
             "20": [
                 {
-                    "id": "node_1786779289311_4zr5",
+                    "id": "node_1786782135628_9oi8",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -90,14 +103,37 @@
         "유물": {
             "10": [
                 {
-                    "id": "node_1786779234863_3jg4",
+                    "id": "node_1786782085193_6i2h",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 10,
+                            "val": 4,
+                            "unit": "%",
+                            "excludeTags": [
+                                "초각스"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "14": [
+                {
+                    "id": "node_1786782115517_1jvw",
+                    "effects": [
+                        {
+                            "category": "적에게 주는 피해",
+                            "val": -30,
                             "unit": "%",
                             "requireTags": [
-                                "곰"
+                                "러쉬"
+                            ]
+                        },
+                        {
+                            "category": "쿨타임 감소",
+                            "val": 35,
+                            "unit": "%",
+                            "requireTags": [
+                                "러쉬"
                             ]
                         }
                     ]
@@ -105,39 +141,29 @@
             ],
             "17": [
                 {
-                    "id": "node_1786779271207_axcy",
+                    "id": "node_1786782126820_y7lb",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 8.5,
+                            "val": 14,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
-                        },
-                        {
-                            "category": "이동 속도",
-                            "val": 15,
-                            "unit": "%"
-                        },
-                        {
-                            "category": "공격 속도",
-                            "val": 15,
-                            "unit": "%"
                         }
                     ]
                 }
             ],
             "18": [
                 {
-                    "id": "node_1786779289311_4zr5",
+                    "id": "node_1786782135628_9oi8",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -145,14 +171,14 @@
             ],
             "19": [
                 {
-                    "id": "node_1786779289311_4zr5",
+                    "id": "node_1786782135628_9oi8",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -160,14 +186,14 @@
             ],
             "20": [
                 {
-                    "id": "node_1786779289311_4zr5",
+                    "id": "node_1786782135628_9oi8",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -179,14 +205,14 @@
         "고대": {
             "10": [
                 {
-                    "id": "node_1786779827945_mqx2",
+                    "id": "node_1786782156852_h9al",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
                             "val": 4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -194,14 +220,14 @@
             ],
             "17": [
                 {
-                    "id": "node_1786779836145_7ppl",
+                    "id": "node_1786782172612_7681",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 14,
+                            "val": 2,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -209,14 +235,14 @@
             ],
             "18": [
                 {
-                    "id": "node_1786779841065_i5h2",
+                    "id": "node_1786782178204_4vfi",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -224,14 +250,14 @@
             ],
             "19": [
                 {
-                    "id": "node_1786779841065_i5h2",
+                    "id": "node_1786782178204_4vfi",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -239,14 +265,14 @@
             ],
             "20": [
                 {
-                    "id": "node_1786779841065_i5h2",
+                    "id": "node_1786782178204_4vfi",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -256,14 +282,14 @@
         "유물": {
             "10": [
                 {
-                    "id": "node_1786779827945_mqx2",
+                    "id": "node_1786782156852_h9al",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
                             "val": 4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -271,14 +297,14 @@
             ],
             "17": [
                 {
-                    "id": "node_1786779836145_7ppl",
+                    "id": "node_1786782172612_7681",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 12,
+                            "val": 0,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -286,14 +312,14 @@
             ],
             "18": [
                 {
-                    "id": "node_1786779841065_i5h2",
+                    "id": "node_1786782178204_4vfi",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -301,14 +327,14 @@
             ],
             "19": [
                 {
-                    "id": "node_1786779841065_i5h2",
+                    "id": "node_1786782178204_4vfi",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -316,14 +342,14 @@
             ],
             "20": [
                 {
-                    "id": "node_1786779841065_i5h2",
+                    "id": "node_1786782178204_4vfi",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.4,
                             "unit": "%",
-                            "requireTags": [
-                                "찢곰"
+                            "excludeTags": [
+                                "초각스"
                             ]
                         }
                     ]
@@ -333,34 +359,29 @@
     },
     "별": {
         "고대": {
+            "10": [],
             "14": [
                 {
-                    "id": "node_1786779864267_vpkx",
+                    "id": "node_1786782198476_gfj2",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 5,
-                            "unit": "%",
-                            "requireTags": [
-                                "찢곰"
-                            ]
+                            "val": 0,
+                            "unit": "%"
                         }
                     ]
                 }
             ],
             "17": [
                 {
-                    "id": "node_1786779876771_6yc8",
+                    "id": "node_1786782217284_m8k2",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 12.5,
+                            "val": 27,
                             "unit": "%",
                             "requireTags": [
-                                "곰"
-                            ],
-                            "excludeTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -368,14 +389,14 @@
             ],
             "18": [
                 {
-                    "id": "node_1786779882260_bz29",
+                    "id": "node_1786782225100_d3lw",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.6,
                             "unit": "%",
                             "requireTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -383,14 +404,14 @@
             ],
             "19": [
                 {
-                    "id": "node_1786779882260_bz29",
+                    "id": "node_1786782225100_d3lw",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.6,
                             "unit": "%",
                             "requireTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -398,14 +419,14 @@
             ],
             "20": [
                 {
-                    "id": "node_1786779882260_bz29",
+                    "id": "node_1786782225100_d3lw",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.6,
                             "unit": "%",
                             "requireTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -413,34 +434,29 @@
             ]
         },
         "유물": {
+            "10": [],
             "14": [
                 {
-                    "id": "node_1786779864267_vpkx",
+                    "id": "node_1786782198476_gfj2",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 5,
-                            "unit": "%",
-                            "requireTags": [
-                                "찢곰"
-                            ]
+                            "val": 0,
+                            "unit": "%"
                         }
                     ]
                 }
             ],
             "17": [
                 {
-                    "id": "node_1786779876771_6yc8",
+                    "id": "node_1786782217284_m8k2",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 10,
+                            "val": 18,
                             "unit": "%",
                             "requireTags": [
-                                "곰"
-                            ],
-                            "excludeTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -448,14 +464,14 @@
             ],
             "18": [
                 {
-                    "id": "node_1786779882260_bz29",
+                    "id": "node_1786782225100_d3lw",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.6,
                             "unit": "%",
                             "requireTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -463,14 +479,14 @@
             ],
             "19": [
                 {
-                    "id": "node_1786779882260_bz29",
+                    "id": "node_1786782225100_d3lw",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.6,
                             "unit": "%",
                             "requireTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]
@@ -478,14 +494,14 @@
             ],
             "20": [
                 {
-                    "id": "node_1786779882260_bz29",
+                    "id": "node_1786782225100_d3lw",
                     "effects": [
                         {
                             "category": "적에게 주는 피해",
-                            "val": 0.3,
+                            "val": 0.6,
                             "unit": "%",
                             "requireTags": [
-                                "찢곰"
+                                "파워 브레이크"
                             ]
                         }
                     ]

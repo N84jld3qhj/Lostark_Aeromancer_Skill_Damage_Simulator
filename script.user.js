@@ -2150,6 +2150,7 @@
                     totalSwift,
                     finalAtk,
                     totalCritStat: getStatSum(stats, "치명"),
+                    totalSwiftStat: getStatSum(stats,"신속"),
                     totalSpecStat: getStatSum(stats, "특화"),
                     Math
                 };
