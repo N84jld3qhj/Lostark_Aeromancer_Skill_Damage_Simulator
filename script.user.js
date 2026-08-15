@@ -153,24 +153,23 @@
         { name: "카드 세트", effects: [{ category: "적에게 주는 피해", val: 15, unit: "%" }] }
     ];
 
-   // 저장소에서 불러온 '추가 스탯 데이터' 가져오기
-    let customStatData = GM_getValue('ADD_STAT_BASE_CUSTOM', []);
-    // 🌟 [핵심 수정] 배열이 아니라 객체 형태라면, 데이터를 날리지 않고 배열로 변환해줍니다!
-    if (!Array.isArray(customStatData)) {
-        if (customStatData && typeof customStatData === 'object') {
-            customStatData = Object.values(customStatData);
-        } else {
-            customStatData = [];
-        }
+  // 1. 저장소 데이터 로드 및 빈 객체({}) 방어 로직
+    let skillDatabase = GM_getValue('skillDatabase');
+    if (!skillDatabase || Object.keys(skillDatabase).length === 0) {
+        skillDatabase = JSON.parse(JSON.stringify(typeof DEFAULT_SKILL_DATABASE !== 'undefined' ? DEFAULT_SKILL_DATABASE : {}));
     }
 
-    // 🌟 스크립트 최상단 변수 선언
-    let skillDatabase = GM_getValue('skillDatabase', {});
-    let orderDataSets = GM_getValue('orderDataSets', {});
-    let specializationDatabase = GM_getValue('specializationDatabase', {}); // 👈 특화 데이터 로드 추가
+    let orderDataSets = GM_getValue('orderDataSets');
+    if (!orderDataSets || Object.keys(orderDataSets).length === 0) {
+        orderDataSets = JSON.parse(JSON.stringify(typeof DEFAULT_ORDER_DATA_SETS !== 'undefined' ? DEFAULT_ORDER_DATA_SETS : {}));
+    }
 
+    let specializationDatabase = GM_getValue('specializationDatabase');
+    if (!specializationDatabase || Object.keys(specializationDatabase).length === 0) {
+        specializationDatabase = JSON.parse(JSON.stringify(typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined' ? DEFAULT_SPECIALIZATION_DATABASE : {}));
+    }
 
-    // DEFAULT_ADD_STAT_BASE 객체/배열 자동 변환 병합
+    // 2. DEFAULT_ADD_STAT_BASE 기본 배열 변환
     let baseArray = [];
     if (Array.isArray(DEFAULT_ADD_STAT_BASE)) {
         baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
@@ -185,7 +184,21 @@
         }));
     }
 
-    let ADD_STAT_BASE = baseArray.concat(customStatData);
+    // 3. 저장소에서 커스텀 데이터 불러오기 및 배열 검증
+    let customStatData = GM_getValue('ADD_STAT_BASE_CUSTOM', []);
+    if (!Array.isArray(customStatData)) {
+        if (customStatData && typeof customStatData === 'object') {
+            customStatData = Object.values(customStatData);
+        } else {
+            customStatData = [];
+        }
+    }
+
+    // 4. 🌟 [핵심] 기본 데이터와 이름이 중복되는 데이터 제거 후 병합
+    const baseNames = new Set(baseArray.map(item => item.name));
+    const pureCustomData = customStatData.filter(item => item && item.name && !baseNames.has(item.name));
+
+    let ADD_STAT_BASE = [...baseArray, ...pureCustomData];
 
     // window 전역 객체와도 동기화
     window.skillDatabase = skillDatabase;
@@ -3540,7 +3553,6 @@ function openDataPresetModal() {
         alert(`'${name}' 프리셋이 성공적으로 저장되었습니다!`);
     };
 
-    // 2) 프리셋 불러오기 실행
     modal.querySelector('#btn-load-db-preset').onclick = () => {
         const select = modal.querySelector('#db-preset-select');
         const id = Number(select.value);
@@ -3555,27 +3567,38 @@ function openDataPresetModal() {
 
         const d = target.data || {};
 
-        // window 및 GM_setValue 반영
+        // 1. 깊은 복사(JSON parse/stringify)를 사용하여 참조 꼬임 방지
         if (d.skillDatabase) {
-            window.skillDatabase = d.skillDatabase;
-            if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', d.skillDatabase);
+            window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
+            if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
         }
         if (d.orderDataSets) {
-            window.orderDataSets = d.orderDataSets;
-            if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', d.orderDataSets);
+            window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
+            if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
         }
         if (d.ADD_STAT_BASE) {
-            window.ADD_STAT_BASE = d.ADD_STAT_BASE;
-            if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', d.ADD_STAT_BASE);
+            window.ADD_STAT_BASE = JSON.parse(JSON.stringify(d.ADD_STAT_BASE));
+            if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', window.ADD_STAT_BASE);
         }
         if (d.specializationDatabase) {
-            window.specializationDatabase = d.specializationDatabase;
-            if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', d.specializationDatabase);
+            window.specializationDatabase = JSON.parse(JSON.stringify(d.specializationDatabase));
+            if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', window.specializationDatabase);
+        }
+
+        // 2. 누적/임시 변수 초기화 함수 호출 (프로젝트 내에 존재하는 초기화 함수 명시)
+        if (typeof window.resetState === 'function') {
+            window.resetState(); // 예: pendingFormulas = [], stats = {} 등 비우는 함수
+        }
+
+        // 3. UI 렌더링 함수가 따로 있다면 화면 갱신 실행
+        if (typeof window.renderUI === 'function') {
+            window.renderUI();
         }
 
         alert(`'${target.name}' 프리셋을 불러와 적용했습니다!`);
         modalOverlay.remove();
 
+        // 4. 초기화 및 UI 갱신이 완료된 순수한 상태에서 재계산 수행
         if (typeof window.triggerCalculation === 'function') {
             window.triggerCalculation();
         }
