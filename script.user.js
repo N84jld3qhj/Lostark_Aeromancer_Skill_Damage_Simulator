@@ -507,7 +507,6 @@
                 "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
             }
         },
-
         "타격의 대가": {
             name: "타격의 대가",
             requireTags: ["타대"],
@@ -530,11 +529,29 @@
             name: "기습의 대가",
             requireTags: ["백어택"],
             levels: {
-                "0LV":   [{ type: "적에게 주는 피해", val: 19.00, unit: "%" }],
-                "1LV":   [{ type: "적에게 주는 피해", val: 19.70, unit: "%" }],
-                "2LV":   [{ type: "적에게 주는 피해", val: 20.40, unit: "%" }],
-                "3LV":   [{ type: "적에게 주는 피해", val: 21.10, unit: "%" }],
-                "4LV":   [{ type: "적에게 주는 피해", val: 21.80, unit: "%" }]
+                "0LV":   [{ type: "적에게 주는 피해", val: 19.80, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 20.50, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 21.20, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 21.9, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 22.60, unit: "%" }]
+            },
+            stone: {
+                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
+                "1LV": [{ type: "적에게 주는 피해", val: 2.70, unit: "%" }],
+                "2LV": [{ type: "적에게 주는 피해", val: 3.40, unit: "%" }],
+                "3LV": [{ type: "적에게 주는 피해", val: 4.70, unit: "%" }],
+                "4LV": [{ type: "적에게 주는 피해", val: 5.4, unit: "%" }]
+            }
+        },
+        "결투의 대가": {
+            name: "결투의 대가",
+            requireTags: ["헤드어택"],
+            levels: {
+                "0LV":   [{ type: "적에게 주는 피해", val: 19.80, unit: "%" }],
+                "1LV":   [{ type: "적에게 주는 피해", val: 20.50, unit: "%" }],
+                "2LV":   [{ type: "적에게 주는 피해", val: 21.20, unit: "%" }],
+                "3LV":   [{ type: "적에게 주는 피해", val: 21.9, unit: "%" }],
+                "4LV":   [{ type: "적에게 주는 피해", val: 22.60, unit: "%" }]
             },
             stone: {
                 "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
@@ -650,23 +667,7 @@
                 "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
             }
         },
-        "저주받은 인형": {
-            name: "저주받은 인형",
-            levels: {
-                "0LV":   [{ type: "적에게 주는 피해", val: 14.00, unit: "%" }],
-                "1LV":   [{ type: "적에게 주는 피해", val: 14.75, unit: "%" }],
-                "2LV":   [{ type: "적에게 주는 피해", val: 15.50, unit: "%" }],
-                "3LV":   [{ type: "적에게 주는 피해", val: 16.25, unit: "%" }],
-                "4LV":   [{ type: "적에게 주는 피해", val: 17.00, unit: "%" }]
-            },
-            stone: {
-                "0LV": [{ type: "적에게 주는 피해", val: 0.0, unit: "%" }],
-                "1LV": [{ type: "적에게 주는 피해", val: 3.00, unit: "%" }],
-                "2LV": [{ type: "적에게 주는 피해", val: 3.75, unit: "%" }],
-                "3LV": [{ type: "적에게 주는 피해", val: 5.25, unit: "%" }],
-                "4LV": [{ type: "적에게 주는 피해", val: 6.00, unit: "%" }]
-            }
-        },
+        
         "정밀 단도": {
             name: "정밀 단도",
             levels: {
@@ -708,15 +709,170 @@
 
 
     const chaosDataSets = {
-        유물: {
-            sun: { 10: [{ type: "치명타 시 적에게 주는 피해", value: 0.55 }], 14: [{ type: "적에게 주는 피해", value: 0.50 }], 17: [{ type: "적에게 주는 피해", value: 1.00 }, { type: "치명타 시 적에게 주는 피해", value: 0.55 }], 18: [{ type: "적에게 주는 피해", value: 0.16 }], 19: [{ type: "적에게 주는 피해", value: 0.16 }], 20: [{ type: "적에게 주는 피해", value: 0.16 }] },
-            moon: { 14: [{ type: "적에게 주는 피해", value: 0.50 }], 17: [{ type: "적에게 주는 피해", value: 1.00 }], 18: [{ type: "적에게 주는 피해", value: 0.16 }], 19: [{ type: "적에게 주는 피해", value: 0.16 }], 20: [{ type: "적에게 주는 피해", value: 0.16 }] },
-            star: { 10: [{ type: "공격력", value: 900 }], 14: [{ type: "공격력 %", value: 0.55 }], 17: [{ type: "공격력 %", value: 1.10 }, { type: "공격력", value: 1800 }], 18: [{ type: "공격력 %", value: 0.16 }], 19: [{ type: "공격력 %", value: 0.16 }], 20: [{ type: "공격력 %", value: 0.16 }] }
+        // 1. 해 코어 
+        "해": {
+            "안정적인 공격": {
+                "고대": {
+                    "14": [{ "id": "node_1786771945128_61h6", "effects": [{ "category": "추가 피해", "val": 0.7, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786771959120_z465", "effects": [{ "category": "추가 피해", "val": 1.4, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786771970456_1sge", "effects": [{ "category": "추가 피해", "val": 0.23, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786771970456_1sge", "effects": [{ "category": "추가 피해", "val": 0.23, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786771970456_1sge", "effects": [{ "category": "추가 피해", "val": 0.23, "unit": "%" }] }]
+                },
+                "유물": {
+                    "14": [{ "id": "node_1786771945128_61h6", "effects": [{ "category": "추가 피해", "val": 0.7, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786771959120_z465", "effects": [{ "category": "추가 피해", "val": 2.8, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786771970456_1sge", "effects": [{ "category": "추가 피해", "val": 0.23, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786771970456_1sge", "effects": [{ "category": "추가 피해", "val": 0.23, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786771970456_1sge", "effects": [{ "category": "추가 피해", "val": 0.23, "unit": "%" }] }]
+                }
+            },
+            "재빠른 공격": {
+                "고대": {
+                    "10": [{ "id": "node_1786772003152_2q2v", "effects": [{ "category": "공격 속도", "val": 1, "unit": "%" }] }],
+                    "14": [{ "id": "node_1786772011432_bbyv", "effects": [{ "category": "치명타 피해", "val": 1.4, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772028928_krz1", "effects": [{ "category": "공격 속도", "val": 3, "unit": "%" }, { "category": "치명타 피해", "val": 5.6, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772035105_09ki", "effects": [{ "category": "치명타 피해", "val": 0.45, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772035105_09ki", "effects": [{ "category": "치명타 피해", "val": 0.45, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772035105_09ki", "effects": [{ "category": "치명타 피해", "val": 0.45, "unit": "%" }] }]
+                },
+                "유물": {
+                    "10": [{ "id": "node_1786772003152_2q2v", "effects": [{ "category": "공격 속도", "val": 1, "unit": "%" }] }],
+                    "14": [{ "id": "node_1786772011432_bbyv", "effects": [{ "category": "치명타 피해", "val": 1.4, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772028928_krz1", "effects": [{ "category": "공격 속도", "val": 2, "unit": "%" }, { "category": "치명타 피해", "val": 2.8, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772035105_09ki", "effects": [{ "category": "치명타 피해", "val": 0.45, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772035105_09ki", "effects": [{ "category": "치명타 피해", "val": 0.45, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772035105_09ki", "effects": [{ "category": "치명타 피해", "val": 0.45, "unit": "%" }] }]
+                }
+            },
+            "현란한 공격": {
+                "고대": {
+                    "10": [{ "id": "node_1786772190729_czme", "effects": [{ "category": "치명타 시 적에게 주는 피해", "val": 0.55, "unit": "%" }] }],
+                    "14": [{ "id": "node_1786772194921_kj18", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772214793_znl9", "effects": [{ "category": "적에게 주는 피해", "val": 1.5, "unit": "%" }, { "category": "치명타 시 적에게 주는 피해", "val": 1.1, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772220521_3gwe", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772220521_3gwe", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772220521_3gwe", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }]
+                },
+                "유물": {
+                    "10": [{ "id": "node_1786772190729_czme", "effects": [{ "category": "치명타 시 적에게 주는 피해", "val": 0.55, "unit": "%" }] }],
+                    "14": [{ "id": "node_1786772194921_kj18", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772214793_znl9", "effects": [{ "category": "적에게 주는 피해", "val": 1, "unit": "%" }, { "category": "치명타 시 적에게 주는 피해", "val": 0.55, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772220521_3gwe", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772220521_3gwe", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772220521_3gwe", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }]
+                }
+            }
         },
-        고대: {
-            sun: { 10: [{ type: "치명타 시 적에게 주는 피해", value: 0.55 }], 14: [{ type: "적에게 주는 피해", value: 0.50 }], 17: [{ type: "적에게 주는 피해", value: 1.50 }, { type: "치명타 시 적에게 주는 피해", value: 1.10 }], 18: [{ type: "적에게 주는 피해", value: 0.16 }], 19: [{ type: "적에게 주는 피해", value: 0.16 }], 20: [{ type: "적에게 주는 피해", value: 0.16 }] },
-            moon: { 14: [{ type: "적에게 주는 피해", value: 0.50 }], 17: [{ type: "적에게 주는 피해", value: 2.00 }], 18: [{ type: "적에게 주는 피해", value: 0.16 }], 19: [{ type: "적에게 주는 피해", value: 0.16 }], 20: [{ type: "적에게 주는 피해", value: 0.16 }] },
-            star: { 10: [{ type: "공격력", value: 900 }], 14: [{ type: "공격력 %", value: 0.55 }], 17: [{ type: "공격력 %", value: 1.65 }, { type: "공격력", value: 2700 }], 18: [{ type: "공격력 %", value: 0.16 }], 19: [{ type: "공격력 %", value: 0.16 }], 20: [{ type: "공격력 %", value: 0.16 }] }
+
+        // 2. 달 코어 
+        "달": {
+            "흡수의 일격": {
+                "고대": {
+                    "14": [{ "id": "node_1786772332090_74s2", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772340770_whu1", "effects": [{ "category": "적에게 주는 피해", "val": 2, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }]
+                },
+                "유물": {
+                    "14": [{ "id": "node_1786772332090_74s2", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772340770_whu1", "effects": [{ "category": "적에게 주는 피해", "val": 1, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772344378_0b79", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }]
+                }
+            },
+            "부수는 일격": {
+                "고대": {
+                    "14": [{ "id": "node_1786772366498_h1ke", "effects": [{ "category": "치명타 적중률", "val": 0.65, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772376370_85o7", "effects": [{ "category": "치명타 적중률", "val": 2.6, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "치명타 적중률", "val": 0.21, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "치명타 적중률", "val": 0.21, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "치명타 적중률", "val": 0.21, "unit": "%" }] }]
+                },
+                "유물": {
+                    "14": [{ "id": "node_1786772366498_h1ke", "effects": [{ "category": "치명타 적중률", "val": 0.65, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772376370_85o7", "effects": [{ "category": "치명타 적중률", "val": 1.3, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "치명타 적중률", "val": 0.21, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "치명타 적중률", "val": 0.21, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "치명타 적중률", "val": 0.21, "unit": "%" }] }]
+                }
+            },
+            "불타는 일격": {
+                "고대": {
+                    "14": [{ "id": "node_1786772304498_gybm", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
+                    "17": [
+                        { "id": "node_1786772309898_xaxw", "effects": [{ "category": "적에게 주는 피해", "val": 2, "unit": "%" }] },
+                        { "id": "node_1786772314146_krx2", "effects": [{ "category": "적에게 주는 피해", "val": 0, "unit": "%" }] }
+                    ]
+                },
+                "유물": {
+                    "14": [{ "id": "node_1786772304498_gybm", "effects": [{ "category": "적에게 주는 피해", "val": 0.5, "unit": "%" }] }],
+                    "17": [
+                        { "id": "node_1786772309898_xaxw", "effects": [{ "category": "적에게 주는 피해", "val": 1, "unit": "%" }] },
+                        { "id": "node_1786772314146_krx2", "effects": [{ "category": "적에게 주는 피해", "val": 0.16, "unit": "%" }] }
+                    ]
+                }
+            }
+        },
+
+        // 3. 별 코어 
+        "별": {
+            "공격": {
+                "고대": {
+                    "10": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "공격력", "val": 900, "unit": "" }] }],
+                    "14": [{ "id": "node_1786772432775_25m1", "effects": [{ "category": "공격력 %", "val": 0.55, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772457704_8ldy", "effects": [{ "category": "공격력 %", "val": 1.65, "unit": "%" }, { "category": "공격력", "val": 2700, "unit": "" }] }],
+                    "18": [{ "id": "node_1786772464784_n0ic", "effects": [{ "category": "공격력 %", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772464784_n0ic", "effects": [{ "category": "공격력 %", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772464784_n0ic", "effects": [{ "category": "공격력 %", "val": 0.16, "unit": "%" }] }]
+                },
+                "유물": {
+                    "10": [{ "id": "node_1786772387634_1coo", "effects": [{ "category": "공격력", "val": 900, "unit": "" }] }],
+                    "14": [{ "id": "node_1786772432775_25m1", "effects": [{ "category": "공격력 %", "val": 0.55, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772457704_8ldy", "effects": [{ "category": "공격력 %", "val": 1.1, "unit": "%" }, { "category": "공격력", "val": 1800, "unit": "" }] }],
+                    "18": [{ "id": "node_1786772464784_n0ic", "effects": [{ "category": "공격력 %", "val": 0.16, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772464784_n0ic", "effects": [{ "category": "공격력 %", "val": 0.16, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772464784_n0ic", "effects": [{ "category": "공격력 %", "val": 0.16, "unit": "%" }] }]
+                }
+            },
+            "무기": {
+                "고대": {
+                    "10": [{ "id": "node_1786772496270_qz2q", "effects": [{ "category": "무기 공격력", "val": 1300, "unit": "" }] }],
+                    "14": [{ "id": "node_1786772501646_saan", "effects": [{ "category": "무기 공격력 %", "val": 0.75, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772519750_vzqo", "effects": [{ "category": "무기 공격력 %", "val": 2.25, "unit": "%" }, { "category": "무기 공격력", "val": 3900, "unit": "" }] }],
+                    "18": [{ "id": "node_1786772533588_8psn", "effects": [{ "category": "무기 공격력 %", "val": 0.23, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772533588_8psn", "effects": [{ "category": "무기 공격력 %", "val": 0.23, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772533588_8psn", "effects": [{ "category": "무기 공격력 %", "val": 0.23, "unit": "%" }] }]
+                },
+                "유물": {
+                    "10": [{ "id": "node_1786772496270_qz2q", "effects": [{ "category": "무기 공격력", "val": 1300, "unit": "" }] }],
+                    "14": [{ "id": "node_1786772501646_saan", "effects": [{ "category": "무기 공격력 %", "val": 0.75, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772519750_vzqo", "effects": [{ "category": "무기 공격력 %", "val": 1.5, "unit": "%" }, { "category": "무기 공격력", "val": 2600, "unit": "" }] }],
+                    "18": [{ "id": "node_1786772533588_8psn", "effects": [{ "category": "무기 공격력 %", "val": 0.23, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772533588_8psn", "effects": [{ "category": "무기 공격력 %", "val": 0.23, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772533588_8psn", "effects": [{ "category": "무기 공격력 %", "val": 0.23, "unit": "%" }] }]
+                }
+            },
+            "속도": {
+                "고대": {
+                    "10": [{ "id": "node_1786772572468_sc5f", "effects": [{ "category": "공격 속도", "val": 0.9, "unit": "%" }] }],
+                    "14": [{ "id": "node_1786772587411_t170", "effects": [{ "category": "이동 속도", "val": 0.9, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772606843_876q", "effects": [{ "category": "공격 속도", "val": 2.7, "unit": "%" }, { "category": "이동 속도", "val": 2.7, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772616467_9lis", "effects": [{ "category": "이동 속도", "val": 0.3, "unit": "%" }, { "category": "공격 속도", "val": 0.3, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772616467_9lis", "effects": [{ "category": "이동 속도", "val": 0.3, "unit": "%" }, { "category": "공격 속도", "val": 0.3, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772616467_9lis", "effects": [{ "category": "이동 속도", "val": 0.3, "unit": "%" }, { "category": "공격 속도", "val": 0.3, "unit": "%" }] }]
+                },
+                "유물": {
+                    "10": [{ "id": "node_1786772572468_sc5f", "effects": [{ "category": "공격 속도", "val": 0.9, "unit": "%" }] }],
+                    "14": [{ "id": "node_1786772587411_t170", "effects": [{ "category": "이동 속도", "val": 0.9, "unit": "%" }] }],
+                    "17": [{ "id": "node_1786772606843_876q", "effects": [{ "category": "공격 속도", "val": 1.8, "unit": "%" }, { "category": "이동 속도", "val": 1.8, "unit": "%" }] }],
+                    "18": [{ "id": "node_1786772616467_9lis", "effects": [{ "category": "이동 속도", "val": 0.3, "unit": "%" }, { "category": "공격 속도", "val": 0.3, "unit": "%" }] }],
+                    "19": [{ "id": "node_1786772616467_9lis", "effects": [{ "category": "이동 속도", "val": 0.3, "unit": "%" }, { "category": "공격 속도", "val": 0.3, "unit": "%" }] }],
+                    "20": [{ "id": "node_1786772616467_9lis", "effects": [{ "category": "이동 속도", "val": 0.3, "unit": "%" }, { "category": "공격 속도", "val": 0.3, "unit": "%" }] }]
+                }
+            }
         }
     };
 
@@ -1083,7 +1239,7 @@
             return gems;
         };
 
-        const parseArkCores = () => {
+        const parseArkCores = (doc = document) => {
             const chaosCores = {
                 Sun: { name: '', grade: '미장착', level: 0 },
                 Moon: { name: '', grade: '미장착', level: 0 },
@@ -1099,26 +1255,38 @@
 
             items.forEach((item, index) => {
                 // 1. 코어 등급 추출
-                const gradeSpan = item.querySelector('select[id*="ark-core"]')?.parentElement.querySelector('span[class*="BaseSelect_labelText"]');
-                const grade = gradeSpan ? gradeSpan.textContent.trim() : '미장착';
+                const gradeSelect = item.querySelector('select[id*="ark-core"]');
+                const gradeSpan = gradeSelect?.parentElement?.querySelector('span[class*="BaseSelect_labelText"]');
+                let grade = gradeSpan ? gradeSpan.textContent.trim() : '미장착';
+                
+                // select 자체 value/text 예외 처리
+                if ((!grade || grade === '미장착') && gradeSelect && gradeSelect.selectedIndex >= 0) {
+                    grade = gradeSelect.options[gradeSelect.selectedIndex]?.textContent.trim() || '미장착';
+                }
 
                 // 2. 코어 포인트(레벨) 추출
                 const pointEl = item.querySelector('div[data-testid="quality-bar"]') || item.querySelector('div[class*="QualityBar_qualityBar"]');
                 const level = pointEl ? parseInt(pointEl.textContent.trim().replace(/[^0-9]/g, ''), 10) || 0 : 0;
 
-                // 3. 코어 이름 추출 (질서/혼돈 공통: 드롭다운에서 직접 파싱)
-                let coreName = '';
+                // 3. 코어 이름 추출 (span 텍스트 우선, 차선책으로 select option 확인)
                 const bladeSelect = item.querySelector('select[id*="ark-blade"]');
-                if (bladeSelect && bladeSelect.selectedIndex >= 0) {
+                const nameSpan = bladeSelect?.parentElement?.querySelector('span[class*="BaseSelect_labelText"]');
+                
+                let coreName = nameSpan ? nameSpan.textContent.trim() : '';
+                if (!coreName && bladeSelect && bladeSelect.selectedIndex >= 0) {
                     coreName = bladeSelect.options[bladeSelect.selectedIndex]?.textContent.trim() || '';
                 }
 
                 // 4. 슬롯 및 카테고리(질서/혼돈) 매핑
-                const isOrder = index < 3; // 0, 1, 2번 인덱스 = 질서(Order) / 3, 4, 5번 인덱스 = 혼돈(Chaos)
+                const isOrder = index < 3; // 0, 1, 2: 질서(Order) / 3, 4, 5: 혼돈(Chaos)
                 const slotIdx = index % 3; // 0: Sun, 1: Moon, 2: Star
                 const slotKey = slotIdx === 0 ? 'Sun' : slotIdx === 1 ? 'Moon' : 'Star';
 
-                const coreData = { name: coreName, grade, level };
+                const coreData = { 
+                    name: coreName, // 예: "마력", "지배", "끝없는 혼돈" 등
+                    grade: grade, 
+                    level: level 
+                };
 
                 if (isOrder) {
                     orderCores[slotKey] = coreData;
@@ -1572,30 +1740,104 @@
             skillGemMap[gem.skillName].push({ type: gem.type, level: gem.level });
         });
 
-        // 혼돈 코어
+        // ★ 혼돈 코어 연산
+        const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
+
         ['Sun', 'Moon', 'Star'].forEach(target => {
             const coresObj = inputs?.chaosCores || {};
             const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
             const coreInfo = coresObj[targetKey];
 
-            if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착') return;
+            if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착' || !coreInfo.level) return;
 
-            const { grade, level } = coreInfo;
+            const { name: equippedCoreName, grade, level } = coreInfo;
             const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
             if (!matchedGrade) return;
 
-            const data = chaosDataSets[matchedGrade]?.[target.toLowerCase()];
+            const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
+            const slotDataSet = (window.chaosDataSets || chaosDataSets)?.[koreanSlotName];
+            if (!slotDataSet) return;
 
-            if (data) {
-                coreLevels.forEach(lvl => {
-                    if (Number(level) >= lvl && Array.isArray(data[lvl])) {
-                        data[lvl].forEach(opt => {
-                            const unit = opt.type === "공격력" ? "" : "%";
-                            addStat(commonStats, opt.type, `혼돈 코어(${target}) Lv.${lvl} [${grade}]`, opt.value, unit);
+            // 코어 이름 매칭 (직접 매칭 -> 유사 매칭)
+            let coreData = slotDataSet[equippedCoreName]?.[matchedGrade];
+            if (!coreData && equippedCoreName) {
+                const matchedName = Object.keys(slotDataSet).find(name => 
+                    equippedCoreName.includes(name) || name.includes(equippedCoreName)
+                );
+                if (matchedName) coreData = slotDataSet[matchedName]?.[matchedGrade];
+            }
+
+            if (!coreData) return;
+
+            const userLevel = Number(level) || 0;
+            const pendingGroups = {};
+
+            Object.keys(coreData).forEach(reqPointStr => {
+                const reqPoint = Number(reqPointStr);
+
+                if (userLevel >= reqPoint) {
+                    const rawEffectList = coreData[reqPointStr];
+
+                    if (Array.isArray(rawEffectList)) {
+                        rawEffectList.forEach(item => {
+                            const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
+
+                            targetEffects.forEach(effect => {
+                                const { category, val, unit, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;
+                                
+                                const exTags = excludeTags || excludeSkillTags || [];
+                                if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) return;
+
+                                const effectiveTags = requireTags || targetTags;
+                                const isSkillMatch = Array.isArray(skills) && skills.includes(skillName);
+                                const isTagMatch = Array.isArray(effectiveTags) && effectiveTags.some(t =>
+                                    (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName
+                                );
+                                const isGlobalMatch = !skills && !effectiveTags;
+
+                                if (isSkillMatch || isTagMatch || isGlobalMatch) {
+                                    if (!category || val === undefined) return;
+
+                                    const numVal = Number(val);
+                                    const groupKey = groupId || `point_${reqPoint}_${category}`;
+
+                                    if (!pendingGroups[groupKey]) {
+                                        pendingGroups[groupKey] = {
+                                            category: category,
+                                            val: numVal,
+                                            unit: unit === "%" ? "%" : "", // unit이 "%" 일때만 %, 나머지는 빈 문자열
+                                            pointList: [reqPoint]
+                                        };
+                                    } else {
+                                        if (groupId) {
+                                            pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
+                                        } else {
+                                            pendingGroups[groupKey].val += numVal;
+                                        }
+
+                                        if (!pendingGroups[groupKey].pointList.includes(reqPoint)) {
+                                            pendingGroups[groupKey].pointList.push(reqPoint);
+                                        }
+                                    }
+                                }
+                            });
                         });
                     }
-                });
-            }
+                }
+            });
+
+            Object.entries(pendingGroups).forEach(([groupKey, groupData]) => {
+                if (groupData.val === 0) return;
+                const pointsStr = groupData.pointList.join(',');
+                
+                addStat(
+                    commonStats,
+                    groupData.category,
+                    `혼돈 코어(${koreanSlotName}:${equippedCoreName || '코어'}) Pt.${pointsStr} [${matchedGrade}]`,
+                    groupData.val,
+                    groupData.unit
+                );
+            });
         });
 
         // 팔찌 스탯
@@ -1814,8 +2056,7 @@
                                 const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
 
                                 targetEffects.forEach(effect => {
-                                    const { category, val, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;
-                                    
+                                    const { category, val, unit, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;  
                                     const exTags = excludeTags || excludeSkillTags || [];
                                     if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) return;
 
@@ -1835,11 +2076,12 @@
 
                                         if (!pendingGroups[groupKey]) {
                                             pendingGroups[groupKey] = {
-                                                category: category,
-                                                val: numVal,
-                                                pointList: [reqPoint]
-                                            };
-                                        } else {
+                                                    category: category,
+                                                    val: numVal,
+                                                    unit: unit === "%" ? "%" : "", // ★ unit이 "%"일 때만 "%", 그 외는 모두 ""
+                                                    pointList: [reqPoint]
+                                                };
+                                            } else {
                                             if (groupId) {
                                                 pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
                                             } else {
@@ -1864,7 +2106,8 @@
                         stats,
                         groupData.category,
                         `질서 코어(${koreanSlotName}:${equippedCoreName || '코어'}) Pt.${pointsStr} [${matchedGrade}]`,
-                        groupData.val
+                        groupData.val,
+                        groupData.unit 
                     );
                 });
             });
@@ -3679,300 +3922,513 @@ function openDataLoaderModal() {
     modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
 }
 
-// =========================================================================
-// 3. 플로팅 패널 injectPauseButton 함수
-// =========================================================================
-function injectPauseButton() {
-    if (document.getElementById('calc-floating-panel')) return;
+    // =========================================================================
+    // 3. 플로팅 패널 injectPauseButton 함수
+    // =========================================================================
+    function injectPauseButton() {
+        if (document.getElementById('calc-floating-panel')) return;
 
-    // 1) 전체 플로팅 컨테이너
-    const panel = document.createElement('div');
-    panel.id = 'calc-floating-panel';
-    panel.style.cssText = `
-        position: fixed;
-        bottom: 25px;
-        left: 25px;
-        z-index: 999999;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        background: #161d24;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 12px;
-        border-radius: 10px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        width: 175px;
-    `;
+        // -------------------------------------------------------------
+        // 🌟 [신규] 공지사항 모달(팝업) 생성 함수
+        // -------------------------------------------------------------
+        const createNoticeModal = () => {
+            if (document.getElementById('calc-notice-modal')) return;
 
-    // 공통 버튼 생성 함수
-    const createButton = (text, bgColor, borderColor, onClick, id = '') => {
-        const btn = document.createElement('button');
-        if (id) btn.id = id;
-        btn.type = 'button';
-        btn.innerText = text;
-        btn.style.cssText = `
-            width: 100%;
-            padding: 8px 0;
-            font-size: 0.8rem;
-            font-weight: 600;
-            border-radius: 6px;
-            border: 1px solid ${borderColor};
-            background-color: ${bgColor};
-            color: #f1f5f9;
-            cursor: pointer;
-            transition: all 0.15s ease;
+            // 1) 모달 오버레이 (배경)
+            const overlay = document.createElement('div');
+            overlay.id = 'calc-notice-modal';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(4px);
+                z-index: 1000000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            `;
+
+            // 2) 모달 창 본체
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: #1e293b;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 12px;
+                width: 90%;
+                max-width: 480px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+                color: #f8fafc;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                transform: translateY(10px);
+                transition: transform 0.2s ease;
+            `;
+
+            // 3) 모달 헤더
+            const header = document.createElement('div');
+            header.style.cssText = `
+                padding: 14px 18px;
+                background: #0f172a;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+
+            const title = document.createElement('h3');
+            title.innerText = '📢 Notice';
+            title.style.cssText = `
+                margin: 0;
+                font-size: 1rem;
+                font-weight: 700;
+                color: #fbcfe8;
+            `;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.innerText = '✕';
+            closeBtn.style.cssText = `
+                background: none;
+                border: none;
+                color: #94a3b8;
+                font-size: 1.2rem;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+            `;
+            closeBtn.onmouseover = () => closeBtn.style.color = '#ffffff';
+            closeBtn.onmouseout = () => closeBtn.style.color = '#94a3b8';
+
+            header.appendChild(title);
+            header.appendChild(closeBtn);
+
+            // 4) 모달 본문 (내용 적는 곳)
+            const body = document.createElement('div');
+            body.style.cssText = `
+                padding: 20px;
+                font-size: 0.875rem;
+                line-height: 1.6;
+                color: #cbd5e1;
+                max-height: 60vh;
+                overflow-y: auto;
+            `;
+
+            // 💡 여기에 원하시는 공지 내용을 HTML로 적으시면 됩니다.
+            body.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- 1번 항목: 내실 -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span style="background: #0284c7; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">기본 전제</span>
+                        <strong style="color: #f8fafc; font-size: 0.85rem;">내실 기본 설정</strong>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                        기본적인 내실은 <span style="color: #38bdf8; font-weight: 600;">최대치</span>를 가정하고 계산합니다.
+                    </div>
+                </div>
+
+                <!-- 2번 항목: 장비 -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span style="background: #d97706; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">지원 장비</span>
+                        <strong style="color: #f8fafc; font-size: 0.85rem;">장비 범위</strong>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                        장비는 <span style="color: #fbbf24; font-weight: 600;">T4 전율</span> 및 <span style="color: #fbbf24; font-weight: 600;">에스더 장비</span>만 지원합니다.
+                    </div>
+                </div>
+
+                <!-- 3번 항목: 코어 -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span style="background: #dc2626; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
+                        <strong style="color: #f8fafc; font-size: 0.85rem;">혼돈 코어 옵션</strong>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                        혼돈 코어 중 <span style="color: #f87171; font-weight: 600;">서포터 옵션</span>의 코어는 지원하지 않습니다.
+                    </div>
+                </div>
+
+                <!-- 4번 항목: 미지원 노드 -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <span style="background: #dc2626; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
+                        <strong style="color: #f8fafc; font-size: 0.85rem;">아크 패시브 노드 예외</strong>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">제압</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">인내</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">숙련</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">축복의 여신</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">정열의 춤사위</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">선각자</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">진군</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">기원</span>
+                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">안정된 관리자</span>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            // 5) 모달 푸터 (확인 버튼)
+            const footer = document.createElement('div');
+            footer.style.cssText = `
+                padding: 12px 18px;
+                background: #0f172a;
+                border-top: 1px solid rgba(255, 255, 255, 0.08);
+                display: flex;
+                justify-content: flex-end;
+            `;
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.innerText = '확인';
+            confirmBtn.style.cssText = `
+                padding: 6px 16px;
+                background-color: #db2777;
+                border: 1px solid #f472b6;
+                color: #ffffff;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            `;
+            confirmBtn.onmouseover = () => confirmBtn.style.filter = 'brightness(1.15)';
+            confirmBtn.onmouseout = () => confirmBtn.style.filter = 'none';
+
+            footer.appendChild(confirmBtn);
+
+            modal.appendChild(header);
+            modal.appendChild(body);
+            modal.appendChild(footer);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            // 닫기 애니메이션 함수
+            const closeModal = () => {
+                overlay.style.opacity = '0';
+                modal.style.transform = 'translateY(10px)';
+                setTimeout(() => overlay.remove(), 200);
+            };
+
+            // 이벤트 바인딩
+            closeBtn.onclick = closeModal;
+            confirmBtn.onclick = closeModal;
+            overlay.onclick = (e) => {
+                if (e.target === overlay) closeModal();
+            };
+
+            // 열기 애니메이션 효과
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                modal.style.transform = 'translateY(0)';
+            });
+        };
+
+        // 1) 전체 플로팅 컨테이너
+        const panel = document.createElement('div');
+        panel.id = 'calc-floating-panel';
+        panel.style.cssText = `
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            z-index: 999999;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            box-sizing: border-box;
+            flex-direction: column;
+            gap: 8px;
+            background: #161d24;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 175px;
         `;
-        btn.onmouseover = () => btn.style.filter = 'brightness(1.15)';
-        btn.onmouseout = () => btn.style.filter = 'none';
-        btn.onclick = onClick;
-        return btn;
-    };
 
-    // 0) 데이터 불러오기 버튼
-    const loadDataBtn = createButton(
-        '📂 데이터 불러오기',
-        '#0d9488',
-        '#14b8a6',
-        openDataLoaderModal,
-        'btn-open-data-loader'
-    );
+        // 공통 버튼 생성 함수
+        const createButton = (text, bgColor, borderColor, onClick, id = '') => {
+            const btn = document.createElement('button');
+            if (id) btn.id = id;
+            btn.type = 'button';
+            btn.innerText = text;
+            btn.style.cssText = `
+                width: 100%;
+                padding: 8px 0;
+                font-size: 0.8rem;
+                font-weight: 600;
+                border-radius: 6px;
+                border: 1px solid ${borderColor};
+                background-color: ${bgColor};
+                color: #f1f5f9;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                box-sizing: border-box;
+            `;
+            btn.onmouseover = () => btn.style.filter = 'brightness(1.15)';
+            btn.onmouseout = () => btn.style.filter = 'none';
+            btn.onclick = onClick;
+            return btn;
+        };
 
-    // 🌟 [추가] DB 데이터 프리셋 관리 버튼
-    const dataPresetBtn = createButton(
-        '📦 DB 프리셋 관리',
-        '#4f46e5',
-        '#6366f1',
-        openDataPresetModal,
-        'btn-open-db-preset'
-    );
+        // 🌟 [추가] 0-1) Notice (공지사항) 버튼
+        const noticeBtn = createButton(
+            '📢 Notice',
+            '#db2777',
+            '#f472b6',
+            createNoticeModal,
+            'btn-open-notice'
+        );
 
-    // 2) ⚖️ 비교 세팅 버튼
-    const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
-        if (typeof window.setBaseline === 'function') window.setBaseline();
-    });
+        // 0) 데이터 불러오기 버튼
+        const loadDataBtn = createButton(
+            '📂 데이터 불러오기',
+            '#0d9488',
+            '#14b8a6',
+            openDataLoaderModal,
+            'btn-open-data-loader'
+        );
 
-    const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
-        if (typeof window.openCompareModal === 'function') window.openCompareModal();
-        else if (typeof openCompareModal === 'function') openCompareModal();
-    });
+        // DB 데이터 프리셋 관리 버튼
+        const dataPresetBtn = createButton(
+            '📦 DB 프리셋 관리',
+            '#4f46e5',
+            '#6366f1',
+            openDataPresetModal,
+            'btn-open-db-preset'
+        );
 
-    // 3) 🎯 치적 시너지 입력 박스
-    const synergyBox = document.createElement('div');
-    synergyBox.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 6px 0;
-        margin: 2px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    `;
+        // 2) ⚖️ 비교 세팅 버튼
+        const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
+            if (typeof window.setBaseline === 'function') window.setBaseline();
+        });
 
-    const label = document.createElement('span');
-    label.innerText = '파티 치적 시너지(본인 제외)';
-    label.style.cssText = `
-        color: #a5b4fc;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-align: left;
-        padding-left: 2px;
-    `;
+        const toggleViewBtn = createButton('📊 비교표 보기', '#0284c7', '#38bdf8', () => {
+            if (typeof window.openCompareModal === 'function') window.openCompareModal();
+            else if (typeof openCompareModal === 'function') openCompareModal();
+        });
 
-    const select = document.createElement('select');
-    select.id = 'party-crit-select';
-    select.style.cssText = `
-        width: 100%;
-        background-color: #0f172a;
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 6px;
-        padding: 7px 10px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        cursor: pointer;
-        outline: none;
-        box-sizing: border-box;
-        transition: border-color 0.15s ease;
-    `;
-
-    select.onmouseover = () => select.style.borderColor = '#38bdf8';
-    select.onmouseout = () => select.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-
-    [0, 1, 2].forEach(val => {
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.innerText = `${val}명 (${val * 10}%)`;
-        if (val === window.partyCritCount) opt.selected = true;
-        select.appendChild(opt);
-    });
-
-    select.onchange = function(e) {
-        window.partyCritCount = Number(e.target.value);
-        if (typeof window.triggerCalculation === 'function') {
-            window.triggerCalculation();
-        }
-    };
-
-    synergyBox.appendChild(label);
-    synergyBox.appendChild(select);
-
-    // 4) 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
-    const estherBox = document.createElement('div');
-    estherBox.id = 'esther-bonding-box';
-    estherBox.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    `;
-
-    const estherLabel = document.createElement('span');
-    estherLabel.innerText = '에스더 결속 효과';
-    estherLabel.style.cssText = `
-        color: #fcd34d;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-align: left;
-        padding-left: 2px;
-    `;
-    estherBox.appendChild(estherLabel);
-
-    window.estherBonding1 = Boolean(window.estherBonding1);
-    window.estherBonding2 = Boolean(window.estherBonding2);
-
-    const updateBondingBtnStyle = (btn, isOn, label) => {
-        if (isOn) {
-            btn.innerText = `⚡ ${label} : ON`;
-            btn.style.backgroundColor = '#78350f';
-            btn.style.borderColor = '#f59e0b';
-            btn.style.color = '#fef3c7';
-        } else {
-            btn.innerText = `💤 ${label} : OFF`;
-            btn.style.backgroundColor = '#0f172a';
-            btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-            btn.style.color = '#94a3b8';
-        }
-    };
-
-    const createBondingToggleBtn = (id, globalVarName, label) => {
-        const btn = document.createElement('button');
-        btn.id = id;
-        btn.type = 'button';
-        btn.style.cssText = `
-            width: 100%;
+        // 3) 🎯 치적 시너지 입력 박스
+        const synergyBox = document.createElement('div');
+        synergyBox.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
             padding: 6px 0;
+            margin: 2px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        `;
+
+        const label = document.createElement('span');
+        label.innerText = '파티 치적 시너지(본인 제외)';
+        label.style.cssText = `
+            color: #a5b4fc;
             font-size: 0.75rem;
-            font-weight: bold;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 2px;
+        `;
+
+        const select = document.createElement('select');
+        select.id = 'party-crit-select';
+        select.style.cssText = `
+            width: 100%;
+            background-color: #0f172a;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 6px;
-            border: 1px solid;
+            padding: 7px 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
             cursor: pointer;
             outline: none;
             box-sizing: border-box;
-            transition: all 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            transition: border-color 0.15s ease;
         `;
 
-        updateBondingBtnStyle(btn, window[globalVarName], label);
+        select.onmouseover = () => select.style.borderColor = '#38bdf8';
+        select.onmouseout = () => select.style.borderColor = 'rgba(255, 255, 255, 0.15)';
 
-        btn.onclick = function() {
-            window[globalVarName] = !window[globalVarName];
-            updateBondingBtnStyle(btn, window[globalVarName], label);
+        [0, 1, 2].forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.innerText = `${val}명 (${val * 10}%)`;
+            if (val === window.partyCritCount) opt.selected = true;
+            select.appendChild(opt);
+        });
+
+        select.onchange = function(e) {
+            window.partyCritCount = Number(e.target.value);
             if (typeof window.triggerCalculation === 'function') {
                 window.triggerCalculation();
             }
         };
 
-        return btn;
-    };
+        synergyBox.appendChild(label);
+        synergyBox.appendChild(select);
 
-    const btn1 = createBondingToggleBtn('esther-bonding-btn-1', 'estherBonding1', '결속 1단계');
-    const btn2 = createBondingToggleBtn('esther-bonding-btn-2', 'estherBonding2', '결속 2단계');
+        // 4) 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
+        const estherBox = document.createElement('div');
+        estherBox.id = 'esther-bonding-box';
+        estherBox.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        `;
 
-    estherBox.appendChild(btn1);
-    estherBox.appendChild(btn2);
+        const estherLabel = document.createElement('span');
+        estherLabel.innerText = '에스더 결속 효과';
+        estherLabel.style.cssText = `
+            color: #fcd34d;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 2px;
+        `;
+        estherBox.appendChild(estherLabel);
 
-    // 5) 스마트 토글 버튼 UI 갱신 함수
-    const updatePauseBtnUI = (btn) => {
-        if (!window.hasCalculatedOnce) {
-            btn.innerText = '🚀 계산 시작';
-            btn.style.backgroundColor = '#059669';
-            btn.style.borderColor = '#10b981';
-        } else if (window.isCalcPaused) {
-            btn.innerText = '⏸️ 실시간 계산 : OFF';
-            btn.style.backgroundColor = '#991b1b';
-            btn.style.borderColor = '#dc2626';
-        } else {
-            btn.innerText = '▶️ 실시간 계산 : ON';
-            btn.style.backgroundColor = '#166534';
-            btn.style.borderColor = '#22c55e';
+        window.estherBonding1 = Boolean(window.estherBonding1);
+        window.estherBonding2 = Boolean(window.estherBonding2);
+
+        const updateBondingBtnStyle = (btn, isOn, label) => {
+            if (isOn) {
+                btn.innerText = `⚡ ${label} : ON`;
+                btn.style.backgroundColor = '#78350f';
+                btn.style.borderColor = '#f59e0b';
+                btn.style.color = '#fef3c7';
+            } else {
+                btn.innerText = `💤 ${label} : OFF`;
+                btn.style.backgroundColor = '#0f172a';
+                btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                btn.style.color = '#94a3b8';
+            }
+        };
+
+        const createBondingToggleBtn = (id, globalVarName, label) => {
+            const btn = document.createElement('button');
+            btn.id = id;
+            btn.type = 'button';
+            btn.style.cssText = `
+                width: 100%;
+                padding: 6px 0;
+                font-size: 0.75rem;
+                font-weight: bold;
+                border-radius: 6px;
+                border: 1px solid;
+                cursor: pointer;
+                outline: none;
+                box-sizing: border-box;
+                transition: all 0.15s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            updateBondingBtnStyle(btn, window[globalVarName], label);
+
+            btn.onclick = function() {
+                window[globalVarName] = !window[globalVarName];
+                updateBondingBtnStyle(btn, window[globalVarName], label);
+                if (typeof window.triggerCalculation === 'function') {
+                    window.triggerCalculation();
+                }
+            };
+
+            return btn;
+        };
+
+        const btn1 = createBondingToggleBtn('esther-bonding-btn-1', 'estherBonding1', '결속 1단계');
+        const btn2 = createBondingToggleBtn('esther-bonding-btn-2', 'estherBonding2', '결속 2단계');
+
+        estherBox.appendChild(btn1);
+        estherBox.appendChild(btn2);
+
+        // 5) 스마트 토글 버튼 UI 갱신 함수
+        const updatePauseBtnUI = (btn) => {
+            if (!window.hasCalculatedOnce) {
+                btn.innerText = '🚀 계산 시작';
+                btn.style.backgroundColor = '#059669';
+                btn.style.borderColor = '#10b981';
+            } else if (window.isCalcPaused) {
+                btn.innerText = '⏸️ 실시간 계산 : OFF';
+                btn.style.backgroundColor = '#991b1b';
+                btn.style.borderColor = '#dc2626';
+            } else {
+                btn.innerText = '▶️ 실시간 계산 : ON';
+                btn.style.backgroundColor = '#166534';
+                btn.style.borderColor = '#22c55e';
+            }
+        };
+
+        const handlePauseBtnClick = () => {
+            const btn = document.getElementById('calc-pause-btn');
+
+            if (!window.hasCalculatedOnce) {
+                window.hasCalculatedOnce = true;
+                window.isCalcPaused = false;
+
+                if (typeof window.triggerCalculation === 'function') {
+                    window.triggerCalculation();
+                } else if (typeof window.handleCalculate === 'function') {
+                    window.handleCalculate();
+                }
+            } else {
+                window.isCalcPaused = !window.isCalcPaused;
+                if (!window.isCalcPaused && typeof window.triggerCalculation === 'function') {
+                    window.triggerCalculation();
+                }
+            }
+
+            if (btn) updatePauseBtnUI(btn);
+        };
+
+        const pauseBtn = createButton('', '', '', handlePauseBtnClick, 'calc-pause-btn');
+        updatePauseBtnUI(pauseBtn);
+
+        // 6) 📁 아크패시브 세팅 관리 버튼
+        const presetBtn = createButton(
+            '📁 아크패시브 세팅 관리',
+            '#1d4ed8',
+            '#60a5fa',
+            () => {
+                if (typeof window.openPresetModal === 'function') {
+                    window.openPresetModal();
+                } else if (typeof openPresetModal === 'function') {
+                    openPresetModal();
+                }
+            },
+            'calc-preset-btn'
+        );
+
+        // 패널 조립 (Notice 버튼을 가장 상단에 배치)
+        panel.appendChild(noticeBtn); // 🌟 신규 공지사항 버튼 추가
+        panel.appendChild(loadDataBtn);
+        panel.appendChild(dataPresetBtn);
+        panel.appendChild(setBaseBtn);
+        panel.appendChild(toggleViewBtn);
+        panel.appendChild(synergyBox);
+        panel.appendChild(estherBox);
+        panel.appendChild(pauseBtn);
+        panel.appendChild(presetBtn);
+
+        document.body.appendChild(panel);
+
+        if (typeof window.updateCoreSetUI === 'function') {
+            window.updateCoreSetUI();
         }
-    };
-
-    const handlePauseBtnClick = () => {
-        const btn = document.getElementById('calc-pause-btn');
-
-        if (!window.hasCalculatedOnce) {
-            window.hasCalculatedOnce = true;
-            window.isCalcPaused = false;
-
-            if (typeof window.triggerCalculation === 'function') {
-                window.triggerCalculation();
-            } else if (typeof window.handleCalculate === 'function') {
-                window.handleCalculate();
-            }
-        } else {
-            window.isCalcPaused = !window.isCalcPaused;
-            if (!window.isCalcPaused && typeof window.triggerCalculation === 'function') {
-                window.triggerCalculation();
-            }
-        }
-
-        if (btn) updatePauseBtnUI(btn);
-    };
-
-    const pauseBtn = createButton('', '', '', handlePauseBtnClick, 'calc-pause-btn');
-    updatePauseBtnUI(pauseBtn);
-
-    // 6) 📁 아크패시브 세팅 관리 버튼
-    const presetBtn = createButton(
-        '📁 아크패시브 세팅 관리',
-        '#1d4ed8',
-        '#60a5fa',
-        () => {
-            if (typeof window.openPresetModal === 'function') {
-                window.openPresetModal();
-            } else if (typeof openPresetModal === 'function') {
-                openPresetModal();
-            }
-        },
-        'calc-preset-btn'
-    );
-
-    // 패널 조립
-    panel.appendChild(loadDataBtn);
-    panel.appendChild(dataPresetBtn); // 🌟 신규 버튼 추가
-    panel.appendChild(setBaseBtn);
-    panel.appendChild(toggleViewBtn);
-    panel.appendChild(synergyBox);
-    panel.appendChild(estherBox);
-    panel.appendChild(pauseBtn);
-    panel.appendChild(presetBtn);
-
-    document.body.appendChild(panel);
-
-    if (typeof window.updateCoreSetUI === 'function') {
-        window.updateCoreSetUI();
     }
-}
 
     // 💡 스크립트 맨 하단에서 즉시 버튼 패널 생성
     injectPauseButton();
