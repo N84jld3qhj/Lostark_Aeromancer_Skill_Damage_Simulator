@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.0.4
+// @version      1.0.6
 // @description  로펙 시뮬레이터 DOM 데이터를 읽어와 실시간으로 입력된 세팅을 기준으로 스킬 데미지 시뮬레이션을 제공합니다. 
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -222,7 +222,7 @@
             { name: "숙련", id: 6, max: 30, current: 0, effects: [] }
         ],
         [
-            { name: "끝없는 마나", id: 16, max: 2, current: 0, effects: [{ type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] },
+            { name: "끝없는 마나", id: 16, max: 2, current: 0, effects: [{ type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] ,requireTags: ["마나"]},
             { name: "금단의 주문", id: 12, max: 2, current: 0, effects:
                 [
                 { type: "진화형 피해", valuePerLevel: 5, requireTags: [] },
@@ -234,7 +234,7 @@
             { name: "축복의 여신", id: 19, max: 3, current: 0, effects: [] }
         ],
         [
-            { name: "무한한 마력", id: 14, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 8 }, { type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] },
+            { name: "무한한 마력", id: 14, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 8 }, { type: "마나 스킬 쿨타임 감소", valuePerLevel: 7 }] ,requireTags: ["마나"]},
             { name: "혼신의 강타", id: 27, max: 2, current: 0, effects: [{ type: "진화형 피해", valuePerLevel: 2 }, { type: "치명타 적중률", valuePerLevel: 12 }] },
             { name: "일격", id: 32, max: 2, current: 0, effects: [
                 
@@ -901,34 +901,61 @@
         return (coefficient * atk + constant) * 0.76 * defenseRatio;
     }
 
-    function getArkEvolutionStats(skillName, skillTags = []) {
-        let arkStats = {};
-        evolutionNodes.forEach((row, rowIndex) => {
-            row.forEach((node) => {
-                if (node.current <= 0) return;
-                const tierName = `${rowIndex + 1}티어`;
+    function getArkEvolutionStats() {
+    let arkStats = {};
 
-                if (node.effects && node.effects.length > 0) {
-                    node.effects.forEach(eff => {
-                        const catName = eff.type;
-                        const calculatedVal = node.current * eff.valuePerLevel;
-                        const isRawStat = ["치명", "신속", "특화", "제압", "인내", "숙련"].includes(catName);
-                        const unitStr = isRawStat ? "" : "%";
+    evolutionNodes.forEach((row, rowIndex) => {
+        const tierName = `${rowIndex + 1}티어`;
 
-                        if (!arkStats[catName]) arkStats[catName] = [];
-                        arkStats[catName].push({
-                            source: `아크 패시브(진화 ${tierName}): ${node.name} [${node.current}/${node.max}LV]`,
-                            val: parseFloat(calculatedVal.toFixed(2)),
-                            unit: unitStr,
-                            // 🌟 태그 조건 정보도 함께 수집해서 전달!
-                            requireTags: eff.requireTags || [],
-                        });
+        row.forEach((node) => {
+            const nodeLevel = node.current || node.level || 0;
+            if (nodeLevel <= 0) return;
+
+            // 상위 노드 태그 추출
+            const nodeReqTags = node.requireTags || node.requireSkillTags || [];
+            const nodeExTags = node.excludeTags || node.excludeSkillTags || [];
+
+            if (node.effects && node.effects.length > 0) {
+                node.effects.forEach(eff => {
+                    // 하위 이펙트 태그 추출
+                    const effReqTags = eff.requireTags || eff.requireSkillTags || eff.targetTags || [];
+                    const effExTags = eff.excludeTags || eff.excludeSkillTags || [];
+
+                    // 태그 병합 (중복 제거)
+                    const mergedReqTags = [...new Set([...nodeReqTags, ...effReqTags])];
+                    const mergedExTags = [...new Set([...nodeExTags, ...effExTags])];
+
+                    const catName = eff.type || eff.category;
+                    const valPerLvl = eff.valuePerLevel || eff.val || 0;
+                    const calculatedVal = parseFloat((nodeLevel * valPerLvl).toFixed(2));
+
+                    if (calculatedVal === 0 && !catName) return;
+
+                    // 🌟 [핵심 복원] 스탯성 데이터(치/신/특) 단위 구분 로직
+                    const isRawStat = ["치명", "신속", "특화", "제압", "인내", "숙련"].includes(catName);
+                    const unitStr = eff.unit !== undefined ? eff.unit : (isRawStat ? "" : "%");
+
+                    // 출처 텍스트 (max 존재 여부에 따른 유연한 표기)
+                    const sourceText = node.max 
+                        ? `아크 패시브(진화 ${tierName}): ${node.name} [${nodeLevel}/${node.max}LV]`
+                        : `아크 패시브(진화 ${tierName}): ${node.name} [Lv.${nodeLevel}]`;
+
+                    if (!arkStats[catName]) arkStats[catName] = [];
+                    arkStats[catName].push({
+                        source: sourceText,
+                        val: calculatedVal,
+                        unit: unitStr,
+                        requireTags: mergedReqTags,
+                        excludeTags: mergedExTags
                     });
-                }
-            });
+                });
+            }
         });
-        return arkStats;
-    }
+    });
+
+    return arkStats;
+}
+
 
     // =============================================================================
     // 4. DOM 파싱 및 데이터 정제
@@ -1575,6 +1602,7 @@
         [
             ['crit', '치명'],
             ['swift', '신속'],
+            ['spec', '특화'],
             ['mainStat', '주스탯']
         ].forEach(([key, category]) => {
             const val = inputs.bracelet?.[key];
