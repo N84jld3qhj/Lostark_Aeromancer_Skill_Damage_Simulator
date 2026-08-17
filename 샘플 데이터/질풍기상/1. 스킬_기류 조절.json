@@ -4,6 +4,7 @@
         "constant": 5550,
         "coefficient": 29.47,
         "baseCooldown": 18,
+        "mana": 441,
         "tags": [
             "몰아치기",
             "마나",
@@ -51,6 +52,7 @@
         "constant": 5594,
         "coefficient": 29.59,
         "baseCooldown": 20,
+        "mana": 469,
         "tags": [
             "회오리 걸음",
             "마나",
@@ -100,7 +102,7 @@
         "constant": 85689,
         "coefficient": 455.58,
         "baseCooldown": 50,
-        "mana": 0,
+        "mana": 794,
         "tags": [
             "우레바람",
             "마나",
@@ -114,6 +116,7 @@
         "constant": 8918,
         "coefficient": 47.42,
         "baseCooldown": 27,
+        "mana": 557,
         "tags": [
             "바람송곳",
             "마나",
@@ -161,6 +164,7 @@
         "constant": 8395,
         "coefficient": 44.59,
         "baseCooldown": 27,
+        "mana": 557,
         "tags": [
             "칼바람",
             "마나",
@@ -208,6 +212,7 @@
         "constant": 3844,
         "coefficient": 20.32202,
         "baseCooldown": 30,
+        "mana": 592,
         "tags": [
             "싹쓸바람",
             "마나",
@@ -222,7 +227,7 @@
                     {
                         "category": "고정 쿨타임 감소",
                         "val": 11,
-                        "unit": "초"
+                        "unit": ""
                     }
                 ]
             },
@@ -255,6 +260,7 @@
         "constant": 3515,
         "coefficient": 18.68,
         "baseCooldown": 16,
+        "mana": 412,
         "tags": [
             "소용돌이",
             "마나",
@@ -291,6 +297,7 @@
         "constant": 10701,
         "coefficient": 56.85,
         "baseCooldown": 20,
+        "mana": 469,
         "tags": [
             "마주바람",
             "마나",
@@ -305,7 +312,7 @@
                     {
                         "category": "고정 쿨타임 감소",
                         "val": 6,
-                        "unit": "초"
+                        "unit": ""
                     }
                 ]
             },
