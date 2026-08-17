@@ -126,7 +126,6 @@
                            onblur="registerTagsFromInput(this.value)">
                     <small style="color: #6c6c6c;">※ 스킬 입력 시 첫 번째 태그에 스킬명이 자동 추가됩니다.</small>
 
-                    <!-- 📌 태그 추천 뱃지 영역 -->
                     <div style="margin-top: 8px;">
                         <span style="font-size: 11px; font-weight: bold; color: #495057;">📌 최근 사용된 태그 (클릭하여 추가):</span>
                         <div class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;"></div>
@@ -172,6 +171,10 @@
             <h3>☀️🌙⭐ 질서 코어(아크그리드) 입력</h3>
             <form id="orderForm">
                 <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1.5;">
+                        <label>코어 이름</label>
+                        <input type="text" id="coreName" placeholder="예: 비연참">
+                    </div>
                     <div class="form-group" style="flex: 1;">
                         <label>코어 종류</label>
                         <select id="coreType">
@@ -184,7 +187,7 @@
                         <label>그룹 아이디 (Group ID - 선택)</label>
                         <input type="text" id="groupId" placeholder="예: group_1 (선택사항)">
                     </div>
-                    <div class="form-group" style="flex: 1.5;">
+                    <div class="form-group" style="flex: 1.2;">
                         <label>노드 포인트</label>
                         <select id="nodePoint" onchange="toggle17ptUI(this.value)">
                             <option value="10">10 Point (고대+유물 동시 생성)</option>
@@ -290,7 +293,6 @@
                            onblur="registerTagsFromInput(this.value)">
                     <small style="color: #6c6c6c;">※ 해당 태그를 소유한 스킬에 특화 데미지 증가가 적용됩니다.</small>
                     
-                    <!-- 📌 태그 추천 뱃지 영역 -->
                     <div style="margin-top: 8px;">
                         <span style="font-size: 11px; font-weight: bold; color: #495057;">⚡ 최근 사용된 태그 (클릭하여 추가):</span>
                         <div class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;"></div>
@@ -341,7 +343,6 @@
         return `${cat} (%)`;
     }
 
-    // 카테고리명을 기반으로 데이터 단위(unit) 결정하는 함수
     function getUnitByCategory(category) {
         if (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) {
             return "";
@@ -349,13 +350,8 @@
         return "%";
     }
 
-    // 초기 구조 생성자
     function createEmptyOrderStructure() {
-        return {
-            "해": { "고대": {}, "유물": {} },
-            "달": { "고대": {}, "유물": {} },
-            "별": { "고대": {}, "유물": {} }
-        };
+        return {};
     }
 
     // 전역 데이터
@@ -368,28 +364,29 @@
     let editingBuffIndex = null;
     let editingOrderInfo = null;
 
-    // 프로그램 전체에서 사용할 통합 태그 캐시 (Set)
     const globalTagCache = new Set();
-    // 현재 포커스되어 있는 태그 입력창 기억 변수
     let activeTagInput = null;
 
     function setActiveInput(inputElem) {
         activeTagInput = inputElem;
     }
 
-    // 1. 기존 데이터베이스 + 사용중인 태그를 모두 수집하는 함수
     function refreshGlobalTagCache() {
-        for (const coreType in orderDataSets) {
-            for (const grade in orderDataSets[coreType]) {
-                for (const pt in orderDataSets[coreType][grade]) {
-                    (orderDataSets[coreType][grade][pt] || []).forEach(node => {
-                        (node.effects || []).forEach(eff => {
-                            if (eff.requireTags) eff.requireTags.forEach(t => t && globalTagCache.add(t.trim()));
-                            if (eff.excludeTags) eff.excludeTags.forEach(t => t && globalTagCache.add(t.trim()));
+        for (const coreName in orderDataSets) {
+            const coreObj = orderDataSets[coreName];
+            if (!coreObj) continue;
+            ["고대", "유물"].forEach(grade => {
+                if (coreObj[grade]) {
+                    for (const pt in coreObj[grade]) {
+                        (coreObj[grade][pt] || []).forEach(node => {
+                            (node.effects || []).forEach(eff => {
+                                if (eff.requireTags) eff.requireTags.forEach(t => t && globalTagCache.add(t.trim()));
+                                if (eff.excludeTags) eff.excludeTags.forEach(t => t && globalTagCache.add(t.trim()));
+                            });
                         });
-                    });
+                    }
                 }
-            }
+            });
         }
 
         buffDatabase.forEach(buff => {
@@ -408,19 +405,15 @@
         });
     }
 
-    // 2. 완성된 태그만 캐시에 등록하는 함수 (한글 조합 버그 해결)
     function registerTagsFromInput(inputValue) {
         if (!inputValue) return;
 
-        // 한글 자음/모음만 외롭게 있는 글자(ㄱ-ㅎ, ㅏ-ㅣ) 제외 정규식
         const jamoRegex = /^[ㄱ-ㅎㅏ-ㅣ]+$/;
-
         const tags = inputValue.split(',')
             .map(t => t.trim())
             .filter(t => t.length > 0 && !jamoRegex.test(t));
 
         let isNewAdded = false;
-
         tags.forEach(tag => {
             if (!globalTagCache.has(tag)) {
                 globalTagCache.add(tag);
@@ -433,20 +426,17 @@
         }
     }
 
-    // 3. 키보드 입력 이벤트 감지 (쉼표나 Enter 입력 시 태그 즉시 반영)
     function handleTagKeyUp(event, inputElem) {
         if (event.key === ',' || event.key === 'Enter') {
             registerTagsFromInput(inputElem.value);
         }
     }
 
-    // 4. 클릭한 태그를 Target Input 요소에 추가하는 함수
     function appendTagToInput(tag, targetInput = null) {
         const input = targetInput || activeTagInput;
         if (!input) return;
 
         let currentTags = input.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
-
         if (!currentTags.includes(tag)) {
             currentTags.push(tag);
             input.value = currentTags.join(', ');
@@ -454,7 +444,6 @@
         }
     }
 
-    // 5. 화면 상의 모든 추천 태그 뱃지 영역을 갱신하는 공통 함수
     function renderAllTagBadges() {
         const sortedTags = Array.from(globalTagCache).sort();
         
@@ -695,16 +684,13 @@
 
     // --- TAB 2: 질서 코어 ---
     function sanitizeOrderDataStructure(data) {
-        const types = ["해", "달", "별"];
-        const grades = ["고대", "유물"];
-        
         let target = data || {};
-        types.forEach(t => {
-            if (!target[t]) target[t] = {};
-            grades.forEach(g => {
-                if (!target[t][g]) target[t][g] = {};
-            });
-        });
+        for (const coreName in target) {
+            if (typeof target[coreName] === 'object' && target[coreName] !== null) {
+                if (!target[coreName]["고대"]) target[coreName]["고대"] = {};
+                if (!target[coreName]["유물"]) target[coreName]["유물"] = {};
+            }
+        }
         return target;
     }
 
@@ -729,7 +715,6 @@
                 <input type="text" class="ord-exclude-tags" value="${excludeTags}" placeholder="제외 조건 태그 (예: 급습)" style="flex: 1; border: 1px solid #dc3545;" 
                        onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
             </div>
-            <!-- 📌 동적 추천 태그 뱃지 컨테이너 -->
             <div id="badges_${rowId}" class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
         `;
 
@@ -759,12 +744,21 @@
     }
 
     function addOrderNode() {
+        const coreName = document.getElementById("coreName").value.trim();
         const coreType = document.getElementById("coreType").value;
         const groupId = document.getElementById("groupId").value.trim();
         const nodePointVal = document.getElementById("nodePoint").value;
         const is17pt = nodePointVal === "17";
 
+        if (!coreName) { alert("코어 이름을 입력해 주세요!"); return; }
+
         orderDataSets = sanitizeOrderDataStructure(orderDataSets);
+
+        if (!orderDataSets[coreName]) {
+            orderDataSets[coreName] = { type: coreType, "고대": {}, "유물": {} };
+        } else {
+            orderDataSets[coreName].type = coreType;
+        }
 
         const nodeGroupId = editingOrderInfo ? editingOrderInfo.id : ('node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
 
@@ -798,15 +792,15 @@
 
             if (ancientEffects.length === 0) { alert("효과를 입력해 주세요!"); return; }
 
-            if (!orderDataSets[coreType]["고대"][17]) orderDataSets[coreType]["고대"][17] = [];
-            if (!orderDataSets[coreType]["유물"][17]) orderDataSets[coreType]["유물"][17] = [];
+            if (!orderDataSets[coreName]["고대"][17]) orderDataSets[coreName]["고대"][17] = [];
+            if (!orderDataSets[coreName]["유물"][17]) orderDataSets[coreName]["유물"][17] = [];
 
             const ancientObj = { id: nodeGroupId, effects: ancientEffects };
             const relicObj = { id: nodeGroupId, effects: relicEffects };
             if (groupId) { ancientObj.groupId = groupId; relicObj.groupId = groupId; }
 
-            orderDataSets[coreType]["고대"][17].push(ancientObj);
-            orderDataSets[coreType]["유물"][17].push(relicObj);
+            orderDataSets[coreName]["고대"][17].push(ancientObj);
+            orderDataSets[coreName]["유물"][17].push(relicObj);
 
         } else {
             const effects = [];
@@ -829,15 +823,15 @@
 
             ["고대", "유물"].forEach(grade => {
                 pointsToApply.forEach(pt => {
-                    if (!orderDataSets[coreType][grade][pt]) {
-                        orderDataSets[coreType][grade][pt] = [];
+                    if (!orderDataSets[coreName][grade][pt]) {
+                        orderDataSets[coreName][grade][pt] = [];
                     }
                     const clonedEffects = JSON.parse(JSON.stringify(effects));
                     
                     const nodeObj = { id: nodeGroupId, effects: clonedEffects };
                     if (groupId) nodeObj.groupId = groupId;
 
-                    orderDataSets[coreType][grade][pt].push(nodeObj);
+                    orderDataSets[coreName][grade][pt].push(nodeObj);
                 });
             });
         }
@@ -856,16 +850,21 @@
     }
 
     function editOrderNodeById(targetId) {
-        let foundType = null, foundPoint = null, ancientNode = null, relicNode = null;
+        let foundCoreName = null, foundType = null, foundPoint = null, ancientNode = null, relicNode = null;
 
-        for (const coreType in orderDataSets) {
-            for (const grade in orderDataSets[coreType]) {
-                for (const pt in orderDataSets[coreType][grade]) {
-                    const list = orderDataSets[coreType][grade][pt];
+        for (const coreName in orderDataSets) {
+            const coreObj = orderDataSets[coreName];
+            if (!coreObj) continue;
+
+            for (const grade in coreObj) {
+                if (grade === "type") continue;
+                for (const pt in coreObj[grade]) {
+                    const list = coreObj[grade][pt];
                     if (Array.isArray(list)) {
                         const item = list.find(node => node && node.id === targetId);
                         if (item) {
-                            foundType = coreType;
+                            foundCoreName = coreName;
+                            foundType = coreObj.type || "해";
                             foundPoint = String(pt);
                             if (grade === "고대") ancientNode = item;
                             if (grade === "유물") relicNode = item;
@@ -886,6 +885,7 @@
 
         editingOrderInfo = { id: targetId };
 
+        document.getElementById("coreName").value = foundCoreName;
         document.getElementById("coreType").value = foundType;
         document.getElementById("groupId").value = ancientNode.groupId || "";
         
@@ -940,6 +940,7 @@
             submitBtn.style.color = "white";
         }
         document.getElementById("btnOrderCancel").style.display = "none";
+        document.getElementById("coreName").value = "";
         document.getElementById("groupId").value = "";
         document.getElementById("orderEffectsContainer").innerHTML = "";
         addOrderEffectRow();
@@ -951,14 +952,18 @@
         if (needUpdateUI && !confirm("이 코어 노드를 삭제하시겠습니까?")) return;
 
         let found = false;
-        for (const coreType in orderDataSets) {
-            for (const grade in orderDataSets[coreType]) {
-                for (const pt in orderDataSets[coreType][grade]) {
-                    const list = orderDataSets[coreType][grade][pt];
+        for (const coreName in orderDataSets) {
+            const coreObj = orderDataSets[coreName];
+            if (!coreObj) continue;
+
+            for (const grade in coreObj) {
+                if (grade === "type") continue;
+                for (const pt in coreObj[grade]) {
+                    const list = coreObj[grade][pt];
                     if (Array.isArray(list)) {
                         const initialLen = list.length;
-                        orderDataSets[coreType][grade][pt] = list.filter(node => node && node.id !== targetId);
-                        if (orderDataSets[coreType][grade][pt].length < initialLen) {
+                        coreObj[grade][pt] = list.filter(node => node && node.id !== targetId);
+                        if (coreObj[grade][pt].length < initialLen) {
                             found = true;
                         }
                     }
@@ -985,12 +990,18 @@
         let hasData = false;
         const processedIds = new Set();
 
-        for (const coreType in orderDataSets) {
-            for (const grade in orderDataSets[coreType]) {
-                const sortedPoints = Object.keys(orderDataSets[coreType][grade] || {}).sort((a,b) => Number(a) - Number(b));
+        for (const coreName in orderDataSets) {
+            const coreObj = orderDataSets[coreName];
+            if (!coreObj) continue;
+
+            const coreType = coreObj.type || "미정";
+
+            ["고대", "유물"].forEach(grade => {
+                if (!coreObj[grade]) return;
+                const sortedPoints = Object.keys(coreObj[grade]).sort((a,b) => Number(a) - Number(b));
 
                 sortedPoints.forEach(nodePoint => {
-                    const nodeList = orderDataSets[coreType][grade][nodePoint];
+                    const nodeList = coreObj[grade][nodePoint];
                     if (Array.isArray(nodeList)) {
                         nodeList.forEach((node) => {
                             if (!node) return;
@@ -1011,7 +1022,7 @@
                             div.className = "list-item";
                             
                             div.innerHTML = `
-                                <span><strong>[${coreType}] ${nodePoint}pt</strong>${gIdStr} (${effCount}개 효과) <small style="color:#aaa;">[고대/유물 연동]</small></span>
+                                <span><strong>[${coreName} / ${coreType}] ${nodePoint}pt</strong>${gIdStr} (${effCount}개 효과) <small style="color:#aaa;">[고대/유물 연동]</small></span>
                                 <div>
                                     <button class="btn-edit" onclick="editOrderNodeById('${nodeId}')">수정</button>
                                     <button class="btn-del" onclick="deleteOrderNodeById('${nodeId}', true)">삭제</button>
@@ -1021,7 +1032,7 @@
                         });
                     }
                 });
-            }
+            });
         }
 
         if (!hasData) {
@@ -1104,7 +1115,6 @@
                 </div>
             </div>
 
-            <!-- ⚡ 태그 입력란 및 추천 뱃지 영역 -->
             <div style="display: flex; gap: 8px;">
                 <input type="text" class="buff-tags" value="${tags}" placeholder="적용 스킬 태그 (비워두면 전체 적용)" style="flex: 1;" 
                        onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
@@ -1112,7 +1122,6 @@
                        onfocus="setActiveInput(this)" onkeyup="handleTagKeyUp(event, this)" onblur="registerTagsFromInput(this.value)">
             </div>
 
-            <!-- 📌 동적 추천 태그 뱃지 컨테이너 -->
             <div id="badges_${rowId}" class="dynamic-tag-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
         `;
 

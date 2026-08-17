@@ -46,6 +46,7 @@
             {
                 "category": "치명타 적중률",
                 "val": 15,
+                "unit": "%",
                 "requireTags": [
                     "풍랑"
                 ]
@@ -53,13 +54,15 @@
             {
                 "category": "적에게 주는 피해",
                 "val": 460,
+                "unit": "%",
                 "requireTags": [
                     "풍랑"
                 ]
             },
             {
                 "category": "적에게 주는 피해",
-                "val": 8
+                "val": 8,
+                "unit": "%"
             }
         ]
     },

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.0.9
+// @version      1.1.1
 // @description  로펙 시뮬레이터 DOM 데이터를 읽어와 실시간으로 입력된 세팅을 기준으로 스킬 데미지 시뮬레이션을 제공합니다. 
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -206,6 +206,10 @@
     window.specializationDatabase = specializationDatabase; // 👈 전역 동기화 추가
     window.ADD_STAT_BASE = ADD_STAT_BASE;
 
+    // 🌟 [추가] 프리셋 모달 및 UI에서 pure 커스텀 데이터만 표시할 수 있도록 전역변수 동기화
+    window.ADD_STAT_BASE_CUSTOM = pureCustomData;
+    window.SPECIALIZATION_CUSTOM = GM_getValue('SPECIALIZATION_CUSTOM', {});
+    
     try {
         const savedData = localStorage.getItem('savedBaselineResults');
         if (savedData) {
@@ -2077,68 +2081,91 @@
                 if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착' || !coreInfo.level) return;
 
                 const { name: equippedCoreName, grade, level } = coreInfo;
-                const matchedGrade = grade.includes('고대') ? '고대' : (grade.includes('유물') ? '유물' : null);
-                if (!matchedGrade) return;
-
                 const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
-                const coreData = window.orderDataSets[koreanSlotName]?.[matchedGrade];
+
+                const orderData = window.orderDataSets || {};
+                let coreData = Object.values(orderData).find(c => c.name === equippedCoreName || c.id === equippedCoreName);
+
+                if (!coreData && equippedCoreName) {
+                    coreData = Object.values(orderData).find(c => 
+                        (c.name && (equippedCoreName.includes(c.name) || c.name.includes(equippedCoreName))) ||
+                        (c.id && (equippedCoreName.includes(c.id) || c.id.includes(equippedCoreName)))
+                    );
+                }
 
                 if (!coreData) return;
 
                 const userLevel = Number(level) || 0;
                 const pendingGroups = {};
 
-                Object.keys(coreData).forEach(reqPointStr => {
-                    const reqPoint = Number(reqPointStr);
+                // 🌟 [수정 포인트] 등급 정확한 단일 매칭 (유물/고대 중복 가산 방지)
+                const gradesObj = coreData.grades || coreData;
+                
+                // 장착 등급 텍스트(예: "고대 [3단계]")에서 키워드(고대, 유물, 전설, 영웅) 매칭
+                const matchedGradeKey = Object.keys(gradesObj).find(k => 
+                    k === grade || grade.includes(k) || k.includes(grade.replace(/[^가-힣]/g, ''))
+                );
 
-                    if (userLevel >= reqPoint) {
-                        const rawEffectList = coreData[reqPointStr];
+                // 매칭 실패 시 전체 gradesObj로 빠져서 다중 등급이 중복 연산되는 것을 방지 (빈 객체 처리)
+                const targetGradeObj = matchedGradeKey && gradesObj[matchedGradeKey] 
+                    ? { [matchedGradeKey]: gradesObj[matchedGradeKey] } 
+                    : {};
 
-                        if (Array.isArray(rawEffectList)) {
-                            rawEffectList.forEach(item => {
-                                const targetEffects = Array.isArray(item.effects) ? item.effects : [item];
+                Object.values(targetGradeObj).forEach(gradeContent => {
+                    const pointsObj = gradeContent.points || gradeContent;
 
-                                targetEffects.forEach(effect => {
-                                    const { category, val, unit, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;  
-                                    const exTags = excludeTags || excludeSkillTags || [];
-                                    if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) return;
+                    if (pointsObj && typeof pointsObj === 'object') {
+                        Object.entries(pointsObj).forEach(([reqPointStr, pointData]) => {
+                            const reqPoint = Number(reqPointStr);
 
-                                    const effectiveTags = requireTags || targetTags;
+                            if (userLevel >= reqPoint) {
+                                const nodeList = pointData.nodes || (Array.isArray(pointData) ? pointData : [pointData]);
 
-                                    const isSkillMatch = Array.isArray(skills) && skills.includes(skillName);
-                                    const isTagMatch = Array.isArray(effectiveTags) && effectiveTags.some(t =>
-                                        (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName
-                                    );
-                                    const isGlobalMatch = !skills && !effectiveTags;
+                                nodeList.forEach(nodeItem => {
+                                    const targetEffects = Array.isArray(nodeItem.effects) ? nodeItem.effects : [nodeItem];
 
-                                    if (isSkillMatch || isTagMatch || isGlobalMatch) {
-                                        if (!category || val === undefined) return;
+                                    targetEffects.forEach(effect => {
+                                        const { category, val, unit, skills, requireTags, tags: targetTags, excludeTags, excludeSkillTags, groupId } = effect;  
+                                        const exTags = excludeTags || excludeSkillTags || [];
+                                        if (exTags.some(t => (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName)) return;
 
-                                        const numVal = Number(val);
-                                        const groupKey = groupId || `point_${reqPoint}_${category}`;
+                                        const effectiveTags = requireTags || targetTags;
 
-                                        if (!pendingGroups[groupKey]) {
-                                            pendingGroups[groupKey] = {
+                                        const isSkillMatch = Array.isArray(skills) && skills.includes(skillName);
+                                        const isTagMatch = Array.isArray(effectiveTags) && effectiveTags.some(t =>
+                                            (Array.isArray(skillTags) && skillTags.includes(t)) || t === skillName
+                                        );
+                                        const isGlobalMatch = !skills && (!effectiveTags || effectiveTags.length === 0);
+
+                                        if (isSkillMatch || isTagMatch || isGlobalMatch) {
+                                            if (!category || val === undefined) return;
+
+                                            const numVal = Number(val);
+                                            const groupKey = groupId || `point_${reqPoint}_${category}`;
+
+                                            if (!pendingGroups[groupKey]) {
+                                                pendingGroups[groupKey] = {
                                                     category: category,
                                                     val: numVal,
-                                                    unit: unit === "%" ? "%" : "", // ★ unit이 "%"일 때만 "%", 그 외는 모두 ""
+                                                    unit: unit === "%" ? "%" : "",
                                                     pointList: [reqPoint]
                                                 };
                                             } else {
-                                            if (groupId) {
-                                                pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
-                                            } else {
-                                                pendingGroups[groupKey].val += numVal;
-                                            }
+                                                if (groupId) {
+                                                    pendingGroups[groupKey].val = Math.max(pendingGroups[groupKey].val, numVal);
+                                                } else {
+                                                    pendingGroups[groupKey].val += numVal;
+                                                }
 
-                                            if (!pendingGroups[groupKey].pointList.includes(reqPoint)) {
-                                                pendingGroups[groupKey].pointList.push(reqPoint);
+                                                if (!pendingGroups[groupKey].pointList.includes(reqPoint)) {
+                                                    pendingGroups[groupKey].pointList.push(reqPoint);
+                                                }
                                             }
                                         }
-                                    }
+                                    });
                                 });
-                            });
-                        }
+                            }
+                        });
                     }
                 });
 
@@ -2148,7 +2175,7 @@
                     addStat(
                         stats,
                         groupData.category,
-                        `질서 코어(${koreanSlotName}:${equippedCoreName || '코어'}) Pt.${pointsStr} [${matchedGrade}]`,
+                        `질서 코어(${koreanSlotName}:${equippedCoreName || '코어'}) Pt.${pointsStr} [${matchedGradeKey || grade}]`,
                         groupData.val,
                         groupData.unit 
                     );
@@ -3166,814 +3193,978 @@
         if (typeof injectPauseButton === 'function') injectPauseButton();
     }
 
+
+
+    /// =========================================================================
+    // 1. [신규] DB 데이터 통합 프리셋 관리 모달
     // =========================================================================
-// 2. 데이터 불러오기 전용 모달 UI 생성 함수
-// =========================================================================
-    // =========================================================================
-// 2. 데이터 불러오기 전용 모달 UI 생성 함수
-// =========================================================================
-    // =========================================================================
-// 2. 데이터 불러오기 전용 모달 UI 생성 함수 (에러 방어 보완 버전)
-// =========================================================================
-function openDataLoaderModal() {
-    if (document.getElementById('data-loader-modal')) return;
+    function openDataPresetModal() {
+        if (document.getElementById('data-preset-modal')) return;
 
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = 'data-loader-modal';
-    modalOverlay.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 9999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 20px;
-        width: 380px;
-        color: #f8fafc;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    `;
-
-    modal.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: #38bdf8;">📂 시뮬레이터 데이터 설정</h3>
-            <span id="close-data-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
-        </div>
-        <p style="margin: 0; font-size: 0.78rem; color: #94a3b8; line-height: 1.4;">
-            기본 스탯/특화 데이터는 기존 코드 데이터를 유지하며, 업로드한 JSON 데이터가 누적 추가됩니다.
-        </p>
-    `;
-
-    const createFileInputGroup = (label, keyName) => {
-        const group = document.createElement('div');
-        group.style.cssText = `
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'data-preset-modal';
+        modalOverlay.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 99999999;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background: #0f172a;
-            padding: 10px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.05);
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         `;
 
-        const hasData = Boolean(window[keyName] && Object.keys(window[keyName]).length > 0);
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 20px;
+            width: 420px;
+            color: #f8fafc;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        `;
 
-        group.innerHTML = `
-            <div>
-                <div style="font-size: 0.85rem; font-weight: bold; color: #e2e8f0;">${label}</div>
-                <div id="status-${keyName}" style="font-size: 0.7rem; color: ${hasData ? '#4ade80' : '#f87171'}; margin-top: 2px;">
-                    ${hasData ? '● 데이터 있음' : '○ 데이터 없음'}
+        modal.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #38bdf8;">📦 DB 데이터 프리셋 관리</h3>
+                <span id="close-preset-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
+            </div>
+
+            <!-- 1) 현재 세팅 저장 영역 -->
+            <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">현재 데이터 4종을 프리셋으로 저장</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="db-preset-name-input" placeholder="프리셋 이름 (예: 점핑캐릭 세팅 1)" style="
+                        flex: 1; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #fff;
+                        padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; outline: none;
+                    ">
+                    <button id="btn-save-db-preset" style="
+                        background: #2563eb; color: #fff; border: none; padding: 6px 12px;
+                        font-size: 0.78rem; font-weight: bold; border-radius: 6px; cursor: pointer;
+                    ">저장</button>
                 </div>
             </div>
-            <label style="
-                background: #2563eb; color: #fff; padding: 6px 10px; font-size: 0.75rem; 
-                font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s;
-            ">
-                파일 선택
-                <input type="file" accept=".json" style="display: none;" data-key="${keyName}">
-            </label>
-        `;
 
-        const fileInput = group.querySelector('input');
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const parsed = JSON.parse(event.target.result);
-                    
-                    if (keyName === 'ADD_STAT_BASE') {
-                        let incomingArray = [];
-                        if (Array.isArray(parsed)) {
-                            incomingArray = parsed;
-                        } else if (parsed && parsed.ADD_STAT_BASE && Array.isArray(parsed.ADD_STAT_BASE)) {
-                            incomingArray = parsed.ADD_STAT_BASE;
-                        } else if (parsed && typeof parsed === 'object') {
-                            incomingArray = Object.values(parsed);
-                        }
-
-                        let baseArray = [];
-                        if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && DEFAULT_ADD_STAT_BASE) {
-                            if (Array.isArray(DEFAULT_ADD_STAT_BASE)) {
-                                baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-                            } else if (typeof DEFAULT_ADD_STAT_BASE === 'object') {
-                                baseArray = Object.values(DEFAULT_ADD_STAT_BASE).map(item => ({
-                                    name: item.name || '',
-                                    effects: [{
-                                        category: item.category || '',
-                                        val: item.value !== undefined ? item.value : (item.val || 0),
-                                        unit: item.unit || ''
-                                    }]
-                                }));
-                            }
-                        }
-
-                        if (typeof GM_setValue === 'function') {
-                            GM_setValue('ADD_STAT_BASE_CUSTOM', incomingArray);
-                        }
-
-                        const fullList = baseArray.concat(incomingArray);
-
-                        if (typeof ADD_STAT_BASE !== 'undefined' && Array.isArray(ADD_STAT_BASE)) {
-                            ADD_STAT_BASE.length = 0;
-                            fullList.forEach(item => ADD_STAT_BASE.push(item));
-                        } else {
-                            window.ADD_STAT_BASE = fullList;
-                        }
-
-                    } else if (keyName === 'specializationDatabase') {
-                        window.skillDatabase = parsed;
-                        if (typeof GM_setValue === 'function') GM_setValue('specializationDatabase', parsed);
-                    } else if (keyName === 'skillDatabase') {
-                        window.skillDatabase = parsed;
-                        if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', parsed);
-                    } else if (keyName === 'orderDataSets') {
-                        window.orderDataSets = parsed;
-                        if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', parsed);
-                    }
-
-                    const statusElem = document.getElementById(`status-${keyName}`);
-                    if (statusElem) {
-                        statusElem.style.color = '#4ade80';
-                        statusElem.innerText = '● 불러오기 완료';
-                    }
-
-                    alert(`[${label}] 데이터를 성공적으로 추가 및 반영했습니다!`);
-                    if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-
-                } catch (err) {
-                    // 💡 에러 원인을 개발자가 파악하기 용이하도록 alert에 메세지 표시
-                    alert(`JSON 파싱 중 오류 발생:\n${err.message}`);
-                    console.error("JSON Error Details:", err);
-                }
-            };
-            reader.readAsText(file, 'UTF-8');
-        });
-
-        return group;
-    };
-
-    modal.appendChild(createFileInputGroup('1. 스킬 데이터 (skillDatabase)', 'skillDatabase'));
-    modal.appendChild(createFileInputGroup('2. 질서 코어 (orderDataSets)', 'orderDataSets'));
-    modal.appendChild(createFileInputGroup('3. 기본 스탯 (ADD_STAT_BASE)', 'ADD_STAT_BASE'));
-    modal.appendChild(createFileInputGroup('4. 특화 데이터 (specializationDatabase)', 'specializationDatabase'));
-
-    const footer = document.createElement('div');
-    footer.style.cssText = `
-        display: flex; gap: 8px; margin-top: 8px; padding-top: 10px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-    `;
-
-    const allInOneBtn = document.createElement('button');
-    allInOneBtn.innerText = '📦 전체 데이터 한번에 불러오기';
-    allInOneBtn.style.cssText = `
-        flex: 1; padding: 8px; font-size: 0.75rem; font-weight: bold;
-        background: #0d9488; color: #fff; border: none; border-radius: 6px; cursor: pointer;
-    `;
-    
-    const allFileInput = document.createElement('input');
-    allFileInput.type = 'file';
-    allFileInput.accept = '.json';
-    allFileInput.style.display = 'none';
-
-    allInOneBtn.onclick = () => allFileInput.click();
-    allFileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-
-                if (data.skillDatabase) {
-                    window.skillDatabase = data.skillDatabase;
-                    if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', data.skillDatabase);
-                }
-                if (data.orderDataSets) {
-                    window.orderDataSets = data.orderDataSets;
-                    if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', data.orderDataSets);
-                }
-                if (data.ADD_STAT_BASE) {
-                    const statContent = data.ADD_STAT_BASE.ADD_STAT_BASE ? data.ADD_STAT_BASE.ADD_STAT_BASE : data.ADD_STAT_BASE;
-                    if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', statContent);
-                    window.ADD_STAT_BASE = statContent;
-                }
-                if (data.specializationDatabase) {
-                    const specContent = data.specializationDatabase;
-                    if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', specContent);
-                    window.specializationDatabase = specContent;
-                }
-
-                alert('전체 데이터를 성공적으로 불러왔습니다!');
-                modalOverlay.remove();
-                if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-            } catch (err) {
-                alert(`전체 JSON 파싱 중 오류 발생:\n${err.message}`);
-                console.error(err);
-            }
-        };
-        reader.readAsText(file, 'UTF-8');
-    };
-
-    const clearBtn = document.createElement('button');
-    clearBtn.innerText = '🗑️ 초기화';
-    clearBtn.style.cssText = `
-        padding: 8px 12px; font-size: 0.75rem; font-weight: bold;
-        background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer;
-    `;
-    clearBtn.onclick = () => {
-        if (confirm('저장된 외부 데이터를 초기화하시겠습니까?')) {
-            if (typeof GM_setValue === 'function') {
-                GM_setValue('skillDatabase', {});
-                GM_setValue('orderDataSets', {});
-                GM_setValue('ADD_STAT_BASE_CUSTOM', {});
-                GM_setValue('SPECIALIZATION_CUSTOM', {});
-            }
-
-            window.skillDatabase = {};
-            window.orderDataSets = {};
-            
-            if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') {
-                window.ADD_STAT_BASE = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-            }
-            if (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') {
-                window.specializationDatabase = JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE));
-            } else {
-                window.specializationDatabase = {};
-            }
-
-            alert('외부 불러오기 데이터가 초기화되었습니다.');
-            modalOverlay.remove();
-            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-        }
-    };
-
-    footer.appendChild(allInOneBtn);
-    footer.appendChild(allFileInput);
-    footer.appendChild(clearBtn);
-    modal.appendChild(footer);
-
-    modalOverlay.appendChild(modal);
-    document.body.appendChild(modalOverlay);
-
-    modal.querySelector('#close-data-modal').onclick = () => modalOverlay.remove();
-    modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
-}
-
-/// =========================================================================
-// 1. [신규] DB 데이터 통합 프리셋 관리 모달
-// =========================================================================
-function openDataPresetModal() {
-    if (document.getElementById('data-preset-modal')) return;
-
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = 'data-preset-modal';
-    modalOverlay.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.75);
-        z-index: 99999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        padding: 20px;
-        width: 420px;
-        color: #f8fafc;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    `;
-
-    modal.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: #38bdf8;">📦 DB 데이터 프리셋 관리</h3>
-            <span id="close-preset-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
-        </div>
-
-        <!-- 1) 현재 세팅 저장 영역 -->
-        <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px;">
-            <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">현재 데이터 4종을 프리셋으로 저장</label>
-            <div style="display: flex; gap: 6px;">
-                <input type="text" id="db-preset-name-input" placeholder="프리셋 이름 (예: 점핑캐릭 세팅 1)" style="
-                    flex: 1; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #fff;
-                    padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; outline: none;
+            <!-- 2) 저장된 프리셋 선택 & 로드 영역 -->
+            <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">저장된 DB 프리셋 불러오기</label>
+                <select id="db-preset-select" style="
+                    width: 100%; background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.15);
+                    padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; outline: none;
                 ">
-                <button id="btn-save-db-preset" style="
-                    background: #2563eb; color: #fff; border: none; padding: 6px 12px;
-                    font-size: 0.78rem; font-weight: bold; border-radius: 6px; cursor: pointer;
-                ">저장</button>
-            </div>
-        </div>
-
-        <!-- 2) 저장된 프리셋 선택 & 로드 영역 -->
-        <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px;">
-            <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">저장된 DB 프리셋 불러오기</label>
-            <select id="db-preset-select" style="
-                width: 100%; background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.15);
-                padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; outline: none;
-            ">
-                <option value="">-- 프리셋을 선택하세요 --</option>
-            </select>
-            <div style="display: flex; gap: 6px; margin-top: 4px;">
-                <button id="btn-load-db-preset" style="
-                    flex: 1; background: #059669; color: #fff; border: none; padding: 8px;
-                    font-size: 0.78rem; font-weight: bold; border-radius: 6px; cursor: pointer;
-                ">불러오기 및 적용</button>
-                <button id="btn-delete-db-preset" style="
-                    background: #dc2626; color: #fff; border: none; padding: 8px 12px;
-                    font-size: 0.78rem; font-weight: bold; border-radius: 6px; cursor: pointer;
-                ">삭제</button>
-            </div>
-        </div>
-
-        <!-- 3) 내보내기 / 가져오기 백업 버튼 -->
-        <div style="display: flex; gap: 6px; pt: 4px;">
-            <button id="btn-export-db-presets" style="
-                flex: 1; background: #334155; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
-                padding: 6px; font-size: 0.72rem; border-radius: 6px; cursor: pointer;
-            ">📤 백업(JSON 다운로드)</button>
-            <button id="btn-import-db-presets" style="
-                flex: 1; background: #334155; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
-                padding: 6px; font-size: 0.72rem; border-radius: 6px; cursor: pointer;
-            ">📥 복원(JSON 업로드)</button>
-            <input type="file" id="input-import-db-presets" accept=".json" style="display: none;">
-        </div>
-    `;
-
-    modalOverlay.appendChild(modal);
-    document.body.appendChild(modalOverlay);
-
-    // 저장소 helper 함수
-    const getPresets = () => {
-        try {
-            if (typeof GM_getValue === 'function') {
-                return GM_getValue('DB_ALL_PRESETS', []);
-            }
-            return JSON.parse(localStorage.getItem('DB_ALL_PRESETS') || '[]');
-        } catch (e) {
-            return [];
-        }
-    };
-
-    const savePresets = (list) => {
-        if (typeof GM_setValue === 'function') {
-            GM_setValue('DB_ALL_PRESETS', list);
-        }
-        localStorage.setItem('DB_ALL_PRESETS', JSON.stringify(list));
-    };
-
-    // 프리셋 드롭다운 UI 업데이트
-    const refreshPresetOptions = () => {
-        const select = modal.querySelector('#db-preset-select');
-        select.innerHTML = '<option value="">-- 프리셋을 선택하세요 --</option>';
-        const list = getPresets();
-        list.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.innerText = `${p.name} (${new Date(p.id).toLocaleDateString()})`;
-            select.appendChild(opt);
-        });
-    };
-
-    refreshPresetOptions();
-
-    // 1) 프리셋 저장 실행
-    modal.querySelector('#btn-save-db-preset').onclick = () => {
-        const nameInput = modal.querySelector('#db-preset-name-input');
-        const name = nameInput.value.trim();
-        if (!name) {
-            alert('프리셋 이름을 입력해주세요.');
-            return;
-        }
-
-        const presets = getPresets();
-        const newPreset = {
-            id: Date.now(),
-            name: name,
-            data: {
-                skillDatabase: window.skillDatabase || {},
-                orderDataSets: window.orderDataSets || {},
-                ADD_STAT_BASE: window.ADD_STAT_BASE || [],
-                specializationDatabase: window.specializationDatabase || {}
-            }
-        };
-
-        presets.push(newPreset);
-        savePresets(presets);
-        nameInput.value = '';
-        refreshPresetOptions();
-        alert(`'${name}' 프리셋이 성공적으로 저장되었습니다!`);
-    };
-
-    modal.querySelector('#btn-load-db-preset').onclick = () => {
-        const select = modal.querySelector('#db-preset-select');
-        const id = Number(select.value);
-        if (!id) {
-            alert('불러올 프리셋을 선택해주세요.');
-            return;
-        }
-
-        const presets = getPresets();
-        const target = presets.find(p => p.id === id);
-        if (!target) return;
-
-        const d = target.data || {};
-
-        // 1. 깊은 복사(JSON parse/stringify)를 사용하여 참조 꼬임 방지
-        if (d.skillDatabase) {
-            window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
-            if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
-        }
-        if (d.orderDataSets) {
-            window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
-            if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
-        }
-        if (d.ADD_STAT_BASE) {
-            window.ADD_STAT_BASE = JSON.parse(JSON.stringify(d.ADD_STAT_BASE));
-            if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', window.ADD_STAT_BASE);
-        }
-        if (d.specializationDatabase) {
-            window.specializationDatabase = JSON.parse(JSON.stringify(d.specializationDatabase));
-            if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', window.specializationDatabase);
-        }
-
-        // 2. 누적/임시 변수 초기화 함수 호출 (프로젝트 내에 존재하는 초기화 함수 명시)
-        if (typeof window.resetState === 'function') {
-            window.resetState(); // 예: pendingFormulas = [], stats = {} 등 비우는 함수
-        }
-
-        // 3. UI 렌더링 함수가 따로 있다면 화면 갱신 실행
-        if (typeof window.renderUI === 'function') {
-            window.renderUI();
-        }
-
-        alert(`'${target.name}' 프리셋을 불러와 적용했습니다!`);
-        modalOverlay.remove();
-
-        // 4. 초기화 및 UI 갱신이 완료된 순수한 상태에서 재계산 수행
-        if (typeof window.triggerCalculation === 'function') {
-            window.triggerCalculation();
-        }
-    };
-
-    // 3) 프리셋 삭제 실행
-    modal.querySelector('#btn-delete-db-preset').onclick = () => {
-        const select = modal.querySelector('#db-preset-select');
-        const id = Number(select.value);
-        if (!id) {
-            alert('삭제할 프리셋을 선택해주세요.');
-            return;
-        }
-
-        if (confirm('정말 선택한 프리셋을 삭제하시겠습니까?')) {
-            let presets = getPresets();
-            presets = presets.filter(p => p.id !== id);
-            savePresets(presets);
-            refreshPresetOptions();
-            alert('프리셋이 삭제되었습니다.');
-        }
-    };
-
-    // 4) 내보내기 (JSON 다운로드)
-    modal.querySelector('#btn-export-db-presets').onclick = () => {
-        const presets = getPresets();
-        if (presets.length === 0) {
-            alert('내보낼 저장된 프리셋이 없습니다.');
-            return;
-        }
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `arc_db_presets_${Date.now()}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-    };
-
-    // 5) 가져오기 (JSON 업로드 복원)
-    const importInput = modal.querySelector('#input-import-db-presets');
-    modal.querySelector('#btn-import-db-presets').onclick = () => importInput.click();
-    importInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const parsed = JSON.parse(event.target.result);
-                if (Array.isArray(parsed)) {
-                    savePresets(parsed);
-                    refreshPresetOptions();
-                    alert('프리셋 목록을 성공적으로 복원했습니다!');
-                } else {
-                    alert('올바른 프리셋 파일 형식이 아닙니다.');
-                }
-            } catch (err) {
-                alert(`파일 읽기 오류: ${err.message}`);
-            }
-        };
-        reader.readAsText(file, 'UTF-8');
-    };
-
-    // 닫기 이벤틀
-    modal.querySelector('#close-preset-modal').onclick = () => modalOverlay.remove();
-    modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
-}
-
-// =========================================================================
-// 2. 데이터 모달 개설 함수 (openDataLoaderModal)
-// =========================================================================
-function openDataLoaderModal() {
-    if (document.getElementById('data-loader-modal')) return;
-
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = 'data-loader-modal';
-    modalOverlay.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 9999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 20px;
-        width: 380px;
-        color: #f8fafc;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    `;
-
-    modal.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: #38bdf8;">📂 시뮬레이터 데이터 설정</h3>
-            <span id="close-data-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
-        </div>
-        <p style="margin: 0; font-size: 0.78rem; color: #94a3b8; line-height: 1.4;">
-            기본 스탯/특화 데이터는 기존 코드 데이터를 유지하며, 업로드한 JSON 데이터가 누적 추가됩니다.
-        </p>
-    `;
-
-    const createFileInputGroup = (label, keyName) => {
-        const group = document.createElement('div');
-        group.style.cssText = `
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #0f172a;
-            padding: 10px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.05);
-        `;
-
-        const hasData = Boolean(window[keyName] && Object.keys(window[keyName]).length > 0);
-
-        group.innerHTML = `
-            <div>
-                <div style="font-size: 0.85rem; font-weight: bold; color: #e2e8f0;">${label}</div>
-                <div id="status-${keyName}" style="font-size: 0.7rem; color: ${hasData ? '#4ade80' : '#f87171'}; margin-top: 2px;">
-                    ${hasData ? '● 데이터 있음' : '○ 데이터 없음'}
+                    <option value="">-- 프리셋을 선택하세요 --</option>
+                </select>
+                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                    <button id="btn-load-db-preset" style="
+                        flex: 1; background: #059669; color: #fff; border: none; padding: 8px;
+                        font-size: 0.78rem; font-weight: bold; border-radius: 6px; cursor: pointer;
+                    ">불러오기 및 적용</button>
+                    <button id="btn-delete-db-preset" style="
+                        background: #dc2626; color: #fff; border: none; padding: 8px 12px;
+                        font-size: 0.78rem; font-weight: bold; border-radius: 6px; cursor: pointer;
+                    ">삭제</button>
                 </div>
             </div>
-            <label style="
-                background: #2563eb; color: #fff; padding: 6px 10px; font-size: 0.75rem; 
-                font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s;
-            ">
-                파일 선택
-                <input type="file" accept=".json" style="display: none;" data-key="${keyName}">
-            </label>
+
+            <!-- 3) 내보내기 / 가져오기 백업 버튼 -->
+            <div style="display: flex; gap: 6px; pt: 4px;">
+                <button id="btn-export-db-presets" style="
+                    flex: 1; background: #334155; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
+                    padding: 6px; font-size: 0.72rem; border-radius: 6px; cursor: pointer;
+                ">📤 백업(JSON 다운로드)</button>
+                <button id="btn-import-db-presets" style="
+                    flex: 1; background: #334155; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
+                    padding: 6px; font-size: 0.72rem; border-radius: 6px; cursor: pointer;
+                ">📥 복원(JSON 업로드)</button>
+                <input type="file" id="input-import-db-presets" accept=".json" style="display: none;">
+            </div>
         `;
 
-        const fileInput = group.querySelector('input');
-        fileInput.addEventListener('change', (e) => {
+        modalOverlay.appendChild(modal);
+        document.body.appendChild(modalOverlay);
+
+        // 저장소 helper 함수
+        const getPresets = () => {
+            try {
+                if (typeof GM_getValue === 'function') {
+                    return GM_getValue('DB_ALL_PRESETS', []);
+                }
+                return JSON.parse(localStorage.getItem('DB_ALL_PRESETS') || '[]');
+            } catch (e) {
+                return [];
+            }
+        };
+
+        const savePresets = (list) => {
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('DB_ALL_PRESETS', list);
+            }
+            localStorage.setItem('DB_ALL_PRESETS', JSON.stringify(list));
+        };
+
+        // 프리셋 드롭다운 UI 업데이트
+        const refreshPresetOptions = () => {
+            const select = modal.querySelector('#db-preset-select');
+            select.innerHTML = '<option value="">-- 프리셋을 선택하세요 --</option>';
+            const list = getPresets();
+            list.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = `${p.name} (${new Date(p.id).toLocaleDateString()})`;
+                select.appendChild(opt);
+            });
+        };
+
+        refreshPresetOptions();
+
+        // 1) 프리셋 저장 실행 (오직 순수 커스텀 데이터만 프리셋에 보관)
+        modal.querySelector('#btn-save-db-preset').onclick = () => {
+            const nameInput = modal.querySelector('#db-preset-name-input');
+            const name = nameInput.value.trim();
+            if (!name) {
+                showAlert('프리셋 이름을 입력해주세요.');
+                return;
+            }
+
+            const presets = getPresets();
+
+            const newPreset = {
+                id: Date.now(),
+                name: name,
+                data: {
+                    skillDatabase: window.skillDatabase || {},
+                    orderDataSets: window.orderDataSets || {},
+                    // 병합된 ADD_STAT_BASE가 아니라 순수 커스텀 데이터만 저장
+                    ADD_STAT_BASE: window.ADD_STAT_BASE_CUSTOM || [],
+                    specializationDatabase: window.SPECIALIZATION_CUSTOM || {}
+                }
+            };
+
+            presets.push(newPreset);
+            savePresets(presets);
+            nameInput.value = '';
+            refreshPresetOptions();
+            showAlert(`'${name}' 프리셋이 성공적으로 저장되었습니다!`);
+        };
+
+        // 2) 프리셋 불러오기 실행
+        modal.querySelector('#btn-load-db-preset').onclick = () => {
+            const select = modal.querySelector('#db-preset-select');
+            const id = Number(select.value);
+            if (!id) {
+                showAlert('불러올 프리셋을 선택해주세요.');
+                return;
+            }
+
+            const presets = getPresets();
+            const target = presets.find(p => p.id === id);
+            if (!target) return;
+
+            const d = target.data || {};
+
+            // 1. 일반 스킬 / 코어 데이터 복원
+            if (d.skillDatabase) {
+                window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
+                if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
+            }
+            if (d.orderDataSets) {
+                window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
+                if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
+            }
+
+            // 2. pure 커스텀 데이터 복원 및 저장소 저장
+            const loadedCustomStat = d.ADD_STAT_BASE ? JSON.parse(JSON.stringify(d.ADD_STAT_BASE)) : [];
+            const loadedCustomSpec = d.specializationDatabase ? JSON.parse(JSON.stringify(d.specializationDatabase)) : {};
+
+            window.ADD_STAT_BASE_CUSTOM = loadedCustomStat;
+            window.SPECIALIZATION_CUSTOM = loadedCustomSpec;
+
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('ADD_STAT_BASE_CUSTOM', loadedCustomStat);
+                GM_setValue('SPECIALIZATION_CUSTOM', loadedCustomSpec);
+            }
+
+            // 3. 🌟 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 계산용 변수 갱신
+            let baseArray = [];
+            if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && Array.isArray(DEFAULT_ADD_STAT_BASE)) {
+                baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+            }
+            
+            const baseNames = new Set(baseArray.map(item => item.name));
+            const pureCustomData = loadedCustomStat.filter(item => item && item.name && !baseNames.has(item.name));
+
+            // 실제 시뮬레이션 계산에 쓰이는 병합 변수 업데이트
+            window.ADD_STAT_BASE = [...baseArray, ...pureCustomData];
+
+            // 4. UI 및 상태 초기화
+            if (typeof window.resetState === 'function') window.resetState();
+            if (typeof window.renderUI === 'function') window.renderUI();
+
+            showAlert(`'${target.name}' 프리셋을 불러와 적용했습니다!`);
+            modalOverlay.remove();
+            // 🌟 프리셋 모달 닫힌 후 메인 데이터 불러오기 모달 호출
+            if (typeof openDataLoaderModal === 'function') {
+                openDataLoaderModal();
+            }
+
+            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+        };
+
+        // 3) 프리셋 삭제 실행
+        modal.querySelector('#btn-delete-db-preset').onclick = () => {
+            const select = modal.querySelector('#db-preset-select');
+            const id = Number(select.value);
+            if (!id) {
+                showAlert('삭제할 프리셋을 선택해주세요.');
+                return;
+            }
+
+            if (confirm('정말 선택한 프리셋을 삭제하시겠습니까?')) {
+                let presets = getPresets();
+                presets = presets.filter(p => p.id !== id);
+                savePresets(presets);
+                refreshPresetOptions();
+                showAlert('프리셋이 삭제되었습니다.');
+            }
+        };
+
+        // 4) 내보내기 (JSON 다운로드)
+        modal.querySelector('#btn-export-db-presets').onclick = () => {
+            const presets = getPresets();
+            if (presets.length === 0) {
+                showAlert('내보낼 저장된 프리셋이 없습니다.');
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `arc_db_presets_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        };
+
+        // 5) 가져오기 (JSON 업로드 복원)
+        const importInput = modal.querySelector('#input-import-db-presets');
+        modal.querySelector('#btn-import-db-presets').onclick = () => importInput.click();
+        importInput.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
                     const parsed = JSON.parse(event.target.result);
-                    
-                    if (keyName === 'ADD_STAT_BASE') {
-                        let incomingArray = [];
-                        if (Array.isArray(parsed)) {
-                            incomingArray = parsed;
-                        } else if (parsed && parsed.ADD_STAT_BASE && Array.isArray(parsed.ADD_STAT_BASE)) {
-                            incomingArray = parsed.ADD_STAT_BASE;
-                        } else if (parsed && typeof parsed === 'object') {
-                            incomingArray = Object.values(parsed);
-                        }
-
-                        let baseArray = [];
-                        if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && DEFAULT_ADD_STAT_BASE) {
-                            if (Array.isArray(DEFAULT_ADD_STAT_BASE)) {
-                                baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-                            } else if (typeof DEFAULT_ADD_STAT_BASE === 'object') {
-                                baseArray = Object.values(DEFAULT_ADD_STAT_BASE).map(item => ({
-                                    name: item.name || '',
-                                    effects: [{
-                                        category: item.category || '',
-                                        val: item.value !== undefined ? item.value : (item.val || 0),
-                                        unit: item.unit || ''
-                                    }]
-                                }));
-                            }
-                        }
-
-                        if (typeof GM_setValue === 'function') {
-                            GM_setValue('ADD_STAT_BASE_CUSTOM', incomingArray);
-                        }
-
-                        const fullList = baseArray.concat(incomingArray);
-
-                        if (typeof ADD_STAT_BASE !== 'undefined' && Array.isArray(ADD_STAT_BASE)) {
-                            ADD_STAT_BASE.length = 0;
-                            fullList.forEach(item => ADD_STAT_BASE.push(item));
-                        } else {
-                            window.ADD_STAT_BASE = fullList;
-                        }
-
-                    } else if (keyName === 'specializationDatabase') {
-                        window.specializationDatabase = parsed;
-                        if (typeof GM_setValue === 'function') GM_setValue('specializationDatabase', parsed);
-                    } else if (keyName === 'skillDatabase') {
-                        window.skillDatabase = parsed;
-                        if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', parsed);
-                    } else if (keyName === 'orderDataSets') {
-                        window.orderDataSets = parsed;
-                        if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', parsed);
+                    if (Array.isArray(parsed)) {
+                        savePresets(parsed);
+                        refreshPresetOptions();
+                        showAlert('프리셋 목록을 성공적으로 복원했습니다!');
+                    } else {
+                        showAlert('올바른 프리셋 파일 형식이 아닙니다.');
                     }
-
-                    const statusElem = document.getElementById(`status-${keyName}`);
-                    if (statusElem) {
-                        statusElem.style.color = '#4ade80';
-                        statusElem.innerText = '● 불러오기 완료';
-                    }
-
-                    alert(`[${label}] 데이터를 성공적으로 추가 및 반영했습니다!`);
-                    if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-
                 } catch (err) {
-                    alert(`JSON 파싱 중 오류 발생:\n${err.message}`);
-                    console.error("JSON Error Details:", err);
+                    showAlert(`파일 읽기 오류: ${err.message}`);
                 }
             };
             reader.readAsText(file, 'UTF-8');
+        };
+
+        // 닫기 이벤틀
+        modal.querySelector('#close-preset-modal').onclick = () => modalOverlay.remove();
+        modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+    }
+
+    // =========================================================================
+    // 0. 질서 코어 누적/삭제/초기화 유틸리티 함수
+    // =========================================================================
+    function parseOrderDataSets(parsedData) {
+        const rawData = parsedData.orderDataSets || parsedData;
+        const formattedData = {};
+
+        Object.entries(rawData).forEach(([key, core]) => {
+            formattedData[key] = {
+                id: core.id || key,
+                name: core.name || key,
+                slot: core.slot || '미지정',
+                type: core.type || core.coreType || '', // 🌟 코어 타입(해/달/별) 추출
+                grades: {}
+            };
+
+            const gradesSrc = core.grades || core;
+
+            Object.entries(gradesSrc).forEach(([gradeKey, gradeVal]) => {
+                if (typeof gradeVal !== 'object') return;
+
+                formattedData[key].grades[gradeKey] = { points: {} };
+                const pointsSrc = gradeVal.points || gradeVal;
+
+                Object.entries(pointsSrc).forEach(([pointKey, pointVal]) => {
+                    const nodesSrc = pointVal.nodes || (Array.isArray(pointVal) ? pointVal : [pointVal]);
+                    formattedData[key].grades[gradeKey].points[pointKey] = {
+                        nodes: Array.isArray(nodesSrc) ? nodesSrc : [nodesSrc]
+                    };
+                });
+            });
         });
 
-        return group;
-    };
+        return formattedData;
+    }
 
-    modal.appendChild(createFileInputGroup('1. 스킬 데이터 (skillDatabase)', 'skillDatabase'));
-    modal.appendChild(createFileInputGroup('2. 질서 코어 (orderDataSets)', 'orderDataSets'));
-    modal.appendChild(createFileInputGroup('3. 기본 스탯 (ADD_STAT_BASE)', 'ADD_STAT_BASE'));
-    modal.appendChild(createFileInputGroup('4. 특화 데이터 (specializationDatabase)', 'specializationDatabase'));
+    function removeOrderCore(coreKey) {
+        if (window.orderDataSets && window.orderDataSets[coreKey]) {
+            delete window.orderDataSets[coreKey];
+            if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
+            else localStorage.setItem('orderDataSets', JSON.stringify(window.orderDataSets));
+        }
+    }
 
-    const footer = document.createElement('div');
-    footer.style.cssText = `
-        display: flex; gap: 6px; margin-top: 8px; padding-top: 10px;
-        border-top: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap;
-    `;
+    function clearAllOrderCores() {
+        window.orderDataSets = {};
+        if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', {});
+        else localStorage.setItem('orderDataSets', JSON.stringify({}));
+    }
 
-    const allInOneBtn = document.createElement('button');
-    allInOneBtn.innerText = '📦 전체 불러오기';
-    allInOneBtn.style.cssText = `
-        flex: 1; padding: 8px 6px; font-size: 0.72rem; font-weight: bold;
-        background: #0d9488; color: #fff; border: none; border-radius: 6px; cursor: pointer;
-    `;
-    
-    const allFileInput = document.createElement('input');
-    allFileInput.type = 'file';
-    allFileInput.accept = '.json';
-    allFileInput.style.display = 'none';
 
-    allInOneBtn.onclick = () => allFileInput.click();
-    allFileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
+    // =========================================================================
+    // 1. 상태 UI 갱신 함수 
+    // =========================================================================
+    function updateModalStatusUI() {
+        const keys = ['skillDatabase', 'orderDataSets', 'ADD_STAT_BASE', 'specializationDatabase'];
 
-                if (data.skillDatabase) {
-                    window.skillDatabase = data.skillDatabase;
-                    if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', data.skillDatabase);
+        keys.forEach(keyName => {
+            const statusElem = document.getElementById(`status-${keyName}`);
+            if (!statusElem) return;
+
+            // 🌟 커스텀 데이터 기준으로 상태 갱신 (기본 스탯 & 특화 데이터 분기)
+            let customData;
+            if (keyName === 'ADD_STAT_BASE') {
+                customData = window.ADD_STAT_BASE_CUSTOM || [];
+            } else if (keyName === 'specializationDatabase') {
+                customData = window.SPECIALIZATION_CUSTOM || {};
+            } else {
+                customData = window[keyName] || {};
+            }
+
+            const count = Array.isArray(customData) ? customData.length : Object.keys(customData).length;
+
+            statusElem.style.color = count > 0 ? '#4ade80' : '#f87171';
+            statusElem.innerText = count > 0 ? `● 보유 중: ${count}개` : '○ 데이터 없음';
+        });
+    }
+
+    // =========================================================================
+    // 2. 데이터 불러오기 전용 모달 UI 생성 함수
+    // =========================================================================
+    function openDataLoaderModal() {
+
+
+
+        if (document.getElementById('data-loader-modal')) return;
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'data-loader-modal';
+        modalOverlay.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
+            color: #f8fafc;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        `;
+
+        modal.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #38bdf8;">📂 시뮬레이터 데이터 설정 및 확인</h3>
+                <span id="close-data-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
+            </div>
+            <p style="margin: 0; font-size: 0.78rem; color: #94a3b8; line-height: 1.4;">
+                기본 스탯/특화 데이터는 기존 코드 데이터를 유지하며, 업로드한 JSON 데이터가 누적 추가됩니다.
+            </p>
+        `;
+
+        // =========================================================================
+        // 상세보기 및 데이터 관리 모달 (showDataViewerModal)
+        // =========================================================================
+        const showDataViewerModal = (title, data,keyName = '') => {
+
+            console.log('=== [showDataViewerModal 디버깅] ===');
+            console.log('1. title:', title);
+            console.log('2. keyName:', keyName);
+            console.log('3. 전달받은 data:', data);
+            console.log('4. data 타입:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
+
+            const detailOverlay = document.createElement('div');
+            detailOverlay.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0, 0, 0, 0.8); z-index: 10000000;
+                display: flex; align-items: center; justify-content: center;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            `;
+
+            const detailBox = document.createElement('div');
+            detailBox.style.cssText = `
+                background: #0f172a; border: 1px solid rgba(255,255,255,0.2);
+                border-radius: 12px; padding: 20px; width: 90%; max-width: 720px;
+                max-height: 85vh; display: flex; flex-direction: column; color: #f8fafc;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); overflow: hidden;
+            `;
+
+            let renderData = data || {};
+            const count = Object.keys(renderData).length;
+
+            // 1. 헤더 영역
+            const header = document.createElement('div');
+            header.style.cssText = `display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 12px; flex-shrink: 0;`;
+            header.innerHTML = `
+                <strong style="color: #38bdf8; font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                    🔍 ${title} <span style="font-size: 0.8rem; color: #94a3b8; font-weight: normal;">(보유 개수: ${count}개)</span>
+                </strong>
+                <span id="close-detail-modal" style="cursor: pointer; font-size: 1.3rem; color: #94a3b8; line-height: 1;">&times;</span>
+            `;
+            detailBox.appendChild(header);
+
+            // 2. 스크롤 가능한 본문 컨테이너
+            const contentContainer = document.createElement('div');
+            contentContainer.style.cssText = `overflow-y: auto; padding: 12px 6px 12px 0; display: flex; flex-direction: column; gap: 12px; flex: 1;`;
+
+            if (!renderData || count === 0) {
+                contentContainer.innerHTML = `<div style="text-align: center; color: #64748b; padding: 40px 0;">등록된 데이터가 없습니다.</div>`;
+            } 
+            // 2. 스킬 데이터 (skillDatabase)
+            else if (keyName === 'skillDatabase' || title.includes('skillDatabase') || title.includes('스킬 데이터')) {
+                Object.entries(renderData).forEach(([skillKey, skill]) => {
+                    const tagList = Array.isArray(skill.tags) ? skill.tags : (skill.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+                    const tagBadges = tagList.map(t => `<span style="background: #334155; color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; border: 1px solid rgba(56, 189, 248, 0.2);">#${t}</span>`).join('');
+
+                    let tripodsHtml = '';
+                    if (skill.tripods && Array.isArray(skill.tripods) && skill.tripods.length > 0) {
+                        tripodsHtml = skill.tripods.map(t => {
+                            const effects = (t.effects || []).map(e => {
+                                const val = e.value ?? e.val ?? 0;
+                                const sign = val > 0 ? '+' : '';
+                                return `
+                                    <div style="display: flex; justify-content: space-between; background: #0f172a; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem;">
+                                        <span style="color: #cbd5e1;">${e.type || e.category || '효과'}</span>
+                                        <span style="color: #4ade80; font-weight: bold;">${sign}${val}${e.unit || ''}</span>
+                                    </div>
+                                `;
+                            }).join('');
+                            return `
+                                <div style="background: #182234; border-left: 3px solid #2563eb; border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.75rem; font-weight: bold; color: #60a5fa;">${t.tier || '1'}티어</span>
+                                        <span style="font-size: 0.82rem; font-weight: bold; color: #f8fafc;">${t.name || '트라이포드명 미지정'}</span>
+                                    </div>
+                                    ${effects}
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        tripodsHtml = `<div style="font-size: 0.75rem; color: #64748b; font-style: italic;">설정된 트라이포드가 없습니다.</div>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;`;
+                    card.innerHTML = `
+                        <div style="font-size: 1rem; font-weight: bold; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">⚡ ${skill.name || skillKey}</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                            <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">상수</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.constant ?? '-'}</div></div>
+                            <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">계수</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.coefficient ?? '-'}</div></div>
+                            <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">쿨타임</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.baseCooldown ?? '-'}s</div></div>
+                            <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">기본 마나</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.mana ?? skill.baseMana ?? 0}</div></div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🏷️ 태그</span><div style="display: flex; flex-wrap: wrap; gap: 4px;">${tagBadges}</div></div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🔱 트라이포드</span><div style="display: flex; flex-direction: column; gap: 6px;">${tripodsHtml}</div></div>
+                    `;
+                    contentContainer.appendChild(card);
+                });
+            }
+            // 3. 기본 스탯 (ADD_STAT_BASE - 필요 태그 수록 버전)
+            else if (keyName === 'ADD_STAT_BASE' || title.includes('ADD_STAT_BASE') || title.includes('기본 스탯') || title.includes('기본스탯')) {
+                const list = Array.isArray(renderData) ? renderData : Object.values(renderData);
+                list.forEach((item, idx) => {
+                    const card = document.createElement('div');
+                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px;`;
+                    
+                    const name = item.name || item.statName || `사용자 스탯 #${idx + 1}`;
+                    const effects = item.effects || (item.category ? [item] : []);
+
+                    const effectsHtml = effects.map(e => {
+                        const val = e.val ?? e.value ?? 0;
+                        const sign = val > 0 ? '+' : '';
+                        const reqTags = e.requireTags || e.targetTags || e.tags || [];
+                        const tagList = Array.isArray(reqTags) ? reqTags : (typeof reqTags === 'string' ? reqTags.split(',').map(t => t.trim()) : []);
+                        const tagBadges = tagList.map(t => `<span style="background: #334155; color: #c084fc; padding: 1px 6px; border-radius: 8px; font-size: 0.7rem; border: 1px solid rgba(192, 132, 252, 0.2);">#${t}</span>`).join(' ');
+
+                        return `
+                            <div style="display: flex; align-items: center; gap: 6px; background: #0f172a; padding: 4px 10px; border-radius: 6px;">
+                                ${tagBadges ? `<div style="display: flex; gap: 4px;">${tagBadges}</div>` : ''}
+                                <span style="font-size: 0.82rem; font-weight: bold; color: #4ade80;">${e.category || e.type || ''} ${sign}${val}${e.unit || ''}</span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    card.innerHTML = `
+                        <span style="font-weight: bold; font-size: 0.9rem; color: #f8fafc; white-space: nowrap;">📊 ${name}</span>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;">${effectsHtml || '<span style="font-size: 0.8rem; color: #64748b;">효과 없음</span>'}</div>
+                    `;
+                    contentContainer.appendChild(card);
+                });
+            }
+            // 4. 특화 데이터 (specializationDatabase)
+            else if (keyName === 'specializationDatabase' || title.includes('specializationDatabase') || title.includes('특화')) {
+                const isSingleObj = renderData.hasOwnProperty('coefficient') || renderData.hasOwnProperty('targetTags');
+                const specList = isSingleObj ? [renderData] : (Array.isArray(renderData) ? renderData : Object.values(renderData));
+
+                specList.forEach((specItem, idx) => {
+                    const card = document.createElement('div');
+                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;`;
+
+                    const coeff = specItem.coefficient ?? '-';
+                    const tags = Array.isArray(specItem.targetTags) ? specItem.targetTags : [];
+                    const tagBadges = tags.map(t => `<span style="background: #334155; color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; border: 1px solid rgba(56, 189, 248, 0.2);">#${t}</span>`).join('') || '<span style="font-size:0.75rem; color:#64748b;">없음</span>';
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                            <span style="font-weight: bold; font-size: 0.95rem; color: #f59e0b;">🔮 특화 설정 ${specList.length > 1 ? `#${idx + 1}` : ''}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 6px;">
+                            <span style="font-size: 0.8rem; color: #94a3b8;">특화 계수 (Coefficient)</span>
+                            <span style="font-size: 0.9rem; font-weight: bold; color: #4ade80;">${coeff}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🎯 적용 대상 태그 (targetTags)</span>
+                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">${tagBadges}</div>
+                        </div>
+                    `;
+                    contentContainer.appendChild(card);
+                });
+            }
+            else if (keyName === 'orderDataSets' || title.includes('orderDataSets') || title.includes('질서')) {
+                // 🌟 해 > 달 > 별 우선순위 정렬 함수
+                const getCorePriority = (coreData) => {
+                    const type = (coreData.type || coreData.coreType || '').toLowerCase();
+                    if (type.includes('해') || type === 'sun') return 1;
+                    if (type.includes('달') || type === 'moon') return 2;
+                    if (type.includes('별') || type === 'star') return 3;
+                    return 4; // 기타/미지정
+                };
+
+                // 해 > 달 > 별 순서로 배열 정렬
+                const sortedEntries = Object.entries(renderData).sort((a, b) => {
+                    return getCorePriority(a[1]) - getCorePriority(b[1]);
+                });
+
+                // 정렬된 순서(sortedEntries)대로 반복 실행
+                sortedEntries.forEach(([coreKey, coreData]) => {
+                    const card = document.createElement('div');
+                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;`;
+
+                    const coreName = coreData.name || coreKey;
+                    const coreType = coreData.type || coreData.coreType || '';
+                    
+                    let typeBadgeHtml = '';
+                    if (coreType.includes('해') || coreType.toLowerCase() === 'sun') {
+                        typeBadgeHtml = `<span style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">☀️ ${coreType || '해'}</span>`;
+                    } else if (coreType.includes('달') || coreType.toLowerCase() === 'moon') {
+                        typeBadgeHtml = `<span style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">🌙 ${coreType || '달'}</span>`;
+                    } else if (coreType.includes('별') || coreType.toLowerCase() === 'star') {
+                        typeBadgeHtml = `<span style="background: rgba(234, 179, 8, 0.2); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">⭐ ${coreType || '별'}</span>`;
+                    } else if (coreType) {
+                        typeBadgeHtml = `<span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">🔮 ${coreType}</span>`;
+                    }
+
+                    let gradesHtml = '';
+                    const gradesObj = coreData.grades || coreData;
+
+                    if (gradesObj && typeof gradesObj === 'object') {
+                        Object.entries(gradesObj).forEach(([gradeName, gradeContent]) => {
+                            const pointsObj = gradeContent.points || gradeContent;
+                            let pointsHtml = '';
+
+                            if (pointsObj && typeof pointsObj === 'object') {
+                                Object.entries(pointsObj).forEach(([pointKey, pointContent]) => {
+                                    const nodes = pointContent.nodes || (Array.isArray(pointContent) ? pointContent : [pointContent]);
+                                    const nodeList = Array.isArray(nodes) ? nodes : [nodes];
+
+                                    nodeList.forEach(node => {
+                                        const effects = node.effects || [];
+                                        const effectRows = effects.map(e => {
+                                            const reqTags = Array.isArray(e.requireTags) ? e.requireTags : (e.requireTags ? [e.requireTags] : []);
+                                            const tagBadges = reqTags.map(t => `<span style="background: #334155; color: #c084fc; padding: 1px 6px; border-radius: 10px; font-size: 0.7rem;">#${t}</span>`).join(' ');
+                                            const val = e.val ?? e.value ?? 0;
+                                            const sign = val > 0 ? '+' : '';
+
+                                            return `
+                                                <div style="display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem;">
+                                                    <span style="color: #cbd5e1;">${e.category || e.type || '효과'} ${tagBadges}</span>
+                                                    <span style="color: #4ade80; font-weight: bold;">${sign}${val}${e.unit || ''}</span>
+                                                </div>
+                                            `;
+                                        }).join('');
+
+                                        pointsHtml += `
+                                            <div style="background: #182234; border-left: 3px solid #a855f7; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px;">
+                                                <div style="font-size: 0.78rem; font-weight: bold; color: #c084fc;">📍 ${pointKey}pt 노드</div>
+                                                ${effectRows}
+                                            </div>
+                                        `;
+                                    });
+                                });
+                            }
+
+                            gradesHtml += `
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <div style="font-size: 0.82rem; font-weight: bold; color: #38bdf8;">[${gradeName}]</div>
+                                    ${pointsHtml}
+                                </div>
+                            `;
+                        });
+                    }
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1rem; font-weight: bold; color: #a855f7;">🔮 코어: ${coreName}</span>
+                                ${typeBadgeHtml}
+                            </div>
+                            <button class="btn-delete-single-core" style="background: #dc2626; color: #fff; border: none; padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; cursor: pointer;">🗑️ 삭제</button>
+                        </div>
+                        ${gradesHtml}
+                    `;
+
+                    card.querySelector('.btn-delete-single-core').onclick = () => {
+                        if (confirm(`'${coreName}' 코어를 삭제하시겠습니까?`)) {
+                            removeOrderCore(coreKey);
+                            card.remove();
+
+                            // 🌟 메인 모달 UI 즉시 최신화 (개수 감소 또는 데이터 없음 반영)
+                            updateModalStatusUI();
+
+                            // 만약 남은 코어가 없으면 빈 상태 안내 표시
+                            if (!window.orderDataSets || Object.keys(window.orderDataSets).length === 0) {
+                                contentContainer.innerHTML = `<div style="text-align: center; color: #64748b; padding: 40px 0;">등록된 데이터가 없습니다.</div>`;
+                            }
+
+                            showAlert('코어가 삭제되었습니다.');
+                        }
+                    };
+
+                    contentContainer.appendChild(card);
+                });
+            }
+            detailBox.appendChild(contentContainer);
+
+            if (title.includes('orderDataSets')) {
+                const footer = document.createElement('div');
+                footer.style.cssText = `
+                    border-top: 1px solid #334155;
+                    padding-top: 12px;
+                    margin-top: 4px;
+                    display: flex;
+                    justify-content: flex-end;
+                    flex-shrink: 0;
+                    background: #0f172a;
+                `;
+
+                const clearBtn = document.createElement('button');
+                clearBtn.innerText = '🗑️ 질서 코어 전체 초기화';
+                clearBtn.style.cssText = `
+                    width: 100%;
+                    padding: 10px;
+                    font-size: 0.82rem;
+                    font-weight: bold;
+                    background: #dc2626;
+                    color: #fff;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                `;
+                clearBtn.onmouseover = () => clearBtn.style.background = '#b91c1c';
+                clearBtn.onmouseout = () => clearBtn.style.background = '#dc2626';
+
+                clearBtn.onclick = () => {
+                    if (confirm('저장된 모든 질서 코어 데이터를 삭제하시겠습니까?')) {
+                        clearAllOrderCores();
+                        
+                        // 🌟 메인 모달 UI 즉시 최신화 및 상세 창만 닫기
+                        updateModalStatusUI();
+                        detailOverlay.remove();
+
+                        showAlert('모든 질서 코어가 초기화되었습니다.');
+                        if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+                    }
+                };
+
+                footer.appendChild(clearBtn);
+                detailBox.appendChild(footer);
+            }
+
+            detailOverlay.appendChild(detailBox);
+            document.body.appendChild(detailOverlay);
+
+            detailBox.querySelector('#close-detail-modal').onclick = () => detailOverlay.remove();
+            detailOverlay.onclick = (e) => { if (e.target === detailOverlay) detailOverlay.remove(); };
+        };
+
+        const createFileInputGroup = (label, keyName) => {
+            const group = document.createElement('div');
+            group.style.cssText = `
+                display: flex; align-items: center; justify-content: space-between;
+                background: #0f172a; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);
+            `;
+
+            // 🌟 커스텀 데이터만 추출 (기본 스탯 & 특화 데이터는 CUSTOM 변수 참조)
+            // 🌟 페이지 로드 시 복원된 데이터까지 올바르게 읽어오도록 수정
+            const getCustomData = () => {
+                if (keyName === 'ADD_STAT_BASE') {
+                    const stored = (typeof GM_getValue === 'function') ? GM_getValue('ADD_STAT_BASE_CUSTOM', null) : null;
+                    return window.ADD_STAT_BASE_CUSTOM || stored || window.ADD_STAT_BASE || [];
                 }
-                if (data.orderDataSets) {
-                    window.orderDataSets = data.orderDataSets;
-                    if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', data.orderDataSets);
+                if (keyName === 'specializationDatabase') {
+                    const stored = (typeof GM_getValue === 'function') ? GM_getValue('SPECIALIZATION_CUSTOM', null) : null;
+                    return window.SPECIALIZATION_CUSTOM || stored || window.specializationDatabase || {};
                 }
-                if (data.ADD_STAT_BASE) {
-                    const statContent = data.ADD_STAT_BASE.ADD_STAT_BASE ? data.ADD_STAT_BASE.ADD_STAT_BASE : data.ADD_STAT_BASE;
-                    if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', statContent);
-                    window.ADD_STAT_BASE = statContent;
-                }
-                if (data.specializationDatabase) {
-                    const specContent = data.specializationDatabase;
-                    if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', specContent);
-                    window.specializationDatabase = specContent;
-                }
+                
+                // 스킬 데이터, 질서 코어 등 일반 키
+                const stored = (typeof GM_getValue === 'function') ? GM_getValue(keyName, null) : null;
+                return window[keyName] || stored || {};
+            };
 
-                alert('전체 데이터를 성공적으로 불러왔습니다!');
-                modalOverlay.remove();
-                if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-            } catch (err) {
-                alert(`전체 JSON 파싱 중 오류 발생:\n${err.message}`);
-                console.error(err);
+            const getCount = () => {
+                const data = getCustomData();
+                return Array.isArray(data) ? data.length : Object.keys(data).length;
+            };
+
+            group.innerHTML = `
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: bold; color: #e2e8f0;">${label}</div>
+                    <div id="status-${keyName}" style="font-size: 0.7rem; color: ${getCount() > 0 ? '#4ade80' : '#f87171'}; margin-top: 2px;">
+                        ${getCount() > 0 ? `● 보유 중: ${getCount()}개` : '○ 데이터 없음'}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button class="btn-view-data" style="background: #334155; color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 5px 8px; font-size: 0.72rem; font-weight: 600; border-radius: 6px; cursor: pointer;">👁️ 확인</button>
+                    <label style="background: #2563eb; color: #fff; padding: 6px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 6px; cursor: pointer;">
+                        파일 선택
+                        <input type="file" accept=".json" style="display: none;" data-key="${keyName}">
+                    </label>
+                </div>
+            `;
+
+            // 확인 버튼 클릭 시 커스텀 데이터만 viewer 모달로 전달
+            group.querySelector('.btn-view-data').onclick = () => showDataViewerModal(label, getCustomData(), keyName);
+
+            const fileInput = group.querySelector('input');
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        
+                        if (keyName === 'orderDataSets') {
+                            const newCores = parseOrderDataSets(parsed);
+                            window.orderDataSets = { ...(window.orderDataSets || {}), ...newCores };
+                            if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
+                        } 
+                        else if (keyName === 'ADD_STAT_BASE') {
+                            const uploadedStats = Array.isArray(parsed) ? parsed : (parsed.ADD_STAT_BASE || Object.values(parsed));
+                            window.ADD_STAT_BASE_CUSTOM = uploadedStats;
+                            if (typeof GM_setValue === 'function') GM_setValue('ADD_STAT_BASE_CUSTOM', uploadedStats);
+
+                            const defaultStats = (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') ? JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE)) : [];
+                            window.ADD_STAT_BASE = [...defaultStats, ...uploadedStats];
+                        } 
+                        // 🌟 [추가] 특화 데이터 커스텀 처리
+                        else if (keyName === 'specializationDatabase') {
+                            window.SPECIALIZATION_CUSTOM = parsed;
+                            if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', parsed);
+
+                            const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) : {};
+                            window.specializationDatabase = { ...defaultSpec, ...parsed };
+                        }
+                        else {
+                            window[keyName] = parsed;
+                            if (typeof GM_setValue === 'function') GM_setValue(keyName, parsed);
+                        }
+
+                        // UI 개수 상태 즉시 최신화
+                        const statusElem = document.getElementById(`status-${keyName}`);
+                        if (statusElem) {
+                            const count = getCount();
+                            statusElem.style.color = count > 0 ? '#4ade80' : '#f87171';
+                            statusElem.innerText = count > 0 ? `● 보유 중: ${count}개` : '○ 데이터 없음';
+                        }
+
+                        if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+
+                    } catch (err) {
+                        showAlert(`JSON 파싱 오류: ${err.message}`);
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+            });
+            
+            return group;
+        };
+
+        modal.appendChild(createFileInputGroup('1. 스킬 데이터', 'skillDatabase'));
+        modal.appendChild(createFileInputGroup('2. 질서 코어', 'orderDataSets'));
+        modal.appendChild(createFileInputGroup('3. 기본 스탯', 'ADD_STAT_BASE'));
+        modal.appendChild(createFileInputGroup('4. 특화 데이터', 'specializationDatabase'));
+
+        // 🌟 [신규] 전체 데이터 통합 디버그 뷰어 (접이식 섹션)
+        const debugSection = document.createElement('div');
+        debugSection.style.cssText = `
+            background: #0f172a; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);
+            padding: 10px; display: flex; flex-direction: column; gap: 8px;
+        `;
+        debugSection.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="toggle-debug-viewer">
+                <span style="font-size: 0.8rem; font-weight: bold; color: #a5b4fc;">🔍 전체 로드 데이터 실시간 보기</span>
+                <span id="debug-toggle-icon" style="font-size: 0.8rem; color: #94a3b8;">▼ 펼치기</span>
+            </div>
+            <pre id="debug-json-content" style="
+                display: none; background: #1e293b; color: #38bdf8; padding: 10px; border-radius: 6px;
+                max-height: 180px; overflow: auto; font-family: monospace; font-size: 0.7rem;
+                white-space: pre-wrap; word-break: break-all; margin: 0;
+            "></pre>
+        `;
+
+        modal.appendChild(debugSection);
+
+        
+        const toggleBtn = debugSection.querySelector('#toggle-debug-viewer');
+        const debugContent = debugSection.querySelector('#debug-json-content');
+        const debugIcon = debugSection.querySelector('#debug-toggle-icon');
+
+        toggleBtn.onclick = () => {
+            const isHidden = debugContent.style.display === 'none';
+            if (isHidden) {
+                const combinedData = {
+                    skillDatabase: window.skillDatabase || {},
+                    orderDataSets: window.orderDataSets || {},
+                    ADD_STAT_BASE: window.ADD_STAT_BASE || [],
+                    specializationDatabase: window.specializationDatabase || {}
+                };
+                debugContent.innerText = JSON.stringify(combinedData, null, 2);
+                debugContent.style.display = 'block';
+                debugIcon.innerText = '▲ 접기';
+            } else {
+                debugContent.style.display = 'none';
+                debugIcon.innerText = '▼ 펼치기';
             }
         };
-        reader.readAsText(file, 'UTF-8');
-    };
 
-    // 🌟 [추가] 모달 내 프리셋 관리 바로가기 버튼
-    const presetManageBtn = document.createElement('button');
-    presetManageBtn.innerText = '📦 프리셋 관리';
-    presetManageBtn.style.cssText = `
-        padding: 8px 10px; font-size: 0.72rem; font-weight: bold;
-        background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer;
-    `;
-    presetManageBtn.onclick = () => {
-        modalOverlay.remove();
-        openDataPresetModal();
-    };
+        // 🌟 하단 푸터 영역 (프리셋 관리 / 전체 초기화 2종 구성)
+        const footer = document.createElement('div');
+        footer.style.cssText = `
+            display: flex; gap: 8px; margin-top: 4px; padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        `;
 
-    const clearBtn = document.createElement('button');
-    clearBtn.innerText = '🗑️ 초기화';
-    clearBtn.style.cssText = `
-        padding: 8px 10px; font-size: 0.72rem; font-weight: bold;
-        background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer;
-    `;
-    clearBtn.onclick = () => {
-        if (confirm('저장된 외부 데이터를 초기화하시겠습니까?')) {
-            if (typeof GM_setValue === 'function') {
-                GM_setValue('skillDatabase', {});
-                GM_setValue('orderDataSets', {});
-                GM_setValue('ADD_STAT_BASE_CUSTOM', {});
-                GM_setValue('SPECIALIZATION_CUSTOM', {});
-            }
+        // 1. 프리셋 관리 버튼
+        const presetManageBtn = document.createElement('button');
+        presetManageBtn.innerText = '📦 프리셋 관리';
+        presetManageBtn.style.cssText = `
+            flex: 1; padding: 10px; font-size: 0.8rem; font-weight: bold;
+            background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+            transition: background 0.2s;
+        `;
+        presetManageBtn.onmouseover = () => presetManageBtn.style.background = '#4338ca';
+        presetManageBtn.onmouseout = () => presetManageBtn.style.background = '#4f46e5';
 
-            window.skillDatabase = {};
-            window.orderDataSets = {};
-            
-            if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') {
-                window.ADD_STAT_BASE = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-            }
-            if (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') {
-                window.specializationDatabase = JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE));
-            } else {
-                window.specializationDatabase = {};
-            }
-
-            alert('외부 불러오기 데이터가 초기화되었습니다.');
+        presetManageBtn.onclick = () => {
             modalOverlay.remove();
-            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-        }
-    };
+            openDataPresetModal();
+        };
 
-    footer.appendChild(allInOneBtn);
-    footer.appendChild(allFileInput);
-    footer.appendChild(presetManageBtn);
-    footer.appendChild(clearBtn);
-    modal.appendChild(footer);
+        // 2. 전체 초기화 버튼
+        const clearBtn = document.createElement('button');
+        clearBtn.innerText = '🗑️ 전체 초기화';
+        clearBtn.style.cssText = `
+            flex: 1; padding: 10px; font-size: 0.8rem; font-weight: bold;
+            background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+            transition: background 0.2s;
+        `;
+        clearBtn.onmouseover = () => clearBtn.style.background = '#dc2626';
+        clearBtn.onmouseout = () => clearBtn.style.background = '#ef4444';
 
-    modalOverlay.appendChild(modal);
-    document.body.appendChild(modalOverlay);
+        clearBtn.onclick = () => {
+            if (confirm('저장된 모든 커스텀 데이터를 초기화하시겠습니까?')) {
+                if (typeof GM_setValue === 'function') {
+                    GM_setValue('skillDatabase', {});
+                    GM_setValue('orderDataSets', {});
+                    GM_setValue('ADD_STAT_BASE_CUSTOM', []);
+                    GM_setValue('SPECIALIZATION_CUSTOM', {});
+                }
 
-    modal.querySelector('#close-data-modal').onclick = () => modalOverlay.remove();
-    modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
-}
+                window.skillDatabase = {};
+                window.orderDataSets = {};
+                window.ADD_STAT_BASE_CUSTOM = [];
+                window.SPECIALIZATION_CUSTOM = {}; // 🌟 특화 커스텀 데이터 초기화
+                
+                // 연산 엔진용 내장 복원
+                if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') {
+                    window.ADD_STAT_BASE = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+                }
+                if (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') {
+                    window.specializationDatabase = JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE));
+                } else {
+                    window.specializationDatabase = {};
+                }
 
+                // UI 상태를 ○ 데이터 없음 으로 즉시 갱신
+                ['skillDatabase', 'orderDataSets', 'ADD_STAT_BASE', 'specializationDatabase'].forEach(key => {
+                    const statusElem = document.getElementById(`status-${key}`);
+                    if (statusElem) {
+                        statusElem.style.color = '#f87171';
+                        statusElem.innerText = '○ 데이터 없음';
+                    }
+                });
+
+                showAlert('모든 커스텀 데이터가 초기화되었습니다.');
+                if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+            }
+        };
+
+        footer.appendChild(presetManageBtn);
+        footer.appendChild(clearBtn);
+        modal.appendChild(footer);
+
+        modalOverlay.appendChild(modal);
+        document.body.appendChild(modalOverlay);
+
+        modal.querySelector('#close-data-modal').onclick = () => modalOverlay.remove();
+        modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+    }
+
+    
     // =========================================================================
     // 3. 플로팅 패널 injectPauseButton 함수
     // =========================================================================
@@ -4035,7 +4226,7 @@ function openDataLoaderModal() {
             `;
 
             const title = document.createElement('h3');
-            title.innerText = '📢 Notice';
+            title.innerText = '📢 Notice & Updates';
             title.style.cssText = `
                 margin: 0;
                 font-size: 1rem;
@@ -4060,75 +4251,120 @@ function openDataLoaderModal() {
             header.appendChild(title);
             header.appendChild(closeBtn);
 
-            // 4) 모달 본문 (내용 적는 곳)
+            // 4) 모달 본문
             const body = document.createElement('div');
             body.style.cssText = `
                 padding: 20px;
                 font-size: 0.875rem;
                 line-height: 1.6;
                 color: #cbd5e1;
-                max-height: 60vh;
+                max-height: 65vh;
                 overflow-y: auto;
             `;
 
-            // 💡 여기에 원하시는 공지 내용을 HTML로 적으시면 됩니다.
             body.innerHTML = `
                 <div style="display: flex; flex-direction: column; gap: 14px;">
-                <!-- 1번 항목: 내실 -->
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span style="background: #0284c7; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">기본 전제</span>
-                        <strong style="color: #f8fafc; font-size: 0.85rem;">내실 기본 설정</strong>
+                    <!-- 1번 항목: 내실 -->
+                    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <span style="background: #0284c7; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">기본 전제</span>
+                            <strong style="color: #f8fafc; font-size: 0.85rem;">내실 기본 설정</strong>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                            기본적인 내실은 <span style="color: #38bdf8; font-weight: 600;">최대치</span>를 가정하고 계산합니다.
+                        </div>
                     </div>
-                    <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
-                        기본적인 내실은 <span style="color: #38bdf8; font-weight: 600;">최대치</span>를 가정하고 계산합니다.
-                    </div>
-                </div>
 
-                <!-- 2번 항목: 장비 -->
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span style="background: #d97706; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">지원 장비</span>
-                        <strong style="color: #f8fafc; font-size: 0.85rem;">장비 범위</strong>
+                    <!-- 2번 항목: 장비 -->
+                    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <span style="background: #d97706; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">지원 장비</span>
+                            <strong style="color: #f8fafc; font-size: 0.85rem;">장비 범위</strong>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                            장비는 <span style="color: #fbbf24; font-weight: 600;">T4 전율</span> 및 <span style="color: #fbbf24; font-weight: 600;">에스더 장비</span>만 지원합니다.
+                        </div>
                     </div>
-                    <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
-                        장비는 <span style="color: #fbbf24; font-weight: 600;">T4 전율</span> 및 <span style="color: #fbbf24; font-weight: 600;">에스더 장비</span>만 지원합니다.
-                    </div>
-                </div>
 
-                <!-- 3번 항목: 코어 -->
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span style="background: #dc2626; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
-                        <strong style="color: #f8fafc; font-size: 0.85rem;">혼돈 코어 옵션</strong>
+                    <!-- 3번 항목: 보석 -->
+                    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <span style="background: #d97706; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
+                            <strong style="color: #f8fafc; font-size: 0.85rem;">보석</strong>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                            <span style="color: #fbbf24; font-weight: 600;">6레벨 이상</span> 보석만 계산 가능합니다.
+                        </div>
                     </div>
-                    <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
-                        혼돈 코어 중 <span style="color: #f87171; font-weight: 600;">서포터 옵션</span>의 코어는 지원하지 않습니다.
-                    </div>
-                </div>
 
-                <!-- 4번 항목: 미지원 노드 -->
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                        <span style="background: #dc2626; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
-                        <strong style="color: #f8fafc; font-size: 0.85rem;">아크 패시브 노드 예외</strong>
+                    <!-- 4번 항목: 코어 -->
+                    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <span style="background: #dc2626; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
+                            <strong style="color: #f8fafc; font-size: 0.85rem;">혼돈 코어 옵션</strong>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.8rem; padding-left: 2px;">
+                            혼돈 코어 중 <span style="color: #f87171; font-weight: 600;">서포터 옵션</span>의 코어는 지원하지 않습니다.
+                        </div>
                     </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">제압</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">인내</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">숙련</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">축복의 여신</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">정열의 춤사위</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">선각자</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">진군</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">기원</span>
-                        <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">안정된 관리자</span>
+
+                    <!-- 5번 항목: 미지원 노드 -->
+                    <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                            <span style="background: #dc2626; color: #ffffff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;">미지원</span>
+                            <strong style="color: #f8fafc; font-size: 0.85rem;">아크 패시브 노드 예외</strong>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">제압</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">인내</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">숙련</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">축복의 여신</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">정열의 춤사위</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">선각자</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">진군</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">기원</span>
+                            <span style="background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">안정된 관리자</span>
+                        </div>
                     </div>
+
+                    <!-- 🌟 업데이트 내역 섹션 -->
+                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 16px; margin-top: 8px;">
+                        <!-- 헤더 -->
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                            <span style="display: inline-block; width: 6px; height: 6px; background-color: #38bdf8; border-radius: 50%;"></span>
+                            🛠️ 업데이트 내역
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- v1.1.1 카드 -->
+                            <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 12px 14px; transition: all 0.2s ease;">
+                                <!-- 버전 및 날짜 -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;">
+                                        v1.1.1
+                                    </span>
+                                    <span style="color: #64748b; font-size: 0.72rem; font-weight: 500;">2026.08.17</span>
+                                </div>
+
+                                <!-- 내역 리스트 -->
+                                <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px;">
+                                    <li style="display: flex; align-items: flex-start; gap: 6px; color: #cbd5e1; font-size: 0.78rem; line-height: 1.4;">
+                                        <span style="color: #38bdf8; font-size: 0.68rem; font-weight: bold; background: rgba(56, 189, 248, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;">질서 코어 시뮬레이션 지원</span>
+                                        <span>질서 코어 조합을 변경하면서 시뮬레이션 할 수 있도록 데이터 입력/처리 방식을 개선하였습니다.<br>물론 데이터는 사용자가 직접 만들어야 합니다.</span>
+                                    </li>
+                                    <li style="display: flex; align-items: flex-start; gap: 6px; color: #cbd5e1; font-size: 0.78rem; line-height: 1.4;">
+                                        <span style="color: #a78bfa; font-size: 0.68rem; font-weight: bold; background: rgba(167, 139, 250, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;">데이터</span>
+                                        <span><strong>최신 프리셋 업데이트</strong>: 프리셋 관리 기능이 업데이트 되었습니다.</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
-            </div>
             `;
 
-            // 5) 모달 푸터 (확인 버튼)
+            // 5) 모달 푸터
             const footer = document.createElement('div');
             footer.style.cssText = `
                 padding: 12px 18px;
@@ -4232,7 +4468,7 @@ function openDataLoaderModal() {
             return btn;
         };
 
-        // 🌟 [추가] 0-1) Notice (공지사항) 버튼
+        // Notice (공지사항) 버튼
         const noticeBtn = createButton(
             '📢 Notice',
             '#db2777',
@@ -4241,7 +4477,7 @@ function openDataLoaderModal() {
             'btn-open-notice'
         );
 
-        // 0) 데이터 불러오기 버튼
+        // 데이터 불러오기 버튼
         const loadDataBtn = createButton(
             '📂 데이터 불러오기',
             '#0d9488',
@@ -4259,7 +4495,7 @@ function openDataLoaderModal() {
             'btn-open-db-preset'
         );
 
-        // 2) ⚖️ 비교 세팅 버튼
+        // 비교 세팅 버튼
         const setBaseBtn = createButton('📌 비교군 저장', '#2563eb', '#3b82f6', () => {
             if (typeof window.setBaseline === 'function') window.setBaseline();
         });
@@ -4269,7 +4505,7 @@ function openDataLoaderModal() {
             else if (typeof openCompareModal === 'function') openCompareModal();
         });
 
-        // 3) 🎯 치적 시너지 입력 박스
+        // 치적 시너지 입력 박스
         const synergyBox = document.createElement('div');
         synergyBox.style.cssText = `
             display: flex;
@@ -4329,7 +4565,7 @@ function openDataLoaderModal() {
         synergyBox.appendChild(label);
         synergyBox.appendChild(select);
 
-        // 4) 🗡️ 에스더 결속 효과 1차/2차 ON/OFF 토글 영역
+        // 에스더 결속 효과 영역
         const estherBox = document.createElement('div');
         estherBox.id = 'esther-bonding-box';
         estherBox.style.cssText = `
@@ -4407,7 +4643,7 @@ function openDataLoaderModal() {
         estherBox.appendChild(btn1);
         estherBox.appendChild(btn2);
 
-        // 5) 스마트 토글 버튼 UI 갱신 함수
+        // 스마트 토글 버튼 UI 갱신
         const updatePauseBtnUI = (btn) => {
             if (!window.hasCalculatedOnce) {
                 btn.innerText = '🚀 계산 시작';
@@ -4449,7 +4685,7 @@ function openDataLoaderModal() {
         const pauseBtn = createButton('', '', '', handlePauseBtnClick, 'calc-pause-btn');
         updatePauseBtnUI(pauseBtn);
 
-        // 6) 📁 아크패시브 세팅 관리 버튼
+        // 아크패시브 세팅 관리 버튼
         const presetBtn = createButton(
             '📁 아크패시브 세팅 관리',
             '#1d4ed8',
@@ -4464,8 +4700,8 @@ function openDataLoaderModal() {
             'calc-preset-btn'
         );
 
-        // 패널 조립 (Notice 버튼을 가장 상단에 배치)
-        panel.appendChild(noticeBtn); // 🌟 신규 공지사항 버튼 추가
+        // 패널 조립
+        panel.appendChild(noticeBtn);
         panel.appendChild(loadDataBtn);
         panel.appendChild(dataPresetBtn);
         panel.appendChild(setBaseBtn);
@@ -5112,7 +5348,7 @@ function openDataLoaderModal() {
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    z-index: 1000000;
+                    z-index: 2147483647; /* 🌟 브라우저 최상단 최댓값으로 설정 */
                     opacity: 0;
                     visibility: hidden;
                     transition: all 0.2s ease-in-out;
@@ -5182,6 +5418,11 @@ function openDataLoaderModal() {
             `;
             document.body.appendChild(overlay);
 
+            // 닫기 함수
+            const closeAlert = () => {
+                overlay.classList.remove('active');
+            };
+
             // 확인 버튼 클릭 시 닫기
             document.getElementById('customAlertBtn').onclick = closeAlert;
 
@@ -5191,7 +5432,10 @@ function openDataLoaderModal() {
             };
         }
 
-        // 2. 메시지 및 아이콘 설정 후 팝업 출력
+        // 2. 🌟 호출할 때마다 DOM 최하단으로 재배치하여 항상 렌더링 최상위에 오도록 처리
+        document.body.appendChild(overlay);
+
+        // 3. 메시지 및 아이콘 설정 후 팝업 출력
         document.getElementById('customAlertIcon').innerText = icon;
         document.getElementById('customAlertMsg').innerText = msg;
         overlay.classList.add('active');
