@@ -24,6 +24,10 @@
 
 1. 위 링크 클릭 후 열리는 화면에서 **[설치]** 또는 **[재설치]** 버튼을 누릅니다.
 2. 로펙 시뮬레이터 접속 시 좌측 하단에 컨트롤 패널이 생성됩니다.
+3. 확장 프로그램 관리 → 사용자 스크립트 사용 허용  
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/4ff8ae2c77084c6585c0a977d5780f90d2917df9/images/_00.jpg">  
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/4ff8ae2c77084c6585c0a977d5780f90d2917df9/images/_01.png" width=50%>
+
 
 
 ---
