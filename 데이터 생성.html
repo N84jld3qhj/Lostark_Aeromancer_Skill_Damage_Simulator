@@ -81,7 +81,7 @@
 <div class="tab-menu">
     <button class="tab-btn active" onclick="switchTab('skillTab', this)">⚡ 스킬 데이터 생성기</button>
     <button class="tab-btn order-tab" onclick="switchTab('orderTab', this)">☀️🌙⭐ 질서 코어 생성기</button>
-    <button class="tab-btn buff-tab" onclick="switchTab('buffTab', this)">🛡️ 고유 버프 / 스탯 생성기</button>
+    <button class="tab-btn buff-tab" onclick="switchTab('buffTab', this)">🛡️ 기본 스탯 생성기</button>
     <button class="tab-btn spec-tab" onclick="switchTab('specTab', this)">🎨 직업 특화 설정</button>
 </div>
 
@@ -230,11 +230,11 @@
     </div>
 </div>
 
-<!-- TAB 3: 고유 버프 / 스탯 생성기 -->
+<!-- TAB 3: 기본 스탯 생성기 -->
 <div id="buffTab" class="tab-content">
     <div class="container">
         <div class="form-section">
-            <h3>🛡️ 고유 버프 / 스탯 입력</h3>
+            <h3>🛡️ 기본 스탯 입력</h3>
             <form id="buffForm">
                 <div class="form-group">
                     <label>버프 / 스탯명</label>
@@ -1042,7 +1042,7 @@
         renderAllTagBadges();
     }
 
-    // --- TAB 3: 고유 버프 / 스탯 ---
+    // --- TAB 3: 기본 스탯 ---
     function toggleBuffInputType(selectEl) {
         const rowBox = selectEl.closest('.buff-card');
         const fixedContainer = rowBox.querySelector('.val-fixed-container');
