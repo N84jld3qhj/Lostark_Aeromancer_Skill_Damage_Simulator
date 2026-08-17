@@ -41,25 +41,24 @@
 
 * 탭 메뉴: `☀️🌙⭐ 질서 코어 생성기`
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0000.png" style="border: 1px solid #cccccc;">
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/5d12cd7762b654d2b9aa855c246c15ff0bd84e1d/images/00.png" style="border: 1px solid #cccccc;">
 개별 질서 코어의 데이터를 입력합니다. 한 파일에 하나의 코어의 정보만 입력하면 됩니다. 여러개의 질서 코어를 입력 받아 코어 조합을 바꿔가며 시뮬레이션 할 수 있습니다.
 
 1. **코어 이름/종류 선택**: 코어 이름과 종류를 선택합니다.
 
-2. **그룹 아이디 (Group ID)**: 노드 그룹 구분이 필요한 경우 입력합니다. (선택 사항, 빈칸 가능)  
-그룹 아이디는 코어 내에서 '합연산'이 필요한 데이터가 있을 때 사용합니다.  
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/016f6bb9b5ef85080d0cbdc16a4f70aab6701917/images/0010.png?" width=50%>
-예를들어 '바람의 칼날' 코어는 14P와 17P가 합연산으로 계산됩니다.  
-이러한 경우 그룹 아이디에 같은 아이디를 입력해야 합연산으로 계산됩니다.  
-입력할 때 17P 증가량을 따로 계산해서 입력하실 필요 없습니다. 바람의 칼날의 경우 14P에 25% 17P에 44% 입력 하시면 됩니다.  
-그룹 아이디 없이 입력 시 곱연산이 되어 바람의 칼날은 44%의 데미지 증가가 아니라 25%와 44%가 곱연산으로 적용되어 계산에 오류가 생깁니다.  
-그룹 아이디 이름은 아무거나 해도 상관 없습니다. 합연산이 되는 것들이 이름이 같기만 하면 됩니다.
+2. **그룹 아이디 (Group ID)**: 그룹 아이디는 코어 내에서 '합연산'이 필요한 데이터가 있을 때 사용합니다. (선택 사항, 빈칸 가능)
+   <img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/5d12cd7762b654d2b9aa855c246c15ff0bd84e1d/images/01.png" width=50%>  
+   예를들어 '바람의 칼날' 코어는 14P와 17P가 합연산으로 계산됩니다.  
+   이러한 경우 그룹 아이디에 같은 아이디를 입력해야 합연산으로 계산됩니다.  
+   입력할 때 17P 증가량을 따로 계산해서 입력하실 필요 없습니다. 바람의 칼날의 경우 14P에 25% 17P에 44% 입력 하시면 됩니다.  
+   그룹 아이디 없이 입력 시 곱연산이 되어 바람의 칼날은 44%의 데미지 증가가 아니라 25%와 44%가 곱연산으로 적용되어 계산에 오류가 생깁니다.  
+   그룹 아이디 이름은 아무거나 해도 상관 없습니다. 합연산이 되는 것들이 이름이 같기만 하면 됩니다.  
 
-3. **노드 포인트 선택**: 
+4. **노드 포인트 선택**: 
    * `10pt`, `14pt`, `18~20pt`: 고대/유물 공통 수치 자동 생성
    * `17pt`: 고대 수치와 유물 수치를 각각 분리하여 입력
 
-4. **세부 효과 및 조건 태그 입력**:
+5. **세부 효과 및 조건 태그 입력**:
    * 스탯/피해 범주 선택 후 수치 입력
    * 한번에 여러 개의 카테고리의 효과가 들어간다면 **세부 효과 추가**로 다 넣어 주셔야 합니다. 
    * **적용 조건 태그**: 특정 스킬이나 스킬 그룹에만 적용되는 효과라면 해당 스킬의 태그를 입력합니다. (예: `칼바람`,`타대`, `우산` )
@@ -71,12 +70,12 @@
 
 * 탭 메뉴: `🎨 직업 특화 설정`
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0002.png" style="border: 1px solid #cccccc;">
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/5d12cd7762b654d2b9aa855c246c15ff0bd84e1d/images/02.png" style="border: 1px solid #cccccc;">
 
 직업의 특화 스탯이 특정 스킬 계수에 주는 영향을 설정합니다.
 
-1. **특화 계수 (Specialization Coefficient)**: 특화 계수를 입력합니다. 
-   특화 계수는 특화 수치 699일 때 캐릭터 정보창에 표기되는 값으로 **인게임 정보창 특화 효과x6.99/특화수치**로 계산할 수 있습니다.
+1. **특화 계수 (Specialization Coefficient)**: 특화 계수를 입력합니다.  
+   특화 계수는 특화 수치 699일 때 캐릭터 정보창에 표기되는 값으로 `인게임 정보창 특화 효과x6.99/특화수치`로 계산할 수 있습니다.  
    예를들어 특화가 1854일 때 인게임 정보창에서 특화 데미지 증가 수치가 88.05%라면 특화 계수는 88.05*6.99/1854=0.3319 입니다.
    
    특화 계수는 클뜯 데이터를 찾을 수 있어서 `특화계수.json`에 정리해놨습니다.
@@ -90,7 +89,7 @@
 
 * 탭 메뉴: `🛡️ 기본 스탯 생성기`
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0003.png" style="border: 1px solid #cccccc;">
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/5d12cd7762b654d2b9aa855c246c15ff0bd84e1d/images/03.png" style="border: 1px solid #cccccc;">
 
 **캐릭터 시너지**, **펫 효과**, **아크 패시브 깨달음**, **아크 패시브 도약** 과 추가적인 캐릭터에 적용되는 고유 버프 정보(ex 버서커 폭주)를 입력합니다. 
 
@@ -111,7 +110,7 @@
 
 * 탭 메뉴: `⚡ 스킬 데이터 생성기`
 
-<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/140451a34690a43935642aba57f87fb9a8d477ff/images/0004.png" style="border: 1px solid #cccccc;">
+<img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/5d12cd7762b654d2b9aa855c246c15ff0bd84e1d/images/04.png" style="border: 1px solid #cccccc;">
 
 앞서 작성한 **질서 코어, 특화, 버프에서 사용했던 태그들을 포함**하여 최종 스킬 데이터를 구성합니다.
 
