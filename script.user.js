@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         로펙 시뮬레이터 베이스 스킬 데미지 시뮬레이터
 // @namespace    https://github.com/N84jld3qhj/Lostark_WindWielder_Simulator
-// @version      1.1.1
+// @version      1.1.2
 // @description  로펙 시뮬레이터 DOM 데이터를 읽어와 실시간으로 입력된 세팅을 기준으로 스킬 데미지 시뮬레이션을 제공합니다. 
 // @author       N84jld3qhj
 // @match        https://lopec.kr/character/simulator/*
@@ -1980,7 +1980,19 @@
 
             // ★ 2. 트라이포드 적용
             if (Array.isArray(currentTripods)) {
+                // 1. inputs 객체 또는 전역 변수에서 선택된 트라이포드 맵 가져오기
+                const selectedTripodsMap = inputs?.selectedTripods || window.selectedSkillTripods || {};
+                
+                // 2. 현재 스킬(skillName)에 매칭되는 선택 정보 추출
+                const selectedForThisSkill = selectedTripodsMap[skillName] || selectedTripodsMap[skillData.id] || {};
+                
+                // 3. 선택된 트라이포드 이름 목록을 배열로 수집 (예: ["역류", "우레", "공간베기"])
+                const selectedNames = Object.values(selectedForThisSkill);
+
                 currentTripods.forEach(tp => {
+                    // 💡 핵심: 선택된 트라이포드 목록에 없는 경우 연산에서 제외
+                    if (!selectedNames.includes(tp.name)) return;
+
                     const exTags = tp.excludeTags || tp.excludeSkillTags || [];
                     if (exTags.some(tag => skillTags.includes(tag))) return;
 
@@ -2410,6 +2422,13 @@
 
         return allSkillResults;
     }
+
+
+
+
+
+
+    
     // =============================================================================
     // 6. UI 초기화 및 결과 출력 함수
     // =============================================================================
@@ -2461,6 +2480,7 @@
             transition: background 0.2s;
         `;
 
+
         // ----------------------------------------------------
         // [SECTION 1] 공통 세팅 지표 + 스킬별 시뮬레이션 요약
         // ----------------------------------------------------
@@ -2475,7 +2495,6 @@
                 </summary>
                 <div style="padding-top: 16px;">
                     
-                    <!-- 공통 세팅 지표 카드들 (치/신/특 분리 적용) -->
                     <!-- 공통 세팅 지표 카드들 (10개 카드 / 5x2 고정 그리드 배치) -->
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px;">
                         <!-- 1. 최종 공격력 -->
@@ -2514,13 +2533,13 @@
                             <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">+${(commonRes.totalEvolutionDamage || 0).toFixed(2)}%</div>
                         </div>
 
-                        <!-- 7. 공격 속도 (분리됨) -->
+                        <!-- 7. 공격 속도 -->
                         <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
                             <div style="font-size: 0.8rem; color: #94a3b8;">공격 속도</div>
                             <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalAtkSpeed || 0).toFixed(1)}%</div>
                         </div>
 
-                        <!-- 8. 이동 속도 (분리됨) -->
+                        <!-- 8. 이동 속도 -->
                         <div style="background: #181920; border: 1px solid #2e323d; padding: 12px; border-radius: 8px;">
                             <div style="font-size: 0.8rem; color: #94a3b8;">이동 속도</div>
                             <div style="font-size: 1.05rem; font-weight: bold; margin-top: 4px; color: #38bdf8;">${(commonRes.finalMoveSpeed || 0).toFixed(1)}%</div>
@@ -2775,40 +2794,40 @@
             </details>
         `;
 
-        // ----------------------------------------------------
-        // 결과 섹션 컨테이너 생성 및 배치
+        /// ----------------------------------------------------
+        // 결과 섹션 컨테이너 생성 및 배치 (클래스 부여로 너비 맞춤)
         // ----------------------------------------------------
         let resultSection = document.getElementById('sim-result-section');
 
         if (!resultSection) {
             resultSection = document.createElement('div');
             resultSection.id = 'sim-result-section';
-            resultSection.style.cssText = `
-                width: var(--main-width) !important;
-                min-width: var(--main-width) !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-                margin-top: 20px !important;
-                margin-bottom: 50px !important;
-                box-sizing: border-box !important;
+            
+            // 타겟: id="skillTripodModal" 엘리먼트를 직접 지정
+            const targetModal = document.getElementById('skillTripodModal');
 
-                background: #0f1015;
-                color: #e2e8f0;
-                border-radius: 12px;
-                border: 1px solid #2e323d;
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-                padding: 24px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                clear: both;
-            `;
-
-            const arkPanel = document.getElementById('arkPassiveModal');
-            if (arkPanel && arkPanel.parentNode) {
-                arkPanel.parentNode.insertBefore(resultSection, arkPanel.nextSibling);
+            if (targetModal && targetModal.parentNode) {
+                targetModal.parentNode.insertBefore(resultSection, targetModal.nextSibling);
             } else {
                 document.body.appendChild(resultSection);
             }
         }
+
+        // 💥 [핵심 수정] 상단 패널들과 동일한 custom-ark-panel 클래스를 부여합니다.
+        resultSection.className = 'custom-ark-panel';
+
+        // 패널 기본 디자인 + 상단 패널과의 간격(margin-top) 지정
+        resultSection.style.cssText = `
+            display: block !important;
+            margin-top: 20px !important;
+            background: #0f1015;
+            color: #e2e8f0;
+            border-radius: 12px;
+            border: 1px solid #2e323d;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            padding: 16px !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
 
         resultSection.innerHTML = bodyContent;
 
@@ -2847,7 +2866,6 @@
         // 미니 모달 업데이트
         // ----------------------------------------------------
         try {
-            // 💡 style*="grid" -> [style*="grid"] 로 대괄호 추가!
             const metricsGrid = resultSection.querySelector('details div[style*="grid"]'); 
             if (metricsGrid && typeof updateMiniResultModal === 'function') {
                 updateMiniResultModal(metricsGrid.outerHTML);
@@ -2856,7 +2874,6 @@
             console.warn('미니 모달 업데이트 중 오류 발생:', err);
         }
     };
-
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') window.closeSimModal();
@@ -3040,6 +3057,333 @@
     }
 
 
+    // 🌟 1. 스킬 & 트라이포드 패널 초기화 및 스타일 주입 함수
+    function initSkillTripodPanel() {
+        if (document.getElementById('skillTripodModal')) return;
+
+        // 아크패시브 패널 찾기
+        const arkPanel = document.getElementById('arkPassiveModal');
+        
+        const panelHtml = `
+            <div id="skillTripodModal" class="custom-ark-panel">
+                <div id="skillTripodContainer"></div>
+            </div>
+        `;
+
+        if (arkPanel) {
+            // 💡 아크 패시브 모달 바로 다음(afterend)에 위치시킵니다.
+            arkPanel.insertAdjacentHTML('afterend', panelHtml);
+        } else {
+            // 만약 아크 패시브 모달이 없으면 body 맨 뒤에 배치
+            document.body.insertAdjacentHTML('beforeend', panelHtml);
+        }
+
+        renderSkillTripodUI();
+    }
+
+    // 🌟 2. 스킬 & 트라이포드 UI 렌더링 함수
+    function renderSkillTripodUI() {
+        const container = document.getElementById('skillTripodContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // 데이터 로드
+        const renderData = window.skillDatabase || {};
+        if (Object.keys(renderData).length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: #64748b; padding: 20px;">등록된 스킬 데이터가 없습니다. (데이터 관리 모달에서 DB를 확인해주세요)</div>`;
+            return;
+        }
+
+        // [수정 후] undefined/null 인 경우에만 localStorage에서 로드
+        if (window.selectedSkillTripods === undefined || window.selectedSkillTripods === null) {
+            try {
+                const saved = localStorage.getItem('LOSTARK_SELECTED_TRIPODS');
+                if (saved) window.selectedSkillTripods = JSON.parse(saved);
+            } catch (e) {
+                console.error('트라이포드 로컬 저장소 로드 실패:', e);
+            }
+        }
+        window.selectedSkillTripods = window.selectedSkillTripods || {};
+
+        // ----------------------------------------------------
+        // 아크패시브와 동일한 아코디언 헤더 스타일
+        // ----------------------------------------------------
+        const sectionHeaderStyle = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #181920;
+            border: 1px solid #2e323d;
+            border-radius: 8px;
+            color: #38bdf8;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        `;
+
+        // ----------------------------------------------------
+        // 아코디언 상태 로드 (기본값: true - 최초 접속 시 펼침)
+        // ----------------------------------------------------
+        if (window.isSkillTripodOpen === undefined) {
+            try {
+                const savedOpen = localStorage.getItem('LOSTARK_SKILL_TRIPOD_OPEN');
+                // 저장된 값이 없으면 기본적으로 open(true) 상태 유지
+                window.isSkillTripodOpen = savedOpen !== null ? JSON.parse(savedOpen) : true;
+            } catch (e) {
+                window.isSkillTripodOpen = true;
+            }
+        }
+
+        const details = document.createElement('details');
+        details.style.marginBottom = '0px';
+
+        // isSkillTripodOpen이 true면 open 속성 부여
+        if (window.isSkillTripodOpen) {
+            details.setAttribute('open', '');
+        }
+
+        const arrow = window.isSkillTripodOpen ? '▼' : '▲';
+
+        details.innerHTML = `
+            <summary style="${sectionHeaderStyle}">
+                <span>⚡ [스킬 & 트라이포드] 세팅</span>
+                <span class="toggle-icon" style="font-size: 0.8rem; color: #94a3b8;">${arrow}</span>
+            </summary>
+        `;
+
+        // 토글 동작 시 window 변수 및 localStorage에 상태 저장
+        details.ontoggle = function() {
+            window.isSkillTripodOpen = this.open;
+            try {
+                localStorage.setItem('LOSTARK_SKILL_TRIPOD_OPEN', JSON.stringify(this.open));
+            } catch (e) {}
+
+            const icon = this.querySelector('.toggle-icon');
+            if (icon) {
+                icon.textContent = this.open ? '▼' : '▲';
+            }
+        };
+
+        const contentDiv = document.createElement('div');
+        contentDiv.style.cssText = `
+            padding-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        `;
+
+        // 🧹 전체 초기화 헤더
+        const globalResetHeader = document.createElement('div');
+        globalResetHeader.style.cssText = `
+            display: flex; justify-content: space-between; align-items: center;
+            background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 14px; border-radius: 8px;
+        `;
+        globalResetHeader.innerHTML = `
+            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: bold;">🔱 트라이포드 커스텀 선택</span>
+            <button id="btn-reset-all-tripods-main" style="
+                background: #dc2626; color: #ffffff; border: none; padding: 6px 12px;
+                border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;
+            ">🧹 전체 트라이포드 초기화</button>
+        `;
+        contentDiv.appendChild(globalResetHeader);
+
+        globalResetHeader.querySelector('#btn-reset-all-tripods-main').onclick = () => {
+            if (confirm('모든 스킬의 선택된 트라이포드를 초기화하시겠습니까?')) {
+                window.selectedSkillTripods = {};
+                try { localStorage.removeItem('LOSTARK_SELECTED_TRIPODS'); } catch (e) {}
+                renderSkillTripodUI();
+                if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
+                    window.updateSelectedTripodsAndCalculate();
+                }
+            }
+        };
+
+        // 2열 반응형 그리드
+        const cardGrid = document.createElement('div');
+        cardGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 16px;
+        `;
+
+        // 각 스킬 카드 생성
+        Object.entries(renderData).forEach(([skillKey, skill]) => {
+            const skillIdentifier = skill.name || skillKey;
+            const tagList = Array.isArray(skill.tags) ? skill.tags : (skill.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+            const tagBadges = tagList.map(t => `<span style="background: #334155; color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; border: 1px solid rgba(56, 189, 248, 0.2);">#${t}</span>`).join('');
+
+            let tripodsHtml = '';
+            if (skill.tripods && Array.isArray(skill.tripods) && skill.tripods.length > 0) {
+                const groupedByTier = skill.tripods.reduce((acc, tripod) => {
+                    const tier = tripod.tier || 1;
+                    if (!acc[tier]) acc[tier] = [];
+                    acc[tier].push(tripod);
+                    return acc;
+                }, {});
+
+                const sortedTiers = Object.keys(groupedByTier).sort((a, b) => Number(a) - Number(b));
+
+                tripodsHtml = sortedTiers.map(tier => {
+                    const tierTripods = groupedByTier[tier];
+
+                    const optionsHtml = tierTripods.map((t) => {
+                        const savedTripodName = window.selectedSkillTripods[skillIdentifier]?.[tier] 
+                                            || window.selectedSkillTripods[skillKey]?.[tier];
+                        const isChecked = (savedTripodName === t.name);
+
+                        const effectsHtml = (t.effects || []).map(e => {
+                            const val = e.value ?? e.val ?? 0;
+                            const sign = val > 0 ? '+' : '';
+                            return `<span style="color: #4ade80; font-weight: bold;">${e.category || e.type || '효과'} ${sign}${val}${e.unit || ''}</span>`;
+                        }).join(', ');
+
+                        return `
+                            <label class="tripod-radio-card" style="
+                                display: flex; align-items: center; justify-content: space-between;
+                                background: ${isChecked ? '#1e3a8a' : '#0f172a'};
+                                border: 1px solid ${isChecked ? '#60a5fa' : 'rgba(255, 255, 255, 0.08)'};
+                                padding: 8px 12px; border-radius: 6px; cursor: pointer;
+                                transition: all 0.15s ease;
+                            ">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" 
+                                        name="main_tripod_${skillIdentifier}_tier_${tier}" 
+                                        value="${t.name}"
+                                        data-skill-name="${skillIdentifier}"
+                                        data-skill-key="${skillKey}"
+                                        data-tier="${tier}"
+                                        data-name="${t.name}"
+                                        ${isChecked ? 'checked' : ''} 
+                                        style="accent-color: #38bdf8; cursor: pointer;">
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${isChecked ? '#60a5fa' : '#f8fafc'};">${t.name}</span>
+                                </div>
+                                <div style="font-size: 0.78rem;">${effectsHtml}</div>
+                            </label>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div style="background: #182234; border-left: 3px solid #2563eb; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.8rem; font-weight: bold; color: #60a5fa;">🔱 ${tier}티어 선택</span>
+                                <button class="btn-clear-tier-main" data-skill="${skillIdentifier}" data-skill-key="${skillKey}" data-tier="${tier}" style="
+                                    background: none; border: none; color: #94a3b8; font-size: 0.72rem; cursor: pointer; text-decoration: underline;
+                                ">선택 해제</button>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">${optionsHtml}</div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                tripodsHtml = `<div style="font-size: 0.75rem; color: #64748b; font-style: italic;">설정된 트라이포드가 없습니다.</div>`;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'skill-card-item';
+            card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;`;
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                    <span style="font-size: 1rem; font-weight: bold; color: #f8fafc;">⚡ ${skillIdentifier}</span>
+                    <button class="btn-reset-skill-tripods-main" data-skill-name="${skillIdentifier}" data-skill-key="${skillKey}" style="
+                        background: #334155; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
+                        padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer;
+                    ">🔄 해당 스킬 초기화</button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                    <div style="background: #0f172a; padding: 6px; border-radius: 6px; text-align: center;"><div style="font-size: 0.65rem; color: #94a3b8;">상수</div><div style="font-size: 0.8rem; font-weight: bold;">${skill.constant ?? '-'}</div></div>
+                    <div style="background: #0f172a; padding: 6px; border-radius: 6px; text-align: center;"><div style="font-size: 0.65rem; color: #94a3b8;">계수</div><div style="font-size: 0.8rem; font-weight: bold;">${skill.coefficient ?? '-'}</div></div>
+                    <div style="background: #0f172a; padding: 6px; border-radius: 6px; text-align: center;"><div style="font-size: 0.65rem; color: #94a3b8;">쿨타임</div><div style="font-size: 0.8rem; font-weight: bold;">${skill.baseCooldown ?? '-'}s</div></div>
+                    <div style="background: #0f172a; padding: 6px; border-radius: 6px; text-align: center;"><div style="font-size: 0.65rem; color: #94a3b8;">마나</div><div style="font-size: 0.8rem; font-weight: bold;">${skill.mana ?? skill.baseMana ?? 0}</div></div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;"><div style="display: flex; flex-wrap: wrap; gap: 4px;">${tagBadges}</div></div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">${tripodsHtml}</div>
+            `;
+
+            cardGrid.appendChild(card);
+        });
+
+        contentDiv.appendChild(cardGrid);
+        details.appendChild(contentDiv);
+        container.appendChild(details);
+
+        // 클릭 핸들러
+        contentDiv.onclick = (e) => {
+            const rawTarget = e.target;
+            if (!rawTarget) return;
+
+            const resetBtn = rawTarget.closest('.btn-reset-skill-tripods-main');
+            const clearTierBtn = rawTarget.closest('.btn-clear-tier-main');
+
+            if (resetBtn) {
+                const skillName = resetBtn.getAttribute('data-skill-name');
+                const skillKey = resetBtn.getAttribute('data-skill-key');
+
+                if (window.selectedSkillTripods) {
+                    if (skillName) delete window.selectedSkillTripods[skillName];
+                    if (skillKey) delete window.selectedSkillTripods[skillKey];
+                }
+                renderSkillTripodUI();
+                if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
+                    window.updateSelectedTripodsAndCalculate();
+                }
+                return;
+            }
+
+            if (rawTarget.type === 'radio') {
+                const skillName = rawTarget.getAttribute('data-skill-name');
+                const tier = rawTarget.getAttribute('data-tier');
+                const tripodName = rawTarget.getAttribute('data-name');
+
+                if (!window.selectedSkillTripods[skillName]) {
+                    window.selectedSkillTripods[skillName] = {};
+                }
+                window.selectedSkillTripods[skillName][tier] = tripodName;
+
+                const parentTierContainer = rawTarget.closest('div[style*="flex-direction: column"]');
+                if (parentTierContainer) {
+                    const labels = parentTierContainer.querySelectorAll('.tripod-radio-card');
+                    labels.forEach(label => {
+                        const radio = label.querySelector('input[type="radio"]');
+                        const textSpan = label.querySelector('span');
+                        if (radio.checked) {
+                            label.style.background = '#1e3a8a';
+                            label.style.borderColor = '#60a5fa';
+                            if (textSpan) textSpan.style.color = '#60a5fa';
+                        } else {
+                            label.style.background = '#0f172a';
+                            label.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                            if (textSpan) textSpan.style.color = '#f8fafc';
+                        }
+                    });
+                }
+            }
+
+            if (clearTierBtn) {
+                const skillName = clearTierBtn.getAttribute('data-skill');
+                const skillKey = clearTierBtn.getAttribute('data-skill-key');
+                const tier = clearTierBtn.getAttribute('data-tier');
+
+                if (window.selectedSkillTripods) {
+                    if (window.selectedSkillTripods[skillName]) delete window.selectedSkillTripods[skillName][tier];
+                    if (window.selectedSkillTripods[skillKey]) delete window.selectedSkillTripods[skillKey][tier];
+                }
+                renderSkillTripodUI();
+            }
+
+            if (rawTarget.type === 'radio' || clearTierBtn) {
+                if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
+                    window.updateSelectedTripodsAndCalculate();
+                }
+            }
+        };
+    }
+
+
     // ==========================================
     // [추가] 실시간 계산 일시정지 토글 버튼 로직
     // ==========================================
@@ -3193,7 +3537,45 @@
         if (typeof injectPauseButton === 'function') injectPauseButton();
     }
 
+    // -------------------------------------------------------------
+    // 🌟 UI에서 선택된 트라이포드 데이터를 수집하여 계산으로 전달하는 전역 함수
+    // -------------------------------------------------------------
+    // 🌟 트라이포드 선택 상태를 저장하고 계산을 트리거하는 핵심 함수
+    window.updateSelectedTripodsAndCalculate = function() {
+        // 1. localStorage에 선택된 트라이포드 저장
+        try {
+            localStorage.setItem('LOSTARK_SELECTED_TRIPODS', JSON.stringify(window.selectedSkillTripods || {}));
+        } catch (e) {
+            console.error('트라이포드 저장 실패:', e);
+        }
 
+        // 2. 만약 계산 로직 실행 함수(예: calculateAll, runCalculation 등)가 존재하면 실행
+        if (typeof window.calculateAll === 'function') {
+            window.calculateAll();
+        } else if (typeof window.runCalculation === 'function') {
+            window.runCalculation();
+        }
+    };
+
+    // 🌟 [중요] 계산 엔진에서 스킬 데미지를 계산할 때 트라이포드 효과를 합산하는 헬퍼 함수
+    // (계산 함수 내부에서 스킬별 트라이포드 수치를 가져올 때 이 함수를 사용하도록 연결해야 합니다)
+    window.getAppliedTripodEffects = function(skillIdentifier) {
+        const selected = window.selectedSkillTripods?.[skillIdentifier] || {};
+        const skillData = window.skillDatabase?.[skillIdentifier];
+        if (!skillData || !skillData.tripods) return [];
+
+        const activeEffects = [];
+
+        // 선택된 1, 2, 3티어 트라이포드의 효과 추출
+        Object.entries(selected).forEach(([tier, tripodName]) => {
+            const foundTripod = skillData.tripods.find(t => String(t.tier) === String(tier) && t.name === tripodName);
+            if (foundTripod && foundTripod.effects) {
+                activeEffects.push(...foundTripod.effects);
+            }
+        });
+
+        return activeEffects;
+    };
 
     /// =========================================================================
     // 1. [신규] DB 데이터 통합 프리셋 관리 모달
@@ -3234,9 +3616,8 @@
                 <span id="close-preset-modal" style="cursor: pointer; font-size: 1.2rem; color: #94a3b8;">&times;</span>
             </div>
 
-            <!-- 1) 현재 세팅 저장 영역 -->
             <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px;">
-                <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">현재 데이터 4종을 프리셋으로 저장</label>
+                <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">현재 데이터 및 트라이포드 세팅을 프리셋으로 저장</label>
                 <div style="display: flex; gap: 6px;">
                     <input type="text" id="db-preset-name-input" placeholder="프리셋 이름 (예: 점핑캐릭 세팅 1)" style="
                         flex: 1; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #fff;
@@ -3249,7 +3630,6 @@
                 </div>
             </div>
 
-            <!-- 2) 저장된 프리셋 선택 & 로드 영역 -->
             <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px;">
                 <label style="font-size: 0.8rem; font-weight: bold; color: #e2e8f0;">저장된 DB 프리셋 불러오기</label>
                 <select id="db-preset-select" style="
@@ -3270,7 +3650,6 @@
                 </div>
             </div>
 
-            <!-- 3) 내보내기 / 가져오기 백업 버튼 -->
             <div style="display: flex; gap: 6px; pt: 4px;">
                 <button id="btn-export-db-presets" style="
                     flex: 1; background: #334155; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
@@ -3321,7 +3700,7 @@
 
         refreshPresetOptions();
 
-        // 1) 프리셋 저장 실행 (오직 순수 커스텀 데이터만 프리셋에 보관)
+        // 1) 프리셋 저장 실행 (현재 메인 화면 트라이포드 선택 상태 포함)
         modal.querySelector('#btn-save-db-preset').onclick = () => {
             const nameInput = modal.querySelector('#db-preset-name-input');
             const name = nameInput.value.trim();
@@ -3332,15 +3711,25 @@
 
             const presets = getPresets();
 
+            // 저장 직전 localStorage 및 전역 객체에서 최신 트라이포드 선택 상태 확보
+            let currentSelectedTripods = window.selectedSkillTripods || {};
+            try {
+                const savedTripods = localStorage.getItem('LOSTARK_SELECTED_TRIPODS');
+                if (savedTripods) {
+                    currentSelectedTripods = JSON.parse(savedTripods);
+                }
+            } catch (e) {}
+
             const newPreset = {
                 id: Date.now(),
                 name: name,
                 data: {
                     skillDatabase: window.skillDatabase || {},
                     orderDataSets: window.orderDataSets || {},
-                    // 병합된 ADD_STAT_BASE가 아니라 순수 커스텀 데이터만 저장
                     ADD_STAT_BASE: window.ADD_STAT_BASE_CUSTOM || [],
-                    specializationDatabase: window.SPECIALIZATION_CUSTOM || {}
+                    specializationDatabase: window.SPECIALIZATION_CUSTOM || {},
+                    // 🌟 스킬 데이터와 함께 트라이포드 선택 상태 묶어서 저장
+                    selectedSkillTripods: currentSelectedTripods
                 }
             };
 
@@ -3348,10 +3737,10 @@
             savePresets(presets);
             nameInput.value = '';
             refreshPresetOptions();
-            showAlert(`'${name}' 프리셋이 성공적으로 저장되었습니다!`);
+            showAlert(`'${name}' 프리셋이 성공적으로 저장되었습니다! (트라이포드 세팅 포함)`);
         };
 
-        // 2) 프리셋 불러오기 실행
+        // 2) 프리셋 불러오기 실행 (트라이포드 선택 정보 복원 및 메인 UI 동기화)
         modal.querySelector('#btn-load-db-preset').onclick = () => {
             const select = modal.querySelector('#db-preset-select');
             const id = Number(select.value);
@@ -3388,7 +3777,20 @@
                 GM_setValue('SPECIALIZATION_CUSTOM', loadedCustomSpec);
             }
 
-            // 3. 🌟 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 계산용 변수 갱신
+            // 🌟 3. 스킬 데이터 세트의 트라이포드 선택 데이터 복원 및 저장
+            const loadedTripods = d.selectedSkillTripods ? JSON.parse(JSON.stringify(d.selectedSkillTripods)) : {};
+            window.selectedSkillTripods = loadedTripods;
+
+            try {
+                localStorage.setItem('LOSTARK_SELECTED_TRIPODS', JSON.stringify(loadedTripods));
+            } catch (e) {
+                console.error('트라이포드 LocalStorage 저장 실패:', e);
+            }
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('LOSTARK_SELECTED_TRIPODS', loadedTripods);
+            }
+
+            // 4. 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 연산 변수 갱신
             let baseArray = [];
             if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && Array.isArray(DEFAULT_ADD_STAT_BASE)) {
                 baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
@@ -3397,16 +3799,30 @@
             const baseNames = new Set(baseArray.map(item => item.name));
             const pureCustomData = loadedCustomStat.filter(item => item && item.name && !baseNames.has(item.name));
 
-            // 실제 시뮬레이션 계산에 쓰이는 병합 변수 업데이트
             window.ADD_STAT_BASE = [...baseArray, ...pureCustomData];
 
-            // 4. UI 및 상태 초기화
+            // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 라디오 상태 즉시 동기화
+            // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 UI 즉시 재구성
             if (typeof window.resetState === 'function') window.resetState();
             if (typeof window.renderUI === 'function') window.renderUI();
 
-            showAlert(`'${target.name}' 프리셋을 불러와 적용했습니다!`);
+            // 🔥 [중요] 스킬 & 트라이포드 메인 UI 재렌더링
+            if (typeof renderSkillTripodUI === 'function') {
+                renderSkillTripodUI();
+            } else if (typeof window.renderSkillTripodUI === 'function') {
+                window.renderSkillTripodUI();
+            }
+
+            // 최종 계산 및 트라이포드 선택 동기화 함수 호출
+            if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
+                window.updateSelectedTripodsAndCalculate();
+            } else if (typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            }
+
+            showAlert(`'${target.name}' 프리셋을 불러왔습니다! (스킬 DB 및 트라이포드 선택 적용 완료)`);
             modalOverlay.remove();
-            // 🌟 프리셋 모달 닫힌 후 메인 데이터 불러오기 모달 호출
+
             if (typeof openDataLoaderModal === 'function') {
                 openDataLoaderModal();
             }
@@ -3423,13 +3839,21 @@
                 return;
             }
 
-            if (confirm('정말 선택한 프리셋을 삭제하시겠습니까?')) {
+            // if (confirm('정말 선택한 프리셋을 삭제하시겠습니까?')) {
+            //     let presets = getPresets();
+            //     presets = presets.filter(p => p.id !== id);
+            //     savePresets(presets);
+            //     refreshPresetOptions();
+            //     showAlert('프리셋이 삭제되었습니다.');
+            // }
+
+            showConfirm('정말 선택한 프리셋을 삭제하시겠습니까?', () => {
                 let presets = getPresets();
                 presets = presets.filter(p => p.id !== id);
                 savePresets(presets);
                 refreshPresetOptions();
-                showAlert('프리셋이 삭제되었습니다.');
-            }
+                showAlert('프리셋이 삭제되었습니다.', '🗑️');
+            }, '🗑️');
         };
 
         // 4) 내보내기 (JSON 다운로드)
@@ -3472,7 +3896,7 @@
             reader.readAsText(file, 'UTF-8');
         };
 
-        // 닫기 이벤틀
+        // 닫기 이벤트
         modal.querySelector('#close-preset-modal').onclick = () => modalOverlay.remove();
         modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
     }
@@ -3560,8 +3984,6 @@
     // =========================================================================
     function openDataLoaderModal() {
 
-
-
         if (document.getElementById('data-loader-modal')) return;
 
         const modalOverlay = document.createElement('div');
@@ -3606,7 +4028,7 @@
         // =========================================================================
         // 상세보기 및 데이터 관리 모달 (showDataViewerModal)
         // =========================================================================
-        const showDataViewerModal = (title, data,keyName = '') => {
+        const showDataViewerModal = (title, data, keyName = '') => {
 
             console.log('=== [showDataViewerModal 디버깅] ===');
             console.log('1. title:', title);
@@ -3651,43 +4073,74 @@
             if (!renderData || count === 0) {
                 contentContainer.innerHTML = `<div style="text-align: center; color: #64748b; padding: 40px 0;">등록된 데이터가 없습니다.</div>`;
             } 
-            // 2. 스킬 데이터 (skillDatabase)
+            // 2. 스킬 데이터 (skillDatabase) - [단순 조회/열람 전용으로 변경]
             else if (keyName === 'skillDatabase' || title.includes('skillDatabase') || title.includes('스킬 데이터')) {
+
+                // 각 스킬 카드 생성
                 Object.entries(renderData).forEach(([skillKey, skill]) => {
                     const tagList = Array.isArray(skill.tags) ? skill.tags : (skill.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-                    const tagBadges = tagList.map(t => `<span style="background: #334155; color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; border: 1px solid rgba(56, 189, 248, 0.2);">#${t}</span>`).join('');
+                    const tagBadges = tagList.length > 0 
+                        ? tagList.map(t => `<span style="background: #334155; color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; border: 1px solid rgba(56, 189, 248, 0.2);">#${t}</span>`).join('')
+                        : '<span style="font-size:0.75rem; color:#64748b;">태그 없음</span>';
+                    
+                    const skillIdentifier = skill.name || skillKey;
 
                     let tripodsHtml = '';
                     if (skill.tripods && Array.isArray(skill.tripods) && skill.tripods.length > 0) {
-                        tripodsHtml = skill.tripods.map(t => {
-                            const effects = (t.effects || []).map(e => {
-                                const val = e.value ?? e.val ?? 0;
-                                const sign = val > 0 ? '+' : '';
+                        
+                        // 티어별 그룹화
+                        const groupedByTier = skill.tripods.reduce((acc, tripod) => {
+                            const tier = tripod.tier || 1;
+                            if (!acc[tier]) acc[tier] = [];
+                            acc[tier].push(tripod);
+                            return acc;
+                        }, {});
+
+                        const sortedTiers = Object.keys(groupedByTier).sort((a, b) => Number(a) - Number(b));
+
+                        tripodsHtml = sortedTiers.map(tier => {
+                            const tierTripods = groupedByTier[tier];
+
+                            const optionsHtml = tierTripods.map((t) => {
+                                const effectsHtml = (t.effects || []).map(e => {
+                                    const val = e.value ?? e.val ?? 0;
+                                    const sign = val > 0 ? '+' : '';
+                                    return `<span style="color: #4ade80; font-weight: bold;">${e.category || e.type || '효과'} ${sign}${val}${e.unit || ''}</span>`;
+                                }).join(', ');
+
                                 return `
-                                    <div style="display: flex; justify-content: space-between; background: #0f172a; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem;">
-                                        <span style="color: #cbd5e1;">${e.type || e.category || '효과'}</span>
-                                        <span style="color: #4ade80; font-weight: bold;">${sign}${val}${e.unit || ''}</span>
+                                    <div style="
+                                        display: flex; align-items: center; justify-content: space-between;
+                                        background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.08);
+                                        padding: 8px 12px; border-radius: 6px;
+                                    ">
+                                        <span style="font-size: 0.83rem; font-weight: bold; color: #f8fafc;">${t.name}</span>
+                                        <div style="font-size: 0.78rem;">${effectsHtml || '<span style="color:#64748b;">효과 없음</span>'}</div>
                                     </div>
                                 `;
                             }).join('');
+
                             return `
-                                <div style="background: #182234; border-left: 3px solid #2563eb; border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-size: 0.75rem; font-weight: bold; color: #60a5fa;">${t.tier || '1'}티어</span>
-                                        <span style="font-size: 0.82rem; font-weight: bold; color: #f8fafc;">${t.name || '트라이포드명 미지정'}</span>
+                                <div style="background: #182234; border-left: 3px solid #2563eb; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                                    <span style="font-size: 0.8rem; font-weight: bold; color: #60a5fa;">🔱 ${tier}티어 트라이포드 목록</span>
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        ${optionsHtml}
                                     </div>
-                                    ${effects}
                                 </div>
                             `;
                         }).join('');
+
                     } else {
-                        tripodsHtml = `<div style="font-size: 0.75rem; color: #64748b; font-style: italic;">설정된 트라이포드가 없습니다.</div>`;
+                        tripodsHtml = `<div style="font-size: 0.75rem; color: #64748b; font-style: italic;">등록된 트라이포드 정보가 없습니다.</div>`;
                     }
 
                     const card = document.createElement('div');
-                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;`;
+                    card.className = 'skill-card-item';
+                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px;`;
                     card.innerHTML = `
-                        <div style="font-size: 1rem; font-weight: bold; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">⚡ ${skill.name || skillKey}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                            <span style="font-size: 1rem; font-weight: bold; color: #f8fafc;">⚡ ${skillIdentifier}</span>
+                        </div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
                             <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">상수</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.constant ?? '-'}</div></div>
                             <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">계수</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.coefficient ?? '-'}</div></div>
@@ -3695,12 +4148,13 @@
                             <div style="background: #0f172a; padding: 8px; border-radius: 6px; text-align: center;"><div style="font-size: 0.68rem; color: #94a3b8;">기본 마나</div><div style="font-size: 0.85rem; font-weight: bold;">${skill.mana ?? skill.baseMana ?? 0}</div></div>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🏷️ 태그</span><div style="display: flex; flex-wrap: wrap; gap: 4px;">${tagBadges}</div></div>
-                        <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🔱 트라이포드</span><div style="display: flex; flex-direction: column; gap: 6px;">${tripodsHtml}</div></div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🔱 보유 트라이포드 스펙</span><div style="display: flex; flex-direction: column; gap: 8px;">${tripodsHtml}</div></div>
                     `;
+
                     contentContainer.appendChild(card);
                 });
             }
-            // 3. 기본 스탯 (ADD_STAT_BASE - 필요 태그 수록 버전)
+            // 3. 기본 스탯 (ADD_STAT_BASE)
             else if (keyName === 'ADD_STAT_BASE' || title.includes('ADD_STAT_BASE') || title.includes('기본 스탯') || title.includes('기본스탯')) {
                 const list = Array.isArray(renderData) ? renderData : Object.values(renderData);
                 list.forEach((item, idx) => {
@@ -3761,22 +4215,20 @@
                     contentContainer.appendChild(card);
                 });
             }
+            // 5. 질서 코어 (orderDataSets)
             else if (keyName === 'orderDataSets' || title.includes('orderDataSets') || title.includes('질서')) {
-                // 🌟 해 > 달 > 별 우선순위 정렬 함수
                 const getCorePriority = (coreData) => {
                     const type = (coreData.type || coreData.coreType || '').toLowerCase();
                     if (type.includes('해') || type === 'sun') return 1;
                     if (type.includes('달') || type === 'moon') return 2;
                     if (type.includes('별') || type === 'star') return 3;
-                    return 4; // 기타/미지정
+                    return 4;
                 };
 
-                // 해 > 달 > 별 순서로 배열 정렬
                 const sortedEntries = Object.entries(renderData).sort((a, b) => {
                     return getCorePriority(a[1]) - getCorePriority(b[1]);
                 });
 
-                // 정렬된 순서(sortedEntries)대로 반복 실행
                 sortedEntries.forEach(([coreKey, coreData]) => {
                     const card = document.createElement('div');
                     card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;`;
@@ -3859,10 +4311,8 @@
                             removeOrderCore(coreKey);
                             card.remove();
 
-                            // 🌟 메인 모달 UI 즉시 최신화 (개수 감소 또는 데이터 없음 반영)
-                            updateModalStatusUI();
+                            if (typeof updateModalStatusUI === 'function') updateModalStatusUI();
 
-                            // 만약 남은 코어가 없으면 빈 상태 안내 표시
                             if (!window.orderDataSets || Object.keys(window.orderDataSets).length === 0) {
                                 contentContainer.innerHTML = `<div style="text-align: center; color: #64748b; padding: 40px 0;">등록된 데이터가 없습니다.</div>`;
                             }
@@ -3908,9 +4358,7 @@
                 clearBtn.onclick = () => {
                     if (confirm('저장된 모든 질서 코어 데이터를 삭제하시겠습니까?')) {
                         clearAllOrderCores();
-                        
-                        // 🌟 메인 모달 UI 즉시 최신화 및 상세 창만 닫기
-                        updateModalStatusUI();
+                        if (typeof updateModalStatusUI === 'function') updateModalStatusUI();
                         detailOverlay.remove();
 
                         showAlert('모든 질서 코어가 초기화되었습니다.');
@@ -4341,7 +4789,7 @@
                                 <!-- 버전 및 날짜 -->
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <span style="background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;">
-                                        v1.1.1
+                                        v1.1.2
                                     </span>
                                     <span style="color: #64748b; font-size: 0.72rem; font-weight: 500;">2026.08.17</span>
                                 </div>
@@ -4354,7 +4802,7 @@
                                     </li>
                                     <li style="display: flex; align-items: flex-start; gap: 6px; color: #cbd5e1; font-size: 0.78rem; line-height: 1.4;">
                                         <span style="color: #a78bfa; font-size: 0.68rem; font-weight: bold; background: rgba(167, 139, 250, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;">데이터</span>
-                                        <span><strong>최신 프리셋 업데이트</strong>: 프리셋 관리 기능이 업데이트 되었습니다.</span>
+                                        <span><strong>스킬 트라이포드</strong>: 스킬 트라이포드 시뮬레이션을 추가했습니다. 스킬 데이터 파일을 업데이트 해주셔야 합니다. 트라이포드 시뮬레이션이 필요가 없다면 기존 스킬 데이터 파일을 그대로 사용 가능합니다.</span>
                                     </li>
                                 </ul>
                             </div>
@@ -4717,6 +5165,20 @@
             window.updateCoreSetUI();
         }
     }
+
+    // 스크립트로드 시 기존 저장된 트라이포드 데이터 불러오기
+    (function initSelectedTripods() {
+        try {
+            const saved = localStorage.getItem('LOSTARK_SELECTED_TRIPODS');
+            if (saved) {
+                window.selectedSkillTripods = JSON.parse(saved);
+            } else {
+                window.selectedSkillTripods = window.selectedSkillTripods || {};
+            }
+        } catch (e) {
+            window.selectedSkillTripods = {};
+        }
+    })();
 
     // 💡 스크립트 맨 하단에서 즉시 버튼 패널 생성
     injectPauseButton();
@@ -5167,7 +5629,7 @@
     function initRealtimeCalculator() {
         // 1. 하단 아크패시브 패널 생성
         initArkPassivePanel();
-
+        initSkillTripodPanel();
         let calcTimer = null;
 
         // 실시간 계산 실행 함수 (디바운스 & requestAnimationFrame 적용)
@@ -5438,6 +5900,126 @@
         // 3. 메시지 및 아이콘 설정 후 팝업 출력
         document.getElementById('customAlertIcon').innerText = icon;
         document.getElementById('customAlertMsg').innerText = msg;
+        overlay.classList.add('active');
+    }
+
+    function showConfirm(msg, onConfirm, icon = '❓') {
+        let overlay = document.getElementById('customConfirmOverlay');
+
+        if (!overlay) {
+            const style = document.createElement('style');
+            style.innerText = `
+                .custom-confirm-overlay {
+                    position: fixed;
+                    top: 0; left: 0; width: 100vw; height: 100vh;
+                    background-color: rgba(0, 0, 0, 0.75);
+                    backdrop-filter: blur(5px);
+                    display: flex; justify-content: center; align-items: center;
+                    z-index: 2147483647;
+                    opacity: 0; visibility: hidden;
+                    transition: all 0.2s ease-in-out;
+                }
+                .custom-confirm-overlay.active {
+                    opacity: 1; visibility: visible;
+                }
+                .custom-confirm-box {
+                    background-color: #121318;
+                    color: #ffffff;
+                    width: 320px;
+                    padding: 24px 20px 20px 20px;
+                    border-radius: 16px;
+                    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+                    text-align: center;
+                    border: 1px solid #2e323d;
+                    transform: scale(0.9);
+                    transition: transform 0.2s ease-in-out;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+                .custom-confirm-overlay.active .custom-confirm-box {
+                    transform: scale(1);
+                }
+                .custom-confirm-icon {
+                    font-size: 32px;
+                    margin-bottom: 12px;
+                    line-height: 1;
+                }
+                .custom-confirm-message {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #e2e8f0;
+                    margin-bottom: 20px;
+                    word-break: keep-all;
+                    line-height: 1.5;
+                }
+                .custom-confirm-btn-group {
+                    display: flex;
+                    gap: 8px;
+                }
+                .custom-confirm-btn {
+                    flex: 1;
+                    padding: 10px 0;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: background-color 0.15s ease;
+                }
+                .custom-confirm-btn-cancel {
+                    background-color: #334155;
+                    color: #cbd5e1;
+                }
+                .custom-confirm-btn-cancel:hover {
+                    background-color: #475569;
+                }
+                .custom-confirm-btn-ok {
+                    background-color: #dc2626;
+                    color: #ffffff;
+                    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+                }
+                .custom-confirm-btn-ok:hover {
+                    background-color: #b91c1c;
+                }
+            `;
+            document.head.appendChild(style);
+
+            overlay = document.createElement('div');
+            overlay.id = 'customConfirmOverlay';
+            overlay.className = 'custom-confirm-overlay';
+            overlay.innerHTML = `
+                <div class="custom-confirm-box">
+                    <div class="custom-confirm-icon" id="customConfirmIcon">${icon}</div>
+                    <div class="custom-confirm-message" id="customConfirmMsg"></div>
+                    <div class="custom-confirm-btn-group">
+                        <button class="custom-confirm-btn custom-confirm-btn-cancel" id="customConfirmCancelBtn">취소</button>
+                        <button class="custom-confirm-btn custom-confirm-btn-ok" id="customConfirmOkBtn">확인</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        document.body.appendChild(overlay);
+
+        document.getElementById('customConfirmIcon').innerText = icon;
+        document.getElementById('customConfirmMsg').innerText = msg;
+
+        const closeConfirm = () => {
+            overlay.classList.remove('active');
+        };
+
+        // [확인] 버튼 클릭
+        document.getElementById('customConfirmOkBtn').onclick = () => {
+            closeConfirm();
+            if (typeof onConfirm === 'function') onConfirm();
+        };
+
+        // [취소] 버튼 및 배경 클릭
+        document.getElementById('customConfirmCancelBtn').onclick = closeConfirm;
+        overlay.onclick = (e) => {
+            if (e.target === overlay) closeConfirm();
+        };
+
         overlay.classList.add('active');
     }
 

@@ -14,12 +14,12 @@
         "tripods": [
             {
                 "tier": 1,
-                "name": "재빠른 손놀림",
+                "name": "역류",
                 "effects": [
                     {
-                        "category": "고정 쿨타임 감소",
-                        "val": 5,
-                        "unit": ""
+                        "category": "적에게 주는 피해",
+                        "val": 60,
+                        "unit": "%"
                     }
                 ]
             },
@@ -44,6 +44,61 @@
                         "unit": "%"
                     }
                 ]
+            },
+            {
+                "tier": 1,
+                "name": "혼신",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 60,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 1,
+                "name": "재빠른 손놀림",
+                "effects": [
+                    {
+                        "category": "고정 쿨타임 감소",
+                        "val": 5,
+                        "unit": ""
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "부위파괴 강화",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 60,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "서리검",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 40,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "상승기류",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 80,
+                        "unit": "%"
+                    }
+                ]
             }
         ]
     },
@@ -62,11 +117,11 @@
         "tripods": [
             {
                 "tier": 2,
-                "name": "예리한 일격",
+                "name": "역류",
                 "effects": [
                     {
-                        "category": "치명타 피해",
-                        "val": 160,
+                        "category": "적에게 주는 피해",
+                        "val": 95,
                         "unit": "%"
                     }
                 ]
@@ -78,6 +133,28 @@
                     {
                         "category": "적에게 주는 피해",
                         "val": 105,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "예리한 일격",
+                "effects": [
+                    {
+                        "category": "치명타 피해",
+                        "val": 160,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 3,
+                "name": "마지막 결정타",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 94.8,
                         "unit": "%"
                     }
                 ]
@@ -126,11 +203,11 @@
         "tripods": [
             {
                 "tier": 1,
-                "name": "관통",
+                "name": "역류",
                 "effects": [
                     {
-                        "category": "방어력 무시",
-                        "val": 52,
+                        "category": "적에게 주는 피해",
+                        "val": 60,
                         "unit": "%"
                     }
                 ]
@@ -153,6 +230,39 @@
                     {
                         "category": "적에게 주는 피해",
                         "val": 95,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 1,
+                "name": "관통",
+                "effects": [
+                    {
+                        "category": "방어력 무시",
+                        "val": 52,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "후벼파기",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 70,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "번개 바람",
+                "effects": [
+                    {
+                        "category": "치명타 피해",
+                        "val": 140,
                         "unit": "%"
                     }
                 ]
@@ -185,11 +295,11 @@
             },
             {
                 "tier": 2,
-                "name": "절단",
+                "name": "역류",
                 "effects": [
                     {
                         "category": "적에게 주는 피해",
-                        "val": 60,
+                        "val": 95,
                         "unit": "%"
                     }
                 ]
@@ -201,6 +311,39 @@
                     {
                         "category": "치명타 피해",
                         "val": 210,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 1,
+                "name": "질풍검",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 45,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 1,
+                "name": "화려한 움직임",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 45,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "절단",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 60,
                         "unit": "%"
                     }
                 ]
@@ -252,6 +395,17 @@
                         "unit": "%"
                     }
                 ]
+            },
+            {
+                "tier": 2,
+                "name": "꿰뚫는 회오리",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 90,
+                        "unit": "%"
+                    }
+                ]
             }
         ]
     },
@@ -286,6 +440,17 @@
                     {
                         "category": "적에게 주는 피해",
                         "val": 80,
+                        "unit": "%"
+                    }
+                ]
+            },
+            {
+                "tier": 2,
+                "name": "죽음의 소용돌이",
+                "effects": [
+                    {
+                        "category": "적에게 주는 피해",
+                        "val": 70,
                         "unit": "%"
                     }
                 ]
