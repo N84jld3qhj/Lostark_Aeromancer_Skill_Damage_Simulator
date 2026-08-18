@@ -28,7 +28,7 @@
     <summary>📸 설치 안내 스크린샷 보기 (클릭)</summary>
     
     <img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/66cb2d6be34c1aa7e1a85a69b9075febea6a335b/images/_00.jpg"><br>  
-    <img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/66cb2d6be34c1aa7e1a85a69b9075febea6a335b/images/_02.png" width=75%>  
+    <img src="https://github.com/N84jld3qhj/Lostark_Skill_Damage_Simulator/blob/650af9aab5664661099f185e3eb4b9e4155f74fa/images/_01.png" width=75%>  
     
     </details>
    
