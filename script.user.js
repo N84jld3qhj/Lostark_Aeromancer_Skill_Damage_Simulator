@@ -2355,12 +2355,9 @@
             if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
 
             const specStatValue = getStatSum(stats, "특화");
-            console.log("6. 계산 엔진 진입 - window.specializationDatabase:", window.specializationDatabase);
             let specDB = window.specializationDatabase || {};
-            console.log("7. 계산 엔진 내부 specDB:", specDB);
             if (specDB.specializationDatabase) {
                 specDB = specDB.specializationDatabase;
-                console.log("8. specDB 타입 및 길이:", typeof specDB, Array.isArray(specDB) ? specDB.length : Object.keys(specDB || {}).length);
             }
 
             if (specStatValue > 0 && specDB && Array.isArray(skillTags)) {
@@ -4253,8 +4250,6 @@
             }
             // 4. 특화 데이터 (specializationDatabase)
             else if (keyName === 'specializationDatabase') {
-                console.log("1. 파일 읽기 직후 parsedResults:", parsedResults);
-                console.log("1-1. parsedResults[0]:", parsedResults ? parsedResults[0] : null);
                 // 1. 2차원/3차원 배열 감싸기 해제 (순수 1차원 데이터 추출)
                 let rawData = parsedResults;
                 while (Array.isArray(rawData) && rawData.length === 1 && (Array.isArray(rawData[0]) || typeof rawData[0] === 'object')) {
@@ -4263,18 +4258,14 @@
                 }
 
                 const finalSpecData = rawData;
-                console.log("2. 대입 전 specializationDatabase 전역변수:", window.specializationDatabase);
                 // 대입 코드 실행
                 // 2. 전역 변수 및 GM 스토리지에 정제된 데이터 직접 저장
                 window.SPECIALIZATION_CUSTOM = finalSpecData;
                 window.specializationDatabase = finalSpecData;
-                console.log("3. 대입 후 specializationDatabase 전역변수:", window.specializationDatabase);
                 
                 if (typeof GM_setValue === 'function') {
                     GM_setValue('SPECIALIZATION_CUSTOM', finalSpecData);
-                    console.log("4. GM_setValue 직전 저장할 값:", finalSpecData);
                     GM_setValue('specializationDatabase', finalSpecData);
-                    console.log("5. GM_getValue 읽어온 값:", GM_getValue('specializationDatabase'));
                 }
 
                 // 3. 카운터 UI 표시
@@ -4510,8 +4501,6 @@
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    console.log("=== 불러오기 실행됨 ===");
-console.log("불러오기 시점의 window.specializationDatabase:", window.specializationDatabase);
                     try {
                         const parsed = JSON.parse(event.target.result);
                         
@@ -4687,8 +4676,6 @@ console.log("불러오기 시점의 window.specializationDatabase:", window.spec
 
         clearBtn.onclick = () => {
             if (confirm('저장된 모든 커스텀 데이터를 초기화하시겠습니까?')) {
-                console.log("=== 초기화 실행 시작 ===");
-        console.log("초기화 직전 specDB:", window.specializationDatabase);
                 const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') 
                     ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) 
                     : {};
@@ -4722,8 +4709,6 @@ console.log("불러오기 시점의 window.specializationDatabase:", window.spec
                 });
 
                 showAlert('모든 커스텀 데이터가 초기화되었습니다.');
-                console.log("초기화 완료 직후 specDB:", window.specializationDatabase);
-        console.log("=== 초기화 실행 완료 ===");
                 if (typeof renderSkillTripodUI === 'function') renderSkillTripodUI();
                 if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
             }
