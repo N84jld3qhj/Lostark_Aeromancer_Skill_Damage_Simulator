@@ -4801,8 +4801,8 @@
                                         <span>질서 코어 조합을 변경하면서 시뮬레이션 할 수 있도록 데이터 입력/처리 방식을 개선하였습니다.<br>물론 데이터는 사용자가 직접 만들어야 합니다.</span>
                                     </li>
                                     <li style="display: flex; align-items: flex-start; gap: 6px; color: #cbd5e1; font-size: 0.78rem; line-height: 1.4;">
-                                        <span style="color: #a78bfa; font-size: 0.68rem; font-weight: bold; background: rgba(167, 139, 250, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;">데이터</span>
-                                        <span><strong>스킬 트라이포드</strong>: 스킬 트라이포드 시뮬레이션을 추가했습니다. 스킬 데이터 파일을 업데이트 해주셔야 합니다. 트라이포드 시뮬레이션이 필요가 없다면 기존 스킬 데이터 파일을 그대로 사용 가능합니다.</span>
+                                        <span style="color: #a78bfa; font-size: 0.68rem; font-weight: bold; background: rgba(167, 139, 250, 0.15); padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;">스킬 트라이포드 시뮬레이션 지원</span>
+                                        <span>스킬 트라이포드 시뮬레이션을 추가했습니다. 스킬 데이터 파일을 업데이트 해주셔야 합니다. 트라이포드 시뮬레이션이 필요가 없다면 기존 스킬 데이터 파일을 그대로 사용 가능합니다.</span>
                                     </li>
                                 </ul>
                             </div>
