@@ -181,7 +181,7 @@
 
 <img width="926" height="426" alt="image" src="https://github.com/user-attachments/assets/5d7d487a-5c98-4468-a30e-d791da2e2909" />
 
-메인 화면 → 상단 CODE 버튼 → Download Zip
+메인 화면 → 상단 Code 버튼 → Download Zip
 
 ---
 
