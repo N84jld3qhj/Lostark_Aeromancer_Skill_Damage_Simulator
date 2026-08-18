@@ -223,7 +223,7 @@
 
     window.ADD_STAT_BASE_CUSTOM = pureCustomData;
     window.SPECIALIZATION_CUSTOM = specializationCustom || {};
-    
+
     try {
         const savedData = localStorage.getItem('savedBaselineResults');
         if (savedData) {
@@ -238,6 +238,8 @@
     let lastCalculatedResults = null; // 최근 계산 결과
 
     window.isCalcPaused = true;
+
+
     // =============================================================================
     // 1. 아크 패시브 진화 노드 데이터셋 및 라인별 제한
     // =============================================================================
@@ -295,6 +297,7 @@
             { name: "안정된 관리자", id: 25, max: 2, current: 0, effects: [] }
         ]
     ];
+
     const SAVE_KEY = "arkPassiveSetting_v1";
     loadArkPassive();
 
@@ -319,9 +322,13 @@
             });
         });
     }
+
+
     // =============================================================================
     // 2. 상수 및 테이블 정의
     // =============================================================================
+
+    // 상수 테이블
     const STAT_CONSTANTS = {
 
         CRIT_TO_RATE: 0.0357142857142857,        // 치명 1당 치적 %
@@ -337,7 +344,7 @@
     };
 
 
-
+    // 장비 강화 테이블
     const equipmentDataset = {
         "에스더":{
             "엘라 3": {"0": 27284, "1": 34723, "2": 42165, "3": 52087, "4": 57048, "5": 85727, "6": 119295, "7": 183427, "8": 214400, "9": 242574, "10": 259554},
@@ -381,13 +388,14 @@
         }
     };
 
-
+    // 보석 테이블
     const gemDataTable = {
         "겁화": { "없음": 1.00, "6": 1.28, "7": 1.32, "8": 1.36, "9": 1.40, "10": 1.44 },
         "작열": { "없음": 1.00, "6": 0.84, "7": 0.82, "8": 0.80, "9": 0.78, "10": 0.76 },
         "공증": { "없음": 0.00, "6": 0.70, "7": 0.90, "8": 1.20, "9": 1.50, "10": 1.80 }
     };
 
+    // 각인 테이블
     const engravingTable = {
         "원한": {
             name: "원한",
@@ -738,7 +746,7 @@
 
     const coreLevels = [10, 14, 17, 18, 19, 20];
 
-
+    // 혼돈 코어 테이블
     const chaosDataSets = {
         // 1. 해 코어 
         "해": {
@@ -907,7 +915,7 @@
         }
     };
 
-
+    // 팔찌 테이블
     const braceletTable = {
         // 1. 공이속
         "공이속": [
@@ -1001,7 +1009,7 @@
         ]
     };
 
-
+    // 장신구 연마 옵션 테이블
     const accessoryTable = {
         "추가 피해": { 상: 2.6, 중: 1.6, 하: 0.7 },
         "적에게 주는 피해": { 상: 2.0, 중: 1.2, 하: 0.55 },
@@ -1013,9 +1021,14 @@
         "공격력": { 상: 390, 중: 190, 하: 80 }
     };
 
+
+
     // =============================================================================
     // 3. 헬퍼 함수 정의
     // =============================================================================
+
+
+    // 팔찌 옵션 파싱
     function getBraceletOptionData(rawOpt, grade) {
         if (!rawOpt || rawOpt === '없음' || rawOpt === 'none') return [];
 
@@ -1041,6 +1054,7 @@
         return [];
     }
 
+    // 스탯 입력 함수
     function addStat(statsObj, category, source, val, unit = "%") {
         if (!statsObj[category]) statsObj[category] = [];
         if (val !== 0 && val !== undefined && val !== null) {
@@ -1048,10 +1062,12 @@
         }
     }
 
+    // 스탯 합
     function getStatSum(statsObj, category) {
         if (!statsObj[category] || !Array.isArray(statsObj[category])) return 0;
         return statsObj[category].reduce((sum, item) => sum + (Number(item.val) || 0), 0);
     }
+
     /**
      * 특정 카테고리의 스탯들을 곱연산(곱적용)하여 최종 배율을 반환하는 함수
      * @param {Object} statsObj - 스탯 객체 (예: stats)
@@ -1072,6 +1088,7 @@
         }, 1.0);
     }
 
+    // 방여럭 계수 계산 함수
     function getDefPenMultiplier(statsObj) {
         if (!statsObj["방어력 무시"] || !Array.isArray(statsObj["방어력 무시"])) return 0;
 
@@ -1084,70 +1101,75 @@
         return 1 - remainingRate;
     }
 
+    // 기본 데미지 계산 함수
     function calculateDamageBase(atk, coefficient, constant,defPenMultiplier) {
         const defenseRatio = 6500 / (6500 + 6500*(1-defPenMultiplier));
         return (coefficient * atk + constant) * 0.76 * defenseRatio;
     }
 
+
+    // 아크 패시브 스탯 파싱 함수
     function getArkEvolutionStats() {
-    let arkStats = {};
+        let arkStats = {};
 
-    evolutionNodes.forEach((row, rowIndex) => {
-        const tierName = `${rowIndex + 1}티어`;
+        evolutionNodes.forEach((row, rowIndex) => {
+            const tierName = `${rowIndex + 1}티어`;
 
-        row.forEach((node) => {
-            const nodeLevel = node.current || node.level || 0;
-            if (nodeLevel <= 0) return;
+            row.forEach((node) => {
+                const nodeLevel = node.current || node.level || 0;
+                if (nodeLevel <= 0) return;
 
-            // 상위 노드 태그 추출
-            const nodeReqTags = node.requireTags || node.requireSkillTags || [];
-            const nodeExTags = node.excludeTags || node.excludeSkillTags || [];
+                // 상위 노드 태그 추출
+                const nodeReqTags = node.requireTags || node.requireSkillTags || [];
+                const nodeExTags = node.excludeTags || node.excludeSkillTags || [];
 
-            if (node.effects && node.effects.length > 0) {
-                node.effects.forEach(eff => {
-                    // 하위 이펙트 태그 추출
-                    const effReqTags = eff.requireTags || eff.requireSkillTags || eff.targetTags || [];
-                    const effExTags = eff.excludeTags || eff.excludeSkillTags || [];
+                if (node.effects && node.effects.length > 0) {
+                    node.effects.forEach(eff => {
+                        // 하위 이펙트 태그 추출
+                        const effReqTags = eff.requireTags || eff.requireSkillTags || eff.targetTags || [];
+                        const effExTags = eff.excludeTags || eff.excludeSkillTags || [];
 
-                    // 태그 병합 (중복 제거)
-                    const mergedReqTags = [...new Set([...nodeReqTags, ...effReqTags])];
-                    const mergedExTags = [...new Set([...nodeExTags, ...effExTags])];
+                        // 태그 병합 (중복 제거)
+                        const mergedReqTags = [...new Set([...nodeReqTags, ...effReqTags])];
+                        const mergedExTags = [...new Set([...nodeExTags, ...effExTags])];
 
-                    const catName = eff.type || eff.category;
-                    const valPerLvl = eff.valuePerLevel || eff.val || 0;
-                    const calculatedVal = parseFloat((nodeLevel * valPerLvl).toFixed(2));
+                        const catName = eff.type || eff.category;
+                        const valPerLvl = eff.valuePerLevel || eff.val || 0;
+                        const calculatedVal = parseFloat((nodeLevel * valPerLvl).toFixed(2));
 
-                    if (calculatedVal === 0 && !catName) return;
+                        if (calculatedVal === 0 && !catName) return;
 
-                    // 🌟 [핵심 복원] 스탯성 데이터(치/신/특) 단위 구분 로직
-                    const isRawStat = ["치명", "신속", "특화", "제압", "인내", "숙련"].includes(catName);
-                    const unitStr = eff.unit !== undefined ? eff.unit : (isRawStat ? "" : "%");
+                        // 🌟 [핵심 복원] 스탯성 데이터(치/신/특) 단위 구분 로직
+                        const isRawStat = ["치명", "신속", "특화", "제압", "인내", "숙련"].includes(catName);
+                        const unitStr = eff.unit !== undefined ? eff.unit : (isRawStat ? "" : "%");
 
-                    // 출처 텍스트 (max 존재 여부에 따른 유연한 표기)
-                    const sourceText = node.max 
-                        ? `아크 패시브(진화 ${tierName}): ${node.name} [${nodeLevel}/${node.max}LV]`
-                        : `아크 패시브(진화 ${tierName}): ${node.name} [Lv.${nodeLevel}]`;
+                        // 출처 텍스트 (max 존재 여부에 따른 유연한 표기)
+                        const sourceText = node.max 
+                            ? `아크 패시브(진화 ${tierName}): ${node.name} [${nodeLevel}/${node.max}LV]`
+                            : `아크 패시브(진화 ${tierName}): ${node.name} [Lv.${nodeLevel}]`;
 
-                    if (!arkStats[catName]) arkStats[catName] = [];
-                    arkStats[catName].push({
-                        source: sourceText,
-                        val: calculatedVal,
-                        unit: unitStr,
-                        requireTags: mergedReqTags,
-                        excludeTags: mergedExTags
+                        if (!arkStats[catName]) arkStats[catName] = [];
+                        arkStats[catName].push({
+                            source: sourceText,
+                            val: calculatedVal,
+                            unit: unitStr,
+                            requireTags: mergedReqTags,
+                            excludeTags: mergedExTags
+                        });
                     });
-                });
-            }
+                }
+            });
         });
-    });
 
-    return arkStats;
-}
+        return arkStats;
+    }
 
 
     // =============================================================================
     // 4. DOM 파싱 및 데이터 정제
     // =============================================================================
+
+    // 전체 파싱
     function extractFullSimulatorData(doc = document) {
         const parseOptAndGrade = (rawText) => {
             if (!rawText || rawText === '없음') return null;
@@ -1469,6 +1491,7 @@
         };
     }
 
+    // 파싱된 데이터를 입력 양식에 맞춰 정제
     function mapExtractedDataToInputs(extracted) {
         const eq = extracted.equipment || {};
 
@@ -1575,9 +1598,8 @@
     // =============================================================================
     // 5. 핵심 스탯 및 데미지 연산 엔진
     // =============================================================================
-   function calculateSkillStats(inputs) {
+    function calculateSkillStats(inputs) {
 
-        const partyCritBonus = (window.partyCritCount || 0) * STAT_CONSTANTS.PARTY_CRIT_SYNERGY_PER_PLAYER;
         let commonStats = {
             "주스탯":[], "주스탯 %":[],"치명": [], "신속": [],"특화":[],
             "무기 공격력": [], "무기 공격력 %": [], "기본 공격력": [], "기본 공격력 %": [], "공격력": [], "공격력 %": [],
@@ -1587,6 +1609,15 @@
             "이동 속도": [], "공격 속도": [], "쿨타임 감소": [],
             "마나 스킬 쿨타임 감소": [], "쿨타임 증가": [], "고정 쿨타임 감소": [],"고정 쿨타임 증가":[]
         };
+
+
+        // 파티 치명타 시너지 입력
+        const partyCritBonus = (window.partyCritCount || 0) * STAT_CONSTANTS.PARTY_CRIT_SYNERGY_PER_PLAYER;
+
+        if (partyCritBonus > 0) {
+            addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
+        }
+
 
         // 🌟 1. ADD_STAT_BASE가 배열이면 그대로 쓰고, 객체면 배열로 변환해서 안전하게 확보
         const statList = Array.isArray(window.ADD_STAT_BASE)
@@ -1624,9 +1655,6 @@
             }
         });
 
-        if (partyCritBonus > 0) {
-            addStat(commonStats, "치명타 적중률", `파티 시너지 (${inputs.partyCritCount}명)`, partyCritBonus);
-        }
 
         // 방어구 주스탯 합산
         addStat(commonStats, "주스탯", "투구", inputs.headStat, "");
@@ -1643,6 +1671,7 @@
         const estherBonding1Data = [145983, 153282, 257503, 453359];
         const estherBonding2Data = [3946, 4305, 7250, 16450];
 
+        // 에스더 무기 데이터 처리
         if (inputs.isEsther) {
             const ellaLvl = inputs.estherElla ?? 0;
 
@@ -1682,7 +1711,7 @@
             addStat(commonStats, "기본 공격력 %", "완갑 기본 공격력 %", vambraceNormalAtkPercent, "%");
         }
 
-        // 아크 패시브 진화
+        // 아크 패시브 진화 - 진화형 피해
         const evolutionData = inputs?.arkPassive?.["진화"] || inputs?.arkPassive?.evolution;
         let evolutionRank = 0;
 
@@ -1698,7 +1727,7 @@
             addStat(commonStats, "진화형 피해", `아크 패시브 진화 (Rank.${evolutionRank})`, statValue, "%");
         }
 
-        // 아크 패시브 깨달음
+        // 아크 패시브 깨달음 - 무기 공격력
         const enlightenData = inputs?.arkPassive?.["깨달음"] || inputs?.arkPassive?.enlighten;
         let enlightenLevel = 0;
 
@@ -2112,6 +2141,7 @@
                 }
             }
 
+            // 아크 패시브 5티어 뭉가 / 음돌 / 마용 계산용 데이터 정의
             const bluntThornNode = evolutionNodes[4]?.find(node => node.isBluntThorn);
             const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
             const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
@@ -2228,11 +2258,13 @@
                 });
             });
 
+            // 어빌리티 스톤 세공 레벨 입력
             let totalStoneLevel = 0;
             if (Array.isArray(inputs.engravings)) {
                 totalStoneLevel = inputs.engravings.reduce((sum, eng) => sum + (parseInt(eng?.stone, 10) || 0), 0);
             }
             const carveAtkBonusPercent = totalStoneLevel >= 5 ? 1.5 : 0;
+
 
             // -------------------- 기본 수치 연산 -----------------------------
             const normalStat = getStatSum(stats, "주스탯");
@@ -2417,6 +2449,7 @@
                 const otherItems = stats["적에게 주는 피해"].filter(item => !isSkillSpec(item.source));
                 stats["적에게 주는 피해"] = [...tpItems, ...otherItems];
             }
+
             const totalDamageMultiplier = getStatProduct(stats, "적에게 주는 피해", true);
 
             const totalCritDamagePercent = getStatSum(stats, "치명타 피해");
@@ -2475,14 +2508,12 @@
     }
 
 
-
-
-
-
     
+
     // =============================================================================
     // 6. UI 초기화 및 결과 출력 함수
     // =============================================================================
+    
     window.closeSimModal = function() {
         const modal = document.getElementById('sim-result-modal');
         if (modal) modal.style.display = 'none';
@@ -3436,7 +3467,7 @@
 
 
     // ==========================================
-    // [추가] 실시간 계산 일시정지 토글 버튼 로직
+    // 실시간 계산 일시정지 토글 버튼 로직
     // ==========================================
     window.toggleCalcPause = function() {
         window.isCalcPaused = !window.isCalcPaused;
@@ -3459,6 +3490,7 @@
         }
     };
 
+    // 비교군 설정 저장
     window.setBaseline = function() {
         if (!lastCalculatedResults || lastCalculatedResults.length === 0) {
             showAlert('비교군으로 설정할 계산 결과가 없습니다.');
@@ -3538,12 +3570,10 @@
 
 
 
-    /**
-     * 1. 좌측 하단 통합 플로팅 패널 생성
-    */
 
 
 
+    // 에스더 UI
     window.updateEstherUI = function(isEsther) {
         const estherBox = document.getElementById('esther-bonding-box');
         const btn1 = document.getElementById('esther-bonding-btn-1');
@@ -3579,6 +3609,8 @@
             estherBox.style.pointerEvents = 'none';
         }
     };
+
+
     // 💡 스크립트 로드 즉시 (또는 DOM 준비 후) 플로팅 패널을 먼저 그려줍니다!
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -3792,111 +3824,111 @@
         };
 
         modal.querySelector('#btn-load-db-preset').onclick = () => {
-    const select = modal.querySelector('#db-preset-select');
-    const id = Number(select.value);
-    if (!id) {
-        showAlert('불러올 프리셋을 선택해주세요.');
-        return;
-    }
+            const select = modal.querySelector('#db-preset-select');
+            const id = Number(select.value);
+            if (!id) {
+                showAlert('불러올 프리셋을 선택해주세요.');
+                return;
+            }
 
-    const presets = getPresets();
-    const target = presets.find(p => p.id === id);
-    if (!target) return;
+            const presets = getPresets();
+            const target = presets.find(p => p.id === id);
+            if (!target) return;
 
-    const d = target.data || {};
+            const d = target.data || {};
 
-    // 1. 일반 스킬 / 코어 데이터 복원
-    if (d.skillDatabase) {
-        window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
-        if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
-    }
-    if (d.orderDataSets) {
-        window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
-        if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
-    }
+            // 1. 일반 스킬 / 코어 데이터 복원
+            if (d.skillDatabase) {
+                window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
+                if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
+            }
+            if (d.orderDataSets) {
+                window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
+                if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
+            }
 
-    // 2. pure 커스텀 데이터 복원 및 저장소 저장
-    const loadedCustomStat = d.ADD_STAT_BASE ? JSON.parse(JSON.stringify(d.ADD_STAT_BASE)) : [];
-    const loadedCustomSpec = d.specializationDatabase ? JSON.parse(JSON.stringify(d.specializationDatabase)) : {};
+            // 2. pure 커스텀 데이터 복원 및 저장소 저장
+            const loadedCustomStat = d.ADD_STAT_BASE ? JSON.parse(JSON.stringify(d.ADD_STAT_BASE)) : [];
+            const loadedCustomSpec = d.specializationDatabase ? JSON.parse(JSON.stringify(d.specializationDatabase)) : {};
 
-    window.ADD_STAT_BASE_CUSTOM = loadedCustomStat;
-    window.SPECIALIZATION_CUSTOM = loadedCustomSpec;
+            window.ADD_STAT_BASE_CUSTOM = loadedCustomStat;
+            window.SPECIALIZATION_CUSTOM = loadedCustomSpec;
 
-    if (typeof GM_setValue === 'function') {
-        GM_setValue('ADD_STAT_BASE_CUSTOM', loadedCustomStat);
-        GM_setValue('SPECIALIZATION_CUSTOM', loadedCustomSpec);
-    }
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('ADD_STAT_BASE_CUSTOM', loadedCustomStat);
+                GM_setValue('SPECIALIZATION_CUSTOM', loadedCustomSpec);
+            }
 
-    // 🌟 3. 스킬 데이터 세트의 트라이포드 선택 데이터 복원 및 저장
-    const loadedTripods = d.selectedSkillTripods ? JSON.parse(JSON.stringify(d.selectedSkillTripods)) : {};
-    window.selectedSkillTripods = loadedTripods;
+            // 🌟 3. 스킬 데이터 세트의 트라이포드 선택 데이터 복원 및 저장
+            const loadedTripods = d.selectedSkillTripods ? JSON.parse(JSON.stringify(d.selectedSkillTripods)) : {};
+            window.selectedSkillTripods = loadedTripods;
 
-    try {
-        localStorage.setItem('LOSTARK_SELECTED_TRIPODS', JSON.stringify(loadedTripods));
-    } catch (e) {
-        console.error('트라이포드 LocalStorage 저장 실패:', e);
-    }
-    if (typeof GM_setValue === 'function') {
-        GM_setValue('LOSTARK_SELECTED_TRIPODS', loadedTripods);
-    }
+            try {
+                localStorage.setItem('LOSTARK_SELECTED_TRIPODS', JSON.stringify(loadedTripods));
+            } catch (e) {
+                console.error('트라이포드 LocalStorage 저장 실패:', e);
+            }
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('LOSTARK_SELECTED_TRIPODS', loadedTripods);
+            }
 
-    // 4. 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 연산 변수 갱신
-    let baseArray = [];
-    if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && Array.isArray(DEFAULT_ADD_STAT_BASE)) {
-        baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-    }
-    
-    const baseNames = new Set(baseArray.map(item => item.name));
-    const pureCustomData = loadedCustomStat.filter(item => item && item.name && !baseNames.has(item.name));
+            // 4. 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 연산 변수 갱신
+            let baseArray = [];
+            if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && Array.isArray(DEFAULT_ADD_STAT_BASE)) {
+                baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+            }
+            
+            const baseNames = new Set(baseArray.map(item => item.name));
+            const pureCustomData = loadedCustomStat.filter(item => item && item.name && !baseNames.has(item.name));
 
-    window.ADD_STAT_BASE = [...baseArray, ...pureCustomData];
+            window.ADD_STAT_BASE = [...baseArray, ...pureCustomData];
 
-    // 🔥 [핵심 수정] specializationDatabase 연산 변수 복원 로직 추가
-    const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') 
-        ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) 
-        : {};
+            // 🔥 [핵심 수정] specializationDatabase 연산 변수 복원 로직 추가
+            const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') 
+                ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) 
+                : {};
 
-    if (Array.isArray(loadedCustomSpec)) {
-        window.specializationDatabase = loadedCustomSpec.length > 0 ? loadedCustomSpec : defaultSpec;
-    } else if (loadedCustomSpec && typeof loadedCustomSpec === 'object' && Object.keys(loadedCustomSpec).length > 0) {
-        window.specializationDatabase = { ...defaultSpec, ...loadedCustomSpec };
-    } else {
-        window.specializationDatabase = defaultSpec;
-    }
+            if (Array.isArray(loadedCustomSpec)) {
+                window.specializationDatabase = loadedCustomSpec.length > 0 ? loadedCustomSpec : defaultSpec;
+            } else if (loadedCustomSpec && typeof loadedCustomSpec === 'object' && Object.keys(loadedCustomSpec).length > 0) {
+                window.specializationDatabase = { ...defaultSpec, ...loadedCustomSpec };
+            } else {
+                window.specializationDatabase = defaultSpec;
+            }
 
-    if (typeof GM_setValue === 'function') {
-        GM_setValue('specializationDatabase', window.specializationDatabase);
-    }
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('specializationDatabase', window.specializationDatabase);
+            }
 
-    // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 UI 즉시 재구성
-    if (typeof window.resetState === 'function') window.resetState();
-    if (typeof window.renderUI === 'function') window.renderUI();
+            // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 UI 즉시 재구성
+            if (typeof window.resetState === 'function') window.resetState();
+            if (typeof window.renderUI === 'function') window.renderUI();
 
-    // 🔥 [중요] 스킬 & 트라이포드 메인 UI 재렌더링
-    if (typeof renderSkillTripodUI === 'function') {
-        renderSkillTripodUI();
-    } else if (typeof window.renderSkillTripodUI === 'function') {
-        window.renderSkillTripodUI();
-    }
+            // 🔥 [중요] 스킬 & 트라이포드 메인 UI 재렌더링
+            if (typeof renderSkillTripodUI === 'function') {
+                renderSkillTripodUI();
+            } else if (typeof window.renderSkillTripodUI === 'function') {
+                window.renderSkillTripodUI();
+            }
 
-    // 최종 계산 및 트라이포드 선택 동기화 함수 호출
-    if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
-        window.updateSelectedTripodsAndCalculate();
-    } else if (typeof window.triggerCalculation === 'function') {
-        window.triggerCalculation();
-    }
+            // 최종 계산 및 트라이포드 선택 동기화 함수 호출
+            if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
+                window.updateSelectedTripodsAndCalculate();
+            } else if (typeof window.triggerCalculation === 'function') {
+                window.triggerCalculation();
+            }
 
-    showAlert(`'${target.name}' 프리셋을 불러왔습니다! (스킬 DB 및 트라이포드 선택 적용 완료)`);
-    modalOverlay.remove();
+            showAlert(`'${target.name}' 프리셋을 불러왔습니다! (스킬 DB 및 트라이포드 선택 적용 완료)`);
+            modalOverlay.remove();
 
-    if (typeof openDataLoaderModal === 'function') {
-        openDataLoaderModal();
-    }
+            if (typeof openDataLoaderModal === 'function') {
+                openDataLoaderModal();
+            }
 
-    if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-    if (typeof renderArkPassiveUI === 'function') renderArkPassiveUI();
-    if (typeof renderSkillTripodUI === 'function') renderSkillTripodUI();
-};
+            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+            if (typeof renderArkPassiveUI === 'function') renderArkPassiveUI();
+            if (typeof renderSkillTripodUI === 'function') renderSkillTripodUI();
+        };
 
         // 3) 프리셋 삭제 실행
         modal.querySelector('#btn-delete-db-preset').onclick = () => {
@@ -3906,15 +3938,6 @@
                 showAlert('삭제할 프리셋을 선택해주세요.');
                 return;
             }
-
-            // if (confirm('정말 선택한 프리셋을 삭제하시겠습니까?')) {
-            //     let presets = getPresets();
-            //     presets = presets.filter(p => p.id !== id);
-            //     savePresets(presets);
-            //     refreshPresetOptions();
-            //     showAlert('프리셋이 삭제되었습니다.');
-            // }
-
             showConfirm('정말 선택한 프리셋을 삭제하시겠습니까?', () => {
                 let presets = getPresets();
                 presets = presets.filter(p => p.id !== id);
@@ -4733,7 +4756,7 @@
         if (document.getElementById('calc-floating-panel')) return;
 
         // -------------------------------------------------------------
-        // 🌟 [신규] 공지사항 모달(팝업) 생성 함수
+        // 🌟 공지사항 모달(팝업) 생성 함수
         // -------------------------------------------------------------
         const createNoticeModal = () => {
             if (document.getElementById('calc-notice-modal')) return;
@@ -5296,9 +5319,7 @@
     // 💡 스크립트 맨 하단에서 즉시 버튼 패널 생성
     injectPauseButton();
 
-    /**
-    비교표 모달창 생성 및 출력 함수
-    */
+
     /**
      * 1. 세팅 비교 모달 생성 및 출력 (가로 70vw + 세로 자동 스크롤)
      */
@@ -5636,9 +5657,7 @@
         showAlert(`'${presetName}' 아크 패시브 세팅이 저장되었습니다!`);
     };
 
-    /**
-     * 3. 아크 패시브 프리셋 불러오기 (UI 복원)
-     */
+
     /**
      * 3. 아크 패시브 프리셋 불러오기 (전체 초기화 후 티어 순서대로 복원)
      */
@@ -6145,4 +6164,4 @@
             overlay.classList.remove('active');
         }
     }
-    })();
+})();
