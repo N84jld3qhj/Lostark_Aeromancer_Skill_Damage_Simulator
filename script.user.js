@@ -153,7 +153,7 @@
         { name: "카드 세트", effects: [{ category: "적에게 주는 피해", val: 15, unit: "%" }] }
     ];
 
-  // 1. 저장소 데이터 로드 및 빈 객체({}) 방어 로직
+    // 1. 저장소 데이터 로드 및 방어 로직 (배열/객체 유효성 검사 보완)
     let skillDatabase = GM_getValue('skillDatabase');
     if (!skillDatabase || Object.keys(skillDatabase).length === 0) {
         skillDatabase = JSON.parse(JSON.stringify(typeof DEFAULT_SKILL_DATABASE !== 'undefined' ? DEFAULT_SKILL_DATABASE : {}));
@@ -164,10 +164,25 @@
         orderDataSets = JSON.parse(JSON.stringify(typeof DEFAULT_ORDER_DATA_SETS !== 'undefined' ? DEFAULT_ORDER_DATA_SETS : {}));
     }
 
-    let specializationDatabase = GM_getValue('specializationDatabase');
-    if (!specializationDatabase || Object.keys(specializationDatabase).length === 0) {
+    // 스토리지에서 불러오기
+    let specializationCustom = GM_getValue('SPECIALIZATION_CUSTOM', null);
+    let specializationDatabase = GM_getValue('specializationDatabase', null);
+
+    // 유효성 검사 (배열과 객체 모두 체크)
+    const isSpecValid = (data) => {
+        if (!data) return false;
+        if (Array.isArray(data)) return data.length > 0;
+        return typeof data === 'object' && Object.keys(data).length > 0;
+    };
+
+    if (isSpecValid(specializationCustom)) {
+        specializationDatabase = specializationCustom;
+    } else if (!isSpecValid(specializationDatabase)) {
         specializationDatabase = JSON.parse(JSON.stringify(typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined' ? DEFAULT_SPECIALIZATION_DATABASE : {}));
     }
+
+    window.specializationDatabase = specializationDatabase;
+    window.SPECIALIZATION_CUSTOM = specializationCustom;
 
     // 2. DEFAULT_ADD_STAT_BASE 기본 배열 변환
     let baseArray = [];
@@ -194,21 +209,20 @@
         }
     }
 
-    // 4. 🌟 [핵심] 기본 데이터와 이름이 중복되는 데이터 제거 후 병합
+    // 4. 기본 데이터와 이름이 중복되는 데이터 제거 후 병합
     const baseNames = new Set(baseArray.map(item => item.name));
     const pureCustomData = customStatData.filter(item => item && item.name && !baseNames.has(item.name));
 
     let ADD_STAT_BASE = [...baseArray, ...pureCustomData];
 
-    // window 전역 객체와도 동기화
+    // window 전역 객체와 동기화
     window.skillDatabase = skillDatabase;
     window.orderDataSets = orderDataSets;
-    window.specializationDatabase = specializationDatabase; // 👈 전역 동기화 추가
+    window.specializationDatabase = specializationDatabase; // 👈 이제 배열 형태 특화 데이터도 정상 유지됨
     window.ADD_STAT_BASE = ADD_STAT_BASE;
 
-    // 🌟 [추가] 프리셋 모달 및 UI에서 pure 커스텀 데이터만 표시할 수 있도록 전역변수 동기화
     window.ADD_STAT_BASE_CUSTOM = pureCustomData;
-    window.SPECIALIZATION_CUSTOM = GM_getValue('SPECIALIZATION_CUSTOM', {});
+    window.SPECIALIZATION_CUSTOM = specializationCustom || {};
     
     try {
         const savedData = localStorage.getItem('savedBaselineResults');
@@ -1901,6 +1915,26 @@
 
         let allSkillResults = [];
 
+
+        // 1. 스킬 데이터 존재 여부 및 비어 있는지 검사
+        if (!window.skillDatabase || 
+            (Array.isArray(window.skillDatabase) && window.skillDatabase.length === 0) ||
+            (typeof window.skillDatabase === 'object' && Object.keys(window.skillDatabase).length === 0)) {
+            
+            // 알림창 띄우기
+            showAlert('스킬 데이터가 존재하지 않습니다. 스킬 데이터를 먼저 업로드해 주세요.');
+            toggleCalcPause()
+            return
+        }
+
+        // 2. 만약의 경우를 대비해 배열 형태가 맞는지 최종 확인
+        if (typeof window.skillDatabase.forEach !== 'function') {
+            showAlert('스킬 데이터 형식이 올바르지 않습니다. 다시 업로드해 주세요.');
+            toggleCalcPause()
+            return
+        }
+
+
         // =============================================================================
         // 스킬별 계산 루프
         // =============================================================================
@@ -2321,28 +2355,49 @@
             if (!stats["적에게 주는 피해"]) stats["적에게 주는 피해"] = [];
 
             const specStatValue = getStatSum(stats, "특화");
-
+            console.log("6. 계산 엔진 진입 - window.specializationDatabase:", window.specializationDatabase);
             let specDB = window.specializationDatabase || {};
+            console.log("7. 계산 엔진 내부 specDB:", specDB);
             if (specDB.specializationDatabase) {
                 specDB = specDB.specializationDatabase;
+                console.log("8. specDB 타입 및 길이:", typeof specDB, Array.isArray(specDB) ? specDB.length : Object.keys(specDB || {}).length);
             }
 
             if (specStatValue > 0 && specDB && Array.isArray(skillTags)) {
                 let totalSpecCoeff = 0;
 
-                const specItems = Array.isArray(specDB) 
-                    ? specDB 
-                    : (specDB.targetTags ? [specDB] : Object.values(specDB));
+                // 🌟 1. 어떤 데이터 구조(단일 객체, 배열, 키-값 객체)든 targetTags를 가진 항목을 모두 추출하는 함수
+                const getSpecItems = (db) => {
+                    if (!db || typeof db !== 'object') return [];
+                    
+                    // Case A: 단일 객체인 경우 (제공해주신 구조: { coefficient: ..., targetTags: [...] })
+                    if (Array.isArray(db.targetTags)) {
+                        return [db];
+                    }
+                    
+                    // Case B: 배열인 경우
+                    if (Array.isArray(db)) {
+                        return db.flatMap(item => getSpecItems(item));
+                    }
+                    
+                    // Case C: 키-값 형태의 객체인 경우 ({ "충격": { ... }, "기력": { ... } })
+                    return Object.values(db).flatMap(item => getSpecItems(item));
+                };
 
+                const specItems = getSpecItems(specDB);
+
+                // 🌟 2. 특화 계수 합산 연산
                 specItems.forEach(item => {
-                    if (!item) return;
+                    if (!item || typeof item !== 'object') return;
 
+                    // 제외 태그/스킬 확인
                     const exTags = item.excludeTags || item.excludeSkillTags || [];
                     if (exTags.some(tag => skillTags.includes(tag) || tag === skillName)) return;
 
                     if (!Array.isArray(item.targetTags)) return;
 
-                    const isMatch = item.targetTags.some(tag => 
+                    // 태그 일치 여부 확인
+                    const isMatch = item.targetTags.some(tag =>
                         skillTags.includes(tag) || tag === skillName
                     );
 
@@ -2352,11 +2407,10 @@
                     }
                 });
 
+                // 🌟 3. 최종 데미지 추가
                 if (totalSpecCoeff > 0) {
                     const specDamageValue = specStatValue * totalSpecCoeff / 699 * 100;
-
-                    addStat(stats,"적에게 주는 피해","특화 효과",parseFloat(specDamageValue.toFixed(2)),"%")
-
+                    addStat(stats, "적에게 주는 피해", "특화 효과", parseFloat(specDamageValue.toFixed(2)), "%");
                 }
             }
             
@@ -3740,95 +3794,112 @@
             showAlert(`'${name}' 프리셋이 성공적으로 저장되었습니다! (트라이포드 세팅 포함)`);
         };
 
-        // 2) 프리셋 불러오기 실행 (트라이포드 선택 정보 복원 및 메인 UI 동기화)
         modal.querySelector('#btn-load-db-preset').onclick = () => {
-            const select = modal.querySelector('#db-preset-select');
-            const id = Number(select.value);
-            if (!id) {
-                showAlert('불러올 프리셋을 선택해주세요.');
-                return;
-            }
+    const select = modal.querySelector('#db-preset-select');
+    const id = Number(select.value);
+    if (!id) {
+        showAlert('불러올 프리셋을 선택해주세요.');
+        return;
+    }
 
-            const presets = getPresets();
-            const target = presets.find(p => p.id === id);
-            if (!target) return;
+    const presets = getPresets();
+    const target = presets.find(p => p.id === id);
+    if (!target) return;
 
-            const d = target.data || {};
+    const d = target.data || {};
 
-            // 1. 일반 스킬 / 코어 데이터 복원
-            if (d.skillDatabase) {
-                window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
-                if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
-            }
-            if (d.orderDataSets) {
-                window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
-                if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
-            }
+    // 1. 일반 스킬 / 코어 데이터 복원
+    if (d.skillDatabase) {
+        window.skillDatabase = JSON.parse(JSON.stringify(d.skillDatabase));
+        if (typeof GM_setValue === 'function') GM_setValue('skillDatabase', window.skillDatabase);
+    }
+    if (d.orderDataSets) {
+        window.orderDataSets = JSON.parse(JSON.stringify(d.orderDataSets));
+        if (typeof GM_setValue === 'function') GM_setValue('orderDataSets', window.orderDataSets);
+    }
 
-            // 2. pure 커스텀 데이터 복원 및 저장소 저장
-            const loadedCustomStat = d.ADD_STAT_BASE ? JSON.parse(JSON.stringify(d.ADD_STAT_BASE)) : [];
-            const loadedCustomSpec = d.specializationDatabase ? JSON.parse(JSON.stringify(d.specializationDatabase)) : {};
+    // 2. pure 커스텀 데이터 복원 및 저장소 저장
+    const loadedCustomStat = d.ADD_STAT_BASE ? JSON.parse(JSON.stringify(d.ADD_STAT_BASE)) : [];
+    const loadedCustomSpec = d.specializationDatabase ? JSON.parse(JSON.stringify(d.specializationDatabase)) : {};
 
-            window.ADD_STAT_BASE_CUSTOM = loadedCustomStat;
-            window.SPECIALIZATION_CUSTOM = loadedCustomSpec;
+    window.ADD_STAT_BASE_CUSTOM = loadedCustomStat;
+    window.SPECIALIZATION_CUSTOM = loadedCustomSpec;
 
-            if (typeof GM_setValue === 'function') {
-                GM_setValue('ADD_STAT_BASE_CUSTOM', loadedCustomStat);
-                GM_setValue('SPECIALIZATION_CUSTOM', loadedCustomSpec);
-            }
+    if (typeof GM_setValue === 'function') {
+        GM_setValue('ADD_STAT_BASE_CUSTOM', loadedCustomStat);
+        GM_setValue('SPECIALIZATION_CUSTOM', loadedCustomSpec);
+    }
 
-            // 🌟 3. 스킬 데이터 세트의 트라이포드 선택 데이터 복원 및 저장
-            const loadedTripods = d.selectedSkillTripods ? JSON.parse(JSON.stringify(d.selectedSkillTripods)) : {};
-            window.selectedSkillTripods = loadedTripods;
+    // 🌟 3. 스킬 데이터 세트의 트라이포드 선택 데이터 복원 및 저장
+    const loadedTripods = d.selectedSkillTripods ? JSON.parse(JSON.stringify(d.selectedSkillTripods)) : {};
+    window.selectedSkillTripods = loadedTripods;
 
-            try {
-                localStorage.setItem('LOSTARK_SELECTED_TRIPODS', JSON.stringify(loadedTripods));
-            } catch (e) {
-                console.error('트라이포드 LocalStorage 저장 실패:', e);
-            }
-            if (typeof GM_setValue === 'function') {
-                GM_setValue('LOSTARK_SELECTED_TRIPODS', loadedTripods);
-            }
+    try {
+        localStorage.setItem('LOSTARK_SELECTED_TRIPODS', JSON.stringify(loadedTripods));
+    } catch (e) {
+        console.error('트라이포드 LocalStorage 저장 실패:', e);
+    }
+    if (typeof GM_setValue === 'function') {
+        GM_setValue('LOSTARK_SELECTED_TRIPODS', loadedTripods);
+    }
 
-            // 4. 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 연산 변수 갱신
-            let baseArray = [];
-            if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && Array.isArray(DEFAULT_ADD_STAT_BASE)) {
-                baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-            }
-            
-            const baseNames = new Set(baseArray.map(item => item.name));
-            const pureCustomData = loadedCustomStat.filter(item => item && item.name && !baseNames.has(item.name));
+    // 4. 내장 데이터(DEFAULT_ADD_STAT_BASE)와 불러온 커스텀 데이터를 재병합하여 연산 변수 갱신
+    let baseArray = [];
+    if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined' && Array.isArray(DEFAULT_ADD_STAT_BASE)) {
+        baseArray = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
+    }
+    
+    const baseNames = new Set(baseArray.map(item => item.name));
+    const pureCustomData = loadedCustomStat.filter(item => item && item.name && !baseNames.has(item.name));
 
-            window.ADD_STAT_BASE = [...baseArray, ...pureCustomData];
+    window.ADD_STAT_BASE = [...baseArray, ...pureCustomData];
 
-            // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 라디오 상태 즉시 동기화
-            // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 UI 즉시 재구성
-            if (typeof window.resetState === 'function') window.resetState();
-            if (typeof window.renderUI === 'function') window.renderUI();
+    // 🔥 [핵심 수정] specializationDatabase 연산 변수 복원 로직 추가
+    const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') 
+        ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) 
+        : {};
 
-            // 🔥 [중요] 스킬 & 트라이포드 메인 UI 재렌더링
-            if (typeof renderSkillTripodUI === 'function') {
-                renderSkillTripodUI();
-            } else if (typeof window.renderSkillTripodUI === 'function') {
-                window.renderSkillTripodUI();
-            }
+    if (Array.isArray(loadedCustomSpec)) {
+        window.specializationDatabase = loadedCustomSpec.length > 0 ? loadedCustomSpec : defaultSpec;
+    } else if (loadedCustomSpec && typeof loadedCustomSpec === 'object' && Object.keys(loadedCustomSpec).length > 0) {
+        window.specializationDatabase = { ...defaultSpec, ...loadedCustomSpec };
+    } else {
+        window.specializationDatabase = defaultSpec;
+    }
 
-            // 최종 계산 및 트라이포드 선택 동기화 함수 호출
-            if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
-                window.updateSelectedTripodsAndCalculate();
-            } else if (typeof window.triggerCalculation === 'function') {
-                window.triggerCalculation();
-            }
+    if (typeof GM_setValue === 'function') {
+        GM_setValue('specializationDatabase', window.specializationDatabase);
+    }
 
-            showAlert(`'${target.name}' 프리셋을 불러왔습니다! (스킬 DB 및 트라이포드 선택 적용 완료)`);
-            modalOverlay.remove();
+    // 🌟 5. 메인 UI 렌더링 및 트라이포드 선택 UI 즉시 재구성
+    if (typeof window.resetState === 'function') window.resetState();
+    if (typeof window.renderUI === 'function') window.renderUI();
 
-            if (typeof openDataLoaderModal === 'function') {
-                openDataLoaderModal();
-            }
+    // 🔥 [중요] 스킬 & 트라이포드 메인 UI 재렌더링
+    if (typeof renderSkillTripodUI === 'function') {
+        renderSkillTripodUI();
+    } else if (typeof window.renderSkillTripodUI === 'function') {
+        window.renderSkillTripodUI();
+    }
 
-            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
-        };
+    // 최종 계산 및 트라이포드 선택 동기화 함수 호출
+    if (typeof window.updateSelectedTripodsAndCalculate === 'function') {
+        window.updateSelectedTripodsAndCalculate();
+    } else if (typeof window.triggerCalculation === 'function') {
+        window.triggerCalculation();
+    }
+
+    showAlert(`'${target.name}' 프리셋을 불러왔습니다! (스킬 DB 및 트라이포드 선택 적용 완료)`);
+    modalOverlay.remove();
+
+    if (typeof openDataLoaderModal === 'function') {
+        openDataLoaderModal();
+    }
+
+    if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+    if (typeof renderArkPassiveUI === 'function') renderArkPassiveUI();
+    if (typeof renderSkillTripodUI === 'function') renderSkillTripodUI();
+};
 
         // 3) 프리셋 삭제 실행
         modal.querySelector('#btn-delete-db-preset').onclick = () => {
@@ -4030,12 +4101,6 @@
         // =========================================================================
         const showDataViewerModal = (title, data, keyName = '') => {
 
-            console.log('=== [showDataViewerModal 디버깅] ===');
-            console.log('1. title:', title);
-            console.log('2. keyName:', keyName);
-            console.log('3. 전달받은 data:', data);
-            console.log('4. data 타입:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
-
             const detailOverlay = document.createElement('div');
             detailOverlay.style.cssText = `
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -4187,33 +4252,45 @@
                 });
             }
             // 4. 특화 데이터 (specializationDatabase)
-            else if (keyName === 'specializationDatabase' || title.includes('specializationDatabase') || title.includes('특화')) {
-                const isSingleObj = renderData.hasOwnProperty('coefficient') || renderData.hasOwnProperty('targetTags');
-                const specList = isSingleObj ? [renderData] : (Array.isArray(renderData) ? renderData : Object.values(renderData));
+            else if (keyName === 'specializationDatabase') {
+                console.log("1. 파일 읽기 직후 parsedResults:", parsedResults);
+                console.log("1-1. parsedResults[0]:", parsedResults ? parsedResults[0] : null);
+                // 1. 2차원/3차원 배열 감싸기 해제 (순수 1차원 데이터 추출)
+                let rawData = parsedResults;
+                while (Array.isArray(rawData) && rawData.length === 1 && (Array.isArray(rawData[0]) || typeof rawData[0] === 'object')) {
+                    if (Array.isArray(rawData[0]) && rawData[0].length === 0) break;
+                    rawData = rawData[0];
+                }
 
-                specList.forEach((specItem, idx) => {
-                    const card = document.createElement('div');
-                    card.style.cssText = `background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;`;
+                const finalSpecData = rawData;
+                console.log("2. 대입 전 specializationDatabase 전역변수:", window.specializationDatabase);
+                // 대입 코드 실행
+                // 2. 전역 변수 및 GM 스토리지에 정제된 데이터 직접 저장
+                window.SPECIALIZATION_CUSTOM = finalSpecData;
+                window.specializationDatabase = finalSpecData;
+                console.log("3. 대입 후 specializationDatabase 전역변수:", window.specializationDatabase);
+                
+                if (typeof GM_setValue === 'function') {
+                    GM_setValue('SPECIALIZATION_CUSTOM', finalSpecData);
+                    console.log("4. GM_setValue 직전 저장할 값:", finalSpecData);
+                    GM_setValue('specializationDatabase', finalSpecData);
+                    console.log("5. GM_getValue 읽어온 값:", GM_getValue('specializationDatabase'));
+                }
 
-                    const coeff = specItem.coefficient ?? '-';
-                    const tags = Array.isArray(specItem.targetTags) ? specItem.targetTags : [];
-                    const tagBadges = tags.map(t => `<span style="background: #334155; color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; border: 1px solid rgba(56, 189, 248, 0.2);">#${t}</span>`).join('') || '<span style="font-size:0.75rem; color:#64748b;">없음</span>';
+                // 3. 카운터 UI 표시
+                const statusElem = document.getElementById(`status-${keyName}`);
+                if (statusElem) {
+                    const count = Array.isArray(finalSpecData) 
+                        ? finalSpecData.length 
+                        : Object.keys(finalSpecData || {}).length;
+                    statusElem.style.color = count > 0 ? '#4ade80' : '#f87171';
+                    statusElem.innerText = count > 0 ? `● 보유 중: ${count}개` : '○ 데이터 없음';
+                }
 
-                    card.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
-                            <span style="font-weight: bold; font-size: 0.95rem; color: #f59e0b;">🔮 특화 설정 ${specList.length > 1 ? `#${idx + 1}` : ''}</span>
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 8px 12px; border-radius: 6px;">
-                            <span style="font-size: 0.8rem; color: #94a3b8;">특화 계수 (Coefficient)</span>
-                            <span style="font-size: 0.9rem; font-weight: bold; color: #4ade80;">${coeff}</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.72rem; color: #94a3b8; font-weight: bold;">🎯 적용 대상 태그 (targetTags)</span>
-                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">${tagBadges}</div>
-                        </div>
-                    `;
-                    contentContainer.appendChild(card);
-                });
+                if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+                
+                // 🌟 [핵심] 하단 공통 로직이 window.specializationDatabase를 []로 덮어쓰지 못하게 여기서 종료
+                return;
             }
             // 5. 질서 코어 (orderDataSets)
             else if (keyName === 'orderDataSets' || title.includes('orderDataSets') || title.includes('질서')) {
@@ -4326,12 +4403,13 @@
             }
             detailBox.appendChild(contentContainer);
 
-            if (title.includes('orderDataSets')) {
+            // keyName이 'orderDataSets'이거나 title에 'orderDataSets' 또는 '질서'가 포함되어 있는지 모두 체크
+            if (keyName === 'orderDataSets' || title.includes('orderDataSets') || title.includes('질서')) {
                 const footer = document.createElement('div');
                 footer.style.cssText = `
                     border-top: 1px solid #334155;
                     padding-top: 12px;
-                    margin-top: 4px;
+                    margin-top: 8px;
                     display: flex;
                     justify-content: flex-end;
                     flex-shrink: 0;
@@ -4432,6 +4510,8 @@
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
+                    console.log("=== 불러오기 실행됨 ===");
+console.log("불러오기 시점의 window.specializationDatabase:", window.specializationDatabase);
                     try {
                         const parsed = JSON.parse(event.target.result);
                         
@@ -4450,11 +4530,53 @@
                         } 
                         // 🌟 [추가] 특화 데이터 커스텀 처리
                         else if (keyName === 'specializationDatabase') {
-                            window.SPECIALIZATION_CUSTOM = parsed;
-                            if (typeof GM_setValue === 'function') GM_setValue('SPECIALIZATION_CUSTOM', parsed);
+                            // 1. 전체 세팅 파일(통합 JSON)인지, 개별 객체인지 판단하여 실제 특화 데이터 추출
+                            let actualData = parsed;
+                            
+                            // parsed가 전체 통합 객체이고 내부 'specializationDatabase' 키가 존재하면 추출
+                            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.specializationDatabase) {
+                                actualData = parsed.specializationDatabase;
+                            }
 
-                            const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) : {};
-                            window.specializationDatabase = { ...defaultSpec, ...parsed };
+                            // 2. 기본값 복사본 준비
+                            const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') 
+                                ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) 
+                                : {};
+
+                            // 3. 추출된 actualData 유효성 검사 및 대입
+                            let finalSpecData;
+                            
+                            if (Array.isArray(actualData)) {
+                                finalSpecData = actualData.length > 0 ? actualData : defaultSpec;
+                            } else if (actualData && typeof actualData === 'object' && Object.keys(actualData).length > 0) {
+                                finalSpecData = { ...defaultSpec, ...actualData };
+                            } else {
+                                finalSpecData = defaultSpec;
+                            }
+
+                            // 4. 전역 변수 및 GM 스토리지 갱신
+                            window.SPECIALIZATION_CUSTOM = finalSpecData;
+                            window.specializationDatabase = finalSpecData;
+
+                            if (typeof GM_setValue === 'function') {
+                                GM_setValue('SPECIALIZATION_CUSTOM', finalSpecData);
+                                GM_setValue('specializationDatabase', finalSpecData);
+                            }
+
+                            // 5. UI 상태 표시 업데이트
+                            const statusElem = document.getElementById(`status-${keyName}`);
+                            if (statusElem) {
+                                const count = Array.isArray(finalSpecData) 
+                                    ? finalSpecData.length 
+                                    : Object.keys(finalSpecData || {}).length;
+                                statusElem.style.color = count > 0 ? '#4ade80' : '#f87171';
+                                statusElem.innerText = count > 0 ? `● 보유 중: ${count}개` : '○ 데이터 없음';
+                            }
+
+                            // 6. 계산 트리거 및 하단 공통 덮어쓰기 로직 탈출
+                            if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
+                            
+                            return; // 🌟 하단 공통 루프에서 window.specializationDatabase = {} 로 덮어쓰는 것 완전 차단
                         }
                         else {
                             window[keyName] = parsed;
@@ -4565,29 +4687,32 @@
 
         clearBtn.onclick = () => {
             if (confirm('저장된 모든 커스텀 데이터를 초기화하시겠습니까?')) {
+                console.log("=== 초기화 실행 시작 ===");
+        console.log("초기화 직전 specDB:", window.specializationDatabase);
+                const defaultSpec = (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') 
+                    ? JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE)) 
+                    : {};
+                const defaultStats = (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') 
+                    ? JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE)) 
+                    : [];
+
                 if (typeof GM_setValue === 'function') {
                     GM_setValue('skillDatabase', {});
                     GM_setValue('orderDataSets', {});
                     GM_setValue('ADD_STAT_BASE_CUSTOM', []);
-                    GM_setValue('SPECIALIZATION_CUSTOM', {});
+                    GM_setValue('SPECIALIZATION_CUSTOM', null); // 🌟 null로 명확히 비움
+                    GM_setValue('specializationDatabase', defaultSpec);
                 }
 
                 window.skillDatabase = {};
                 window.orderDataSets = {};
                 window.ADD_STAT_BASE_CUSTOM = [];
-                window.SPECIALIZATION_CUSTOM = {}; // 🌟 특화 커스텀 데이터 초기화
-                
-                // 연산 엔진용 내장 복원
-                if (typeof DEFAULT_ADD_STAT_BASE !== 'undefined') {
-                    window.ADD_STAT_BASE = JSON.parse(JSON.stringify(DEFAULT_ADD_STAT_BASE));
-                }
-                if (typeof DEFAULT_SPECIALIZATION_DATABASE !== 'undefined') {
-                    window.specializationDatabase = JSON.parse(JSON.stringify(DEFAULT_SPECIALIZATION_DATABASE));
-                } else {
-                    window.specializationDatabase = {};
-                }
+                window.SPECIALIZATION_CUSTOM = null;
 
-                // UI 상태를 ○ 데이터 없음 으로 즉시 갱신
+                window.ADD_STAT_BASE = defaultStats;
+                window.specializationDatabase = defaultSpec;
+
+                // UI 갱신
                 ['skillDatabase', 'orderDataSets', 'ADD_STAT_BASE', 'specializationDatabase'].forEach(key => {
                     const statusElem = document.getElementById(`status-${key}`);
                     if (statusElem) {
@@ -4597,6 +4722,9 @@
                 });
 
                 showAlert('모든 커스텀 데이터가 초기화되었습니다.');
+                console.log("초기화 완료 직후 specDB:", window.specializationDatabase);
+        console.log("=== 초기화 실행 완료 ===");
+                if (typeof renderSkillTripodUI === 'function') renderSkillTripodUI();
                 if (typeof window.triggerCalculation === 'function') window.triggerCalculation();
             }
         };
