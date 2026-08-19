@@ -1595,6 +1595,27 @@
         };
     }
 
+
+    // 태그 변환 효과만 모아둘 전용 배열
+    const tagModifiers = [];
+
+    /**
+     * 태그 추가/제거 효과를 전용 배열에 수집하는 함수
+     */
+    function addTagModifier(sourceName, effect) {
+        const cat = effect.category || effect.type;
+        if (cat !== "태그 추가" && cat !== "태그 제거") return;
+
+        tagModifiers.push({
+            source: sourceName,
+            action: cat === "태그 추가" ? "ADD" : "REMOVE",
+            targetTag: String(effect.val).trim(), // 적용할 태그 이름 (예: "홀딩")
+            requireTags: effect.targetTags || effect.requireTags || effect.requireSkillTags || [],
+            excludeTags: effect.excludeTags || effect.excludeSkillTags || []
+        });
+    }
+
+
     // =============================================================================
     // 5. 핵심 스탯 및 데미지 연산 엔진
     // =============================================================================
@@ -1624,34 +1645,34 @@
             ? window.ADD_STAT_BASE
             : Object.values(window.ADD_STAT_BASE || {});
 
-        // 🌟 2. 공통 스탯 등록 (태그 조건이 없는 순수 공통 스탯만 commonStats에 수집)
+        // 🌟 2. 개인/공용 스탯 수집 (태그 조작 항목은 tagModifiers에, 일반 스탯은 commonStats에)
         statList.forEach(item => {
             if (!item) return;
 
-            // A. 새로 변경된 구조: [{ name, effects: [{ category, val, unit, targetTags, requireTags, excludeTags }] }]
-            if (Array.isArray(item.effects)) {
-                item.effects.forEach(eff => {
-                    const hasTagCondition = (eff.targetTags && eff.targetTags.length > 0) || 
+            const processItemEffect = (eff) => {
+                const cat = eff.category || eff.type;
+
+                // A. [태그 조작] 카테고리가 태그 추가/제거인 경우 전용 수집 함수로 보냄!
+                if (cat === "태그 추가" || cat === "태그 제거") {
+                    addTagModifier(item.name, eff);
+                    return;
+                }
+
+                // B. [일반 스탯] 기존대로 태그 조건이 없는 순수 공통 스탯만 수집
+                const hasTagCondition = (eff.targetTags && eff.targetTags.length > 0) || 
                                         (eff.requireTags && eff.requireTags.length > 0) || 
                                         (eff.excludeTags && eff.excludeTags.length > 0) ||
                                         (eff.excludeSkillTags && eff.excludeSkillTags.length > 0);
-                    
-                    // 태그 조건이 없고, 수식이 아닌 경우에만 공통 스탯에 사전 추가
-                    if (!hasTagCondition && !eff.formula) {
-                        addStat(commonStats, eff.category, item.name, eff.val, eff.unit);
-                    }
-                });
-            }
-            // B. 기존 객체 구조 예외 처리: { category, name, value, unit }
-            else if (item.category) {
-                const hasTagCondition = (item.targetTags && item.targetTags.length > 0) || 
-                                    (item.requireTags && item.requireTags.length > 0) || 
-                                    (item.excludeTags && item.excludeTags.length > 0) ||
-                                    (item.excludeSkillTags && item.excludeSkillTags.length > 0);
                 
-                if (!hasTagCondition && !item.formula) {
-                    addStat(commonStats, item.category, item.name, item.value, item.unit);
+                if (!hasTagCondition && !eff.formula) {
+                    addStat(commonStats, cat, item.name, eff.val ?? eff.value, eff.unit);
                 }
+            };
+
+            if (Array.isArray(item.effects)) {
+                item.effects.forEach(eff => processItemEffect(eff));
+            } else if (item.category || item.type) {
+                processItemEffect(item);
             }
         });
 
@@ -1983,6 +2004,53 @@
                 stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
             }
 
+
+            // 🌟 2. 질서 코어(orderCores)에서 태그 효과 수집 (추가된 부분!)
+            const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
+            ['Sun', 'Moon', 'Star'].forEach(target => {
+                const coresObj = inputs?.orderCores || {};
+                const targetKey = Object.keys(coresObj).find(k => k.toLowerCase() === target.toLowerCase());
+                const coreInfo = coresObj[targetKey];
+                if (!coreInfo || !coreInfo.grade || coreInfo.grade === '미장착' || !coreInfo.level) return;
+
+                const { name: equippedCoreName, grade, level } = coreInfo;
+                const koreanSlotName = slotToKoreanMap[target.toLowerCase()];
+                const orderData = window.orderDataSets || {};
+                let coreData = Object.values(orderData).find(c => c.name === equippedCoreName || c.id === equippedCoreName);
+
+                if (!coreData && equippedCoreName) {
+                    coreData = Object.values(orderData).find(c => 
+                        (c.name && (equippedCoreName.includes(c.name) || c.name.includes(equippedCoreName))) ||
+                        (c.id && (equippedCoreName.includes(c.id) || c.id.includes(equippedCoreName)))
+                    );
+                }
+                if (!coreData) return;
+
+                const userLevel = Number(level) || 0;
+                const gradesObj = coreData.grades || coreData;
+                const matchedGradeKey = Object.keys(gradesObj).find(k => k === grade || grade.includes(k));
+                const targetGradeObj = matchedGradeKey && gradesObj[matchedGradeKey] ? { [matchedGradeKey]: gradesObj[matchedGradeKey] } : {};
+
+                Object.values(targetGradeObj).forEach(gradeContent => {
+                    const pointsObj = gradeContent.points || gradeContent;
+                    if (pointsObj && typeof pointsObj === 'object') {
+                        Object.entries(pointsObj).forEach(([reqPointStr, pointData]) => {
+                            if (userLevel >= Number(reqPointStr)) {
+                                const nodeList = pointData.nodes || (Array.isArray(pointData) ? pointData : [pointData]);
+                                nodeList.forEach(nodeItem => {
+                                    const targetEffects = Array.isArray(nodeItem.effects) ? nodeItem.effects : [nodeItem];
+                                    targetEffects.forEach(eff => {
+                                        // 질서 코어의 태그 추가/제거 효과 수집!
+                                        addTagModifier(`질서 코어(${koreanSlotName}:${equippedCoreName})`, eff);
+                                    });
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+
             // ------------------------------------------------------------------
             // 💡 [태그 처리] 빠른 조작 및 중복 방지를 위한 Set 객체 생성
             // ------------------------------------------------------------------
@@ -2012,9 +2080,25 @@
                 });
             }
 
-            // 🌟 [수정 포인트] 태그 변환 루프가 완료된 '직후'에 배열로 확정!
-            const skillTags = Array.from(currentTagSet);
+            // 3. [2차 태그 변환] 글로벌 태그 효과들 (개인 스탯 + 질서 코어 통합 적용)
+            tagModifiers.forEach(mod => {
+                const tempTags = Array.from(currentTagSet);
 
+                // 제외 조건 체크
+                if (mod.excludeTags.some(t => tempTags.includes(t) || t === skillName)) return;
+
+                // 요구 조건 체크 (예: requireTags: ["우레바람"])
+                const isMatch = mod.requireTags.length === 0 || 
+                                mod.requireTags.every(t => tempTags.includes(t) || t === skillName);
+
+                if (isMatch) {
+                    if (mod.action === "ADD") currentTagSet.add(mod.targetTag);
+                    else if (mod.action === "REMOVE") currentTagSet.delete(mod.targetTag);
+                }
+            });
+
+            // 🌟 4. [최종 태그 확정!] 모든 태그 변환이 끝난 시점
+            const skillTags = Array.from(currentTagSet);
 
 
 
@@ -2181,8 +2265,8 @@
             const sonicsNode = evolutionNodes[4]?.find(node => node.isSonics);
             const MpFurnaceNode = evolutionNodes[4]?.find(node => node.isMPFurnace);
 
-            // ★ 5. 질서 코어 연산
-            const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
+            // // ★ 5. 질서 코어 연산
+            // const slotToKoreanMap = { 'sun': '해', 'moon': '달', 'star': '별' };
 
             ['Sun', 'Moon', 'Star'].forEach(target => {
                 const coresObj = inputs?.orderCores || {};

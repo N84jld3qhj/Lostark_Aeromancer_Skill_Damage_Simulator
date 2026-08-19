@@ -113,6 +113,14 @@
                 "requireTags": [
                     "우레바람"
                 ]
+            },
+            {
+                "category": "태그 제거",
+                "val": "홀딩",
+                "unit": "",
+                "requireTags": [
+                    "우레바람"
+                ]
             }
         ]
     }
