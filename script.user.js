@@ -1970,7 +1970,7 @@
         window.skillDatabase.forEach((skillData) => {
             const {
                 name: skillName,
-                tags: skillTags = [],
+                tags: baseTags = [],
                 coefficient,
                 constant,
                 baseCooldown = 0,
@@ -1982,6 +1982,41 @@
             for (let key in commonStats) {
                 stats[key] = Array.isArray(commonStats[key]) ? [...commonStats[key]] : commonStats[key];
             }
+
+            // ------------------------------------------------------------------
+            // 💡 [태그 처리] 빠른 조작 및 중복 방지를 위한 Set 객체 생성
+            // ------------------------------------------------------------------
+            const currentTagSet = new Set(baseTags);
+
+            // ==================================================================
+            // ★ [위치 확정] 트라이포드 연산 직전: 태그 변환(추가/제거) 사전 처리
+            // ==================================================================
+            const selectedTripodsMap = inputs?.selectedTripods || window.selectedSkillTripods || {};
+            const selectedForThisSkill = selectedTripodsMap[skillName] || selectedTripodsMap[skillData.id] || {};
+            const selectedNames = Object.values(selectedForThisSkill);
+
+            // 4. [1차 순회] 태그 추가 / 제거 우선 처리
+            if (Array.isArray(currentTripods)) {
+                currentTripods.forEach(tp => {
+                    if (!selectedNames.includes(tp.name)) return;
+
+                    const effects = Array.isArray(tp.effects) ? tp.effects : [tp];
+                    effects.forEach(eff => {
+                        if ((eff.category === "태그 추가" || eff.type === "태그 추가") && eff.val) {
+                            currentTagSet.add(eff.val.trim());
+                        }
+                        if ((eff.category === "태그 제거" || eff.type === "태그 제거") && eff.val) {
+                            currentTagSet.delete(eff.val.trim());
+                        }
+                    });
+                });
+            }
+
+            // 🌟 [수정 포인트] 태그 변환 루프가 완료된 '직후'에 배열로 확정!
+            const skillTags = Array.from(currentTagSet);
+
+
+
 
             // 💡 [추가] 팔찌 태그 조건부 효과 적용
             braceletSkillEffects.forEach(effect => {
@@ -2041,35 +2076,35 @@
                 }
             });
 
+
+            
+
             // ★ 2. 트라이포드 적용
             if (Array.isArray(currentTripods)) {
-                // 1. inputs 객체 또는 전역 변수에서 선택된 트라이포드 맵 가져오기
-                const selectedTripodsMap = inputs?.selectedTripods || window.selectedSkillTripods || {};
-                
-                // 2. 현재 스킬(skillName)에 매칭되는 선택 정보 추출
-                const selectedForThisSkill = selectedTripodsMap[skillName] || selectedTripodsMap[skillData.id] || {};
-                
-                // 3. 선택된 트라이포드 이름 목록을 배열로 수집 (예: ["역류", "우레", "공간베기"])
-                const selectedNames = Object.values(selectedForThisSkill);
-
                 currentTripods.forEach(tp => {
-                    // 💡 핵심: 선택된 트라이포드 목록에 없는 경우 연산에서 제외
                     if (!selectedNames.includes(tp.name)) return;
 
                     const exTags = tp.excludeTags || tp.excludeSkillTags || [];
                     if (exTags.some(tag => skillTags.includes(tag))) return;
 
                     const reqTags = tp.requireTags || tp.requireSkillTags || (tp.requiredTag ? [tp.requiredTag] : []);
-                    if (reqTags.length > 0 && !reqTags.some(tag => skillTags.includes(tag))) return;
+                    
+                    // 💡 이제 정상 동작합니다!
+                    const isMatch = reqTags.length === 0 || reqTags.some(tag => skillTags.includes(tag) || tag === skillName);
+                    if (!isMatch) return;
 
                     const sourceType = `트라이포드(${tp.tier ? tp.tier + '트포 - ' : ''}${tp.name})`;
 
+                    const processEffect = (eff) => {
+                        if (eff.category !== "태그 추가" && eff.category !== "태그 제거" && eff.type !== "태그 추가" && eff.type !== "태그 제거") {
+                            addStat(stats, eff.category || eff.type, sourceType, eff.val, eff.unit ?? "%");
+                        }
+                    };
+
                     if (Array.isArray(tp.effects)) {
-                        tp.effects.forEach(eff => {
-                            addStat(stats, eff.category, sourceType, eff.val, eff.unit ?? "%");
-                        });
+                        tp.effects.forEach(processEffect);
                     } else if (tp.category && tp.val !== undefined) {
-                        addStat(stats, tp.category, sourceType, tp.val, tp.unit ?? "%");
+                        processEffect(tp);
                     }
                 });
             }

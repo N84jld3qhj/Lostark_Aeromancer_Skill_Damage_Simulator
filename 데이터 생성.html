@@ -34,8 +34,11 @@
         .buff-card { border-left: 5px solid #6f42c1; }
         .spec-card { border-left: 5px solid #20c997; }
         
-        .sub-effect-row { display: flex; gap: 6px; align-items: center; margin-top: 6px; background: #fff; padding: 6px; border-radius: 4px; border: 1px solid #e9ecef; }
+        .sub-effect-row { display: flex; gap: 6px; align-items: center; margin-top: 6px; background: #fff; padding: 6px; border-radius: 4px; border: 1px solid #e9ecef; flex-wrap: wrap; }
         
+        /* 카테고리 가이드 박스 스타일 */
+        .category-guide { width: 100%; font-size: 11px; color: #d97706; background: #fffbeb; padding: 6px 10px; border-radius: 4px; border: 1px solid #fef3c7; margin-top: 4px; display: none; }
+
         /* 버튼 공통 */
         .btn-del { background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 6px 10px; font-size: 12px; }
         .btn-add { background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 6px 10px; font-size: 12px; }
@@ -331,23 +334,50 @@
         "치명타 적중률", "치명타 피해", "치명타 시 적에게 주는 피해",
         "적에게 주는 피해", "방어력 무시",
         "이동 속도", "공격 속도", "쿨타임 감소",
-        "마나 스킬 쿨타임 감소", "쿨타임 증가", "고정 쿨타임 감소", "고정 쿨타임 증가"
+        "마나 스킬 쿨타임 감소", "쿨타임 증가", "고정 쿨타임 감소", "고정 쿨타임 증가",
+        "태그 추가", "태그 제거"
     ];
 
     const FIXED_UNITS = ["주스탯", "무기 공격력", "기본 공격력", "공격력", "치명", "특화", "신속"];
     const SECOND_UNITS = ["고정 쿨타임 감소", "고정 쿨타임 증가"];
+    const TAG_CATEGORIES = ["태그 추가", "태그 제거"];
 
     function getCategoryLabel(cat) {
         if (FIXED_UNITS.includes(cat)) return `${cat} (고정치)`;
         if (SECOND_UNITS.includes(cat)) return `${cat} (초)`;
+        if (TAG_CATEGORIES.includes(cat)) return `${cat}`;
         return `${cat} (%)`;
     }
 
     function getUnitByCategory(category) {
-        if (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category)) {
+        if (FIXED_UNITS.includes(category) || SECOND_UNITS.includes(category) || TAG_CATEGORIES.includes(category)) {
             return "";
         }
         return "%";
+    }
+
+    // 카테고리 설명 텍스트 업데이트 함수
+    function updateCategoryGuide(selectElem) {
+        const parent = selectElem.closest('.sub-effect-row, .order-card, .buff-card');
+        if (!parent) return;
+
+        let guideBox = parent.querySelector('.category-guide');
+        if (!guideBox) {
+            guideBox = document.createElement('div');
+            guideBox.className = 'category-guide';
+            parent.appendChild(guideBox);
+        }
+
+        const selected = selectElem.value;
+        if (selected === "태그 추가") {
+            guideBox.style.display = "block";
+            guideBox.innerHTML = `💡 <strong>태그 추가 예시:</strong> 스킬에 지정 태그를 추가할 때 사용합니다.<br>"차지 조작으로 변경된다. 오버 차지 시 적에게 주는 피해가 90.0% 증가하고 방향 전환이 가능해진다." ➔ 값 항목에 <code>차지</code> 입력`;
+        } else if (selected === "태그 제거") {
+            guideBox.style.display = "block";
+            guideBox.innerHTML = `💡 <strong>태그 제거 예시:</strong> 스킬에 지정 태그를 제거할 때 사용합니다.<br>"더 이상 헤드 어택 공격이 적용되지 않지만 적에게 주는 피해가 10.0% 증가한다." ➔ 값 항목에 <code>헤드어택</code> 입력`;
+        } else {
+            guideBox.style.display = "none";
+        }
     }
 
     function createEmptyOrderStructure() {
@@ -553,14 +583,15 @@
         subDiv.className = "sub-effect-row";
         
         const catOptions = getCategoryOptionsHtml(effectData ? effectData.category : "적에게 주는 피해");
-        const val = effectData ? effectData.val : "";
+        const val = effectData ? (effectData.val !== undefined ? effectData.val : effectData.value ?? "") : "";
 
         subDiv.innerHTML = `
-            <select class="sub-cat" style="flex: 2;">${catOptions}</select>
-            <input type="number" step="any" class="sub-val" value="${val}" placeholder="수치" style="flex: 1;">
+            <select class="sub-cat" style="flex: 2;" onchange="updateCategoryGuide(this)">${catOptions}</select>
+            <input type="text" class="sub-val" value="${val}" placeholder="수치 또는 태그명" style="flex: 1;">
             <button type="button" class="btn-del" onclick="this.parentElement.remove()">X</button>
         `;
         listDiv.appendChild(subDiv);
+        updateCategoryGuide(subDiv.querySelector('.sub-cat'));
     }
 
     function addSkillToDatabase() {
@@ -590,7 +621,8 @@
 
             card.querySelectorAll(".sub-effect-row").forEach(row => {
                 const category = row.querySelector(".sub-cat").value;
-                const val = parseFloat(row.querySelector(".sub-val").value) || 0;
+                const rawVal = row.querySelector(".sub-val").value.trim();
+                const val = TAG_CATEGORIES.includes(category) ? rawVal : (parseFloat(rawVal) || 0);
                 const unit = getUnitByCategory(category);
                 effects.push({ category, val, unit });
             });
@@ -720,19 +752,19 @@
 
         if (is17pt) {
             rowDiv.innerHTML = `
-                <div style="display: flex; gap: 8px; margin-bottom: 6px; align-items: center;">
-                    <select class="ord-cat" style="flex: 2;">${getCategoryOptionsHtml(category)}</select>
-                    <input type="number" step="any" class="ord-val-ancient" value="${valAncient}" placeholder="고대 수치" style="flex: 1; border: 2px solid #fd7e14;">
-                    <input type="number" step="any" class="ord-val-relic" value="${valRelic}" placeholder="유물 수치" style="flex: 1; border: 2px solid #6f42c1;">
+                <div style="display: flex; gap: 8px; margin-bottom: 6px; align-items: center; flex-wrap: wrap;">
+                    <select class="ord-cat" style="flex: 2;" onchange="updateCategoryGuide(this)">${getCategoryOptionsHtml(category)}</select>
+                    <input type="text" class="ord-val-ancient" value="${valAncient}" placeholder="고대 수치/태그" style="flex: 1; border: 2px solid #fd7e14;">
+                    <input type="text" class="ord-val-relic" value="${valRelic}" placeholder="유물 수치/태그" style="flex: 1; border: 2px solid #6f42c1;">
                     <button type="button" class="btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
                 </div>
                 ${inputsHtml}
             `;
         } else {
             rowDiv.innerHTML = `
-                <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-                    <select class="ord-cat" style="flex: 2;">${getCategoryOptionsHtml(category)}</select>
-                    <input type="number" step="any" class="ord-val" value="${valAncient}" placeholder="수치" style="flex: 1;">
+                <div style="display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                    <select class="ord-cat" style="flex: 2;" onchange="updateCategoryGuide(this)">${getCategoryOptionsHtml(category)}</select>
+                    <input type="text" class="ord-val" value="${valAncient}" placeholder="수치 또는 태그명" style="flex: 1;">
                     <button type="button" class="btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
                 </div>
                 ${inputsHtml}
@@ -740,6 +772,7 @@
         }
 
         container.appendChild(rowDiv);
+        updateCategoryGuide(rowDiv.querySelector('.ord-cat'));
         renderAllTagBadges();
     }
 
@@ -773,8 +806,12 @@
 
             document.querySelectorAll("#orderEffectsContainer .order-card").forEach(box => {
                 const category = box.querySelector(".ord-cat").value;
-                const valAncient = parseFloat(box.querySelector(".ord-val-ancient").value) || 0;
-                const valRelic = parseFloat(box.querySelector(".ord-val-relic").value) || 0;
+                const rawAncient = box.querySelector(".ord-val-ancient").value.trim();
+                const rawRelic = box.querySelector(".ord-val-relic").value.trim();
+
+                const valAncient = TAG_CATEGORIES.includes(category) ? rawAncient : (parseFloat(rawAncient) || 0);
+                const valRelic = TAG_CATEGORIES.includes(category) ? rawRelic : (parseFloat(rawRelic) || 0);
+
                 const requireTags = box.querySelector(".ord-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
                 const excludeTags = box.querySelector(".ord-exclude-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
 
@@ -806,7 +843,9 @@
             const effects = [];
             document.querySelectorAll("#orderEffectsContainer .order-card").forEach(box => {
                 const category = box.querySelector(".ord-cat").value;
-                const val = parseFloat(box.querySelector(".ord-val").value) || 0;
+                const rawVal = box.querySelector(".ord-val").value.trim();
+                const val = TAG_CATEGORIES.includes(category) ? rawVal : (parseFloat(rawVal) || 0);
+
                 const requireTags = box.querySelector(".ord-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
                 const excludeTags = box.querySelector(".ord-exclude-tags").value.split(",").map(s => s.trim()).filter(s => s.length > 0);
                 
@@ -1075,17 +1114,17 @@
         const rowId = "buff_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 
         rowDiv.innerHTML = `
-            <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-                <select class="buff-cat" style="flex: 2;">${getCategoryOptionsHtml(category)}</select>
+            <div style="display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                <select class="buff-cat" style="flex: 2;" onchange="updateCategoryGuide(this)">${getCategoryOptionsHtml(category)}</select>
                 <select class="buff-val-type" style="width: 110px; font-weight: bold; background: #eef2ff;" onchange="toggleBuffInputType(this)">
-                    <option value="fixed" ${!isFormulaMode ? 'selected' : ''}>고정 수치</option>
+                    <option value="fixed" ${!isFormulaMode ? 'selected' : ''}>고정 수치/태그</option>
                     <option value="formula" ${isFormulaMode ? 'selected' : ''}>🧮 수식 입력</option>
                 </select>
                 <button type="button" class="btn-del" onclick="this.parentElement.parentElement.remove()">삭제</button>
             </div>
 
             <div class="val-fixed-container" style="display: ${isFormulaMode ? 'none' : 'block'}; margin-bottom: 6px;">
-                <input type="number" step="any" class="buff-val" value="${val}" placeholder="수치 (예: 10 또는 1500)">
+                <input type="text" class="buff-val" value="${val}" placeholder="수치 또는 태그명 (예: 10 또는 HEAD_ATTACK)">
             </div>
 
             <div class="val-formula-container" style="display: ${isFormulaMode ? 'block' : 'none'}; margin-bottom: 6px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #6366f1;">
@@ -1126,6 +1165,7 @@
         `;
 
         container.appendChild(rowDiv);
+        updateCategoryGuide(rowDiv.querySelector('.buff-cat'));
         renderAllTagBadges();
     }
 
@@ -1139,7 +1179,7 @@
         cards.forEach(card => {
             const category = card.querySelector(".buff-cat").value;
             const type = card.querySelector(".buff-val-type").value;
-            const val = parseFloat(card.querySelector(".buff-val")?.value) || 0;
+            const rawVal = card.querySelector(".buff-val")?.value.trim() || "";
             const formula = card.querySelector(".buff-formula")?.value.trim() || "";
             const requireTags = card.querySelector(".buff-tags")?.value.split(",").map(s => s.trim()).filter(s => s.length > 0) || [];
             const excludeTags = card.querySelector(".buff-exclude-tags")?.value.split(",").map(s => s.trim()).filter(s => s.length > 0) || [];
@@ -1150,7 +1190,7 @@
             if (type === 'formula') {
                 effObj.formula = formula;
             } else {
-                effObj.val = val;
+                effObj.val = TAG_CATEGORIES.includes(category) ? rawVal : (parseFloat(rawVal) || 0);
             }
             
             effObj.unit = unit;
